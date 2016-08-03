@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'domains',
     'ips',
     'policies',
-    'records',
     'zones'
 ]
 
