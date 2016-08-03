@@ -37,6 +37,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'domains',
+    'ips',
+    'policies',
+    'records',
+    'zones'
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -119,3 +124,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# FILL IN DATA HERE
+# =================
+
+
+# LATTICE API CREDENTIALS
+LATTICE_URL = 'https://lattice.presslabs.net/servers'
+LATTICE_USER = ''
+LATTICE_PASS = ''
