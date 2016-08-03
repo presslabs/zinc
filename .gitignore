@@ -90,3 +90,4 @@ ENV/
 
 *.sqlite3
 .idea
+local_settings.py
