@@ -132,3 +132,13 @@ STATIC_URL = '/static/'
 LATTICE_URL = 'https://lattice.presslabs.net/'
 LATTICE_USER = ''
 LATTICE_PASS = ''
+
+# =================
+# END OF CONFIG
+
+
+try:
+    from local_settings import *
+except ImportError as e:
+    pass
+

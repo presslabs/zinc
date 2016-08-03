@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import Zone
 
-# Register your models here.
+
+class ZoneAdmin(admin.ModelAdmin):
+    pass
+admin.site.register(Zone, ZoneAdmin)
