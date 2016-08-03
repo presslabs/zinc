@@ -130,6 +130,6 @@ STATIC_URL = '/static/'
 
 
 # LATTICE API CREDENTIALS
-LATTICE_URL = 'https://lattice.presslabs.net/servers'
+LATTICE_URL = 'https://lattice.presslabs.net/'
 LATTICE_USER = ''
 LATTICE_PASS = ''

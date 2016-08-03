@@ -1,4 +1,4 @@
-from urllib.parse import urlparse
+from urlparse import urlparse
 
 from django.conf import settings
 
@@ -7,7 +7,7 @@ from requests.auth import HTTPBasicAuth
 
 
 LATTICE_URL = getattr(settings, 'LATTICE_URL',
-                      'https://lattice.presslabs.net/servers')
+                      'https://lattice.presslabs.net/')
 LATTICE_USER = getattr(settings, 'LATTICE_USER', '')
 LATTICE_PASS = getattr(settings, 'LATTICE_PASS', '')
 parts = urlparse(LATTICE_URL)
