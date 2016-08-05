@@ -1,3 +1,11 @@
 from django.db import models
 
-# Create your models here.
+from zones.models import Zone
+
+
+class Domain(models.Model):
+    name = models.CharField(
+            max_length=255,
+            unique=True
+    )
+    zone = models.OneToOneField(Zone)
