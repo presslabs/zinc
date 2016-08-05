@@ -8,4 +8,4 @@ class Domain(models.Model):
             max_length=255,
             unique=True
     )
-    zone = models.OneToOneField(Zone)
+    zone = models.ForeignKey(Zone)
