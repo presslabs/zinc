@@ -1,9 +1,9 @@
 from django.db import models
-
-POLICIES = (
-    ('dev', 'Developer Policy'),
-)
+from ips.models import IP
 
 
 class Policy(models.Model):
-    ref = models.CharField(choices=POLICIES)
+    name = models.CharField(max_length=255, null=False)
+    modified_index = models.PositiveIntegerField(default=0, editable=False)
+
+    ip = models.ManyToManyField(IP)
