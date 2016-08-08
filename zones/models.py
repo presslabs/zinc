@@ -1,19 +1,28 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 class Record(models.Model):
-    name = models.CharField(max_length=255)
-    rtype = models.CharField(max_length=10)
-    value = models.CharField(default='')
-    ttl = models.PositiveIntegerField(default=300)
+    RECORD_TYPES = [(type, type) for type in ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SPF', 'SRV', 'NS', 'SOA']]
+
+    name = models.CharField(max_length=64, null=False)
+    type = models.CharField(choices=RECORD_TYPES, null=False, max_length=4, default=RECORD_TYPES[0][0])
+    value = models.TextField(null=False)
+    ttl = models.IntegerField(validators=[MinValueValidator(300)], default=3600)
+    managed = models.BooleanField(default=False)
+
+    zone = models.ForeignKey(Zone, on_delete=models.CASCADE)
+
+    # TODO think about value validation
+
+
 
 
 class Zone(models.Model):
-    zone_id = models.CharField(primary_key=True)
-    root = models.CharField(
-            max_length=255,
-            unique=True
-    )
+    # TODO validate root here trailing dot and stuff
+    root = models.CharField(max_length=255, unique=True)
+    aws_id = models.IntegerField(unique=True)
+
     records = models.ForeignKey(Record)
 
     def __str__(self):
