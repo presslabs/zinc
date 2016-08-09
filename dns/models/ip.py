@@ -1,10 +1,11 @@
 from django.core.validators import validate_ipv46_address
 from django.db import models
 
+from ..utils import get_ip_regions
+
 
 class IP(models.Model):
-    # TODO FILL REGIONS HERE
-    AWS_REGIONS = [('us', 'US')]
+    AWS_REGIONS = get_ip_regions()
 
     ip = models.CharField(
         max_length=40,
