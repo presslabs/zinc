@@ -1,4 +1,4 @@
 Django==1.10
 djangorestframework<3.5
 requests==2.10.0
-zipa==0.2.0
+zipa==0.3.0
