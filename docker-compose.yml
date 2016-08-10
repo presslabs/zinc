@@ -1,0 +1,18 @@
+version: '2'
+services:
+    zinc:
+        build: .
+        volumes:
+            - .:/app
+        depends_on:
+            - celery
+        ports:
+            - "8000:8000"
+    celery:
+        image: celery
+        depends_on:
+            - redis
+        environment:
+            - CELERY_BROKER_URL=redis://redis
+    redis:
+        image: redis
