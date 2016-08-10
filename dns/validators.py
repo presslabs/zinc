@@ -7,3 +7,9 @@ validate_hostname = RegexValidator(
     code='invalid_hostname'
 )
 
+# Regex inspired from django.core.validators.URLValidator
+validate_root_domain = RegexValidator(
+    regex=r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.(?!-)[a-z0-9-]{1,63}(?<!-))*\.(?!-)(?:[a-z-]{2,63}|xn--[a-z0-9]{1,59})(?<!-)\.$',
+    message=u'Invalid root domain',
+    code='invalid_root_domain'
+)

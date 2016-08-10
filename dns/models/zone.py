@@ -1,10 +1,15 @@
 from django.db import models
 from django.db.models.signals import pre_save
 
+from ..validators import validate_root_domain
+
 
 class Zone(models.Model):
-    # TODO validate root here trailing dot and stuff
-    root = models.CharField(max_length=255, unique=True)
+    root = models.CharField(
+        max_length=255,
+        unique=True,
+        validators=[validate_root_domain]
+    )
     aws_id = models.IntegerField(editable=False)
     dirty = models.BooleanField(default=False, editable=False)
 
