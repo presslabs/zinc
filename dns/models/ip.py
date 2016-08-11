@@ -1,4 +1,3 @@
-from django.core.validators import validate_ipv46_address
 from django.db import models
 
 from ..utils import get_regions
@@ -7,14 +6,12 @@ from ..utils import get_regions
 class IP(models.Model):
     AWS_REGIONS = get_regions()
 
-    ip = models.CharField(
-        max_length=40,
-        verbose_name='IP Address',
-        validators=[validate_ipv46_address],
-        primary_key=True
+    ip = models.GenericIPAddressField(
+        primary_key=True,
+        protocol='IPv4',
+        verbose_name='IP Address'
     )
     server_name = models.CharField(max_length=255)
-
     healthcheck_id = models.IntegerField(editable=False, null=True)
     weight = models.PositiveIntegerField(default=10)
     location = models.CharField(choices=AWS_REGIONS, max_length=10)
