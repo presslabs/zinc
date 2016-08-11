@@ -11,7 +11,7 @@ services:
             - "8000:8000"
     celery:
         build: .
-        command: dockerize -wait tcp://redis:6379 -timeout 30s celery worker --autoreload -A zinc.vendors.celery -l info
+        command: dockerize -wait tcp://redis:6379 -timeout 30s celery worker --autoreload -B -A zinc.vendors.celery -l info
         volumes:
             - .:/app
         depends_on:
