@@ -1,22 +1,22 @@
 from django.db import models
 from django.db.models.signals import pre_save
 
+from . import Policy
 from ..validators import validate_root_domain
 
 
 class Zone(models.Model):
+    name = models.CharField(max_length=255, unique=True)
     root = models.CharField(
         max_length=255,
         unique=True,
         validators=[validate_root_domain]
     )
+    policy = models.ForeignKey(Policy)
     aws_id = models.IntegerField(editable=False)
-    dirty = models.BooleanField(default=False, editable=False)
-
-    records = models.TextField(default='[]')
 
     def __unicode__(self):
-        return self.root
+        return self.name
 
 
 def mark_dirty(sender, instance, *args, **kwargs):
