@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+from datetime import timedelta
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -129,6 +131,24 @@ STATIC_URL = '/static/'
 LATTICE_URL = 'https://lattice.presslabs.net/'
 LATTICE_USER = ''
 LATTICE_PASS = ''
+
+# CELERY
+
+BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')
+ONCE_REDIS_URL = os.getenv('ONCE_REDIS_URL', 'redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/2')
+ONCE_DEFAULT_TIMEOUT = 60 * 5
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+CELERYBEAT_SCHEDULE = {
+    # 'sample-slow-task': {
+    #     'task': 'zinc.vendors.celery.slow_task',
+    #     'schedule': timedelta(minutes=1),
+    # },
+}
 
 # =================
 # END OF CONFIG
