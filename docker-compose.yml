@@ -4,15 +4,17 @@ services:
         build: .
         volumes:
             - .:/app
+        command: dockerize -wait tcp://redis:6379 -timeout 30s ./manage.py runserver 0.0.0.0:8000
         depends_on:
             - redis
         ports:
             - "8000:8000"
     celery:
-        image: celery
+        build: .
+        command: dockerize -wait tcp://redis:6379 -timeout 30s celery worker --autoreload -A zinc.vendors.celery -l info
+        volumes:
+            - .:/app
         depends_on:
             - redis
-        environment:
-            - CELERY_BROKER_URL=redis://redis
     redis:
         image: redis

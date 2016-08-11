@@ -1,1 +1,1 @@
-from .celery import app as celery_app
+from zinc.vendors.celery import app as celery_app
