@@ -1,6 +1,7 @@
 from django.db import models
+from django.db.models.signals import pre_save
 
-from dns.models import IP
+from . import IP
 
 
 class Policy(models.Model):
@@ -14,3 +15,10 @@ class Policy(models.Model):
 
     class Meta:
         verbose_name_plural = 'policies'
+
+
+def modify_index(sender, instance, *args, **kwargs):
+    instance.modified_index += 1
+
+
+pre_save.connect(modify_index, sender=Policy)
