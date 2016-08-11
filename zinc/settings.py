@@ -137,9 +137,9 @@ LATTICE_PASS = ''
 
 # CELERY
 
-BROKER_URL = 'redis://localhost:6379/0'
-ONCE_REDIS_URL = 'redis://localhost:6379/1'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/2'
+BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')
+ONCE_REDIS_URL = os.getenv('ONCE_REDIS_URL', 'redis://localhost:6379/1')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/2')
 ONCE_DEFAULT_TIMEOUT = 60 * 5
 
 CELERY_ACCEPT_CONTENT = ['json']
