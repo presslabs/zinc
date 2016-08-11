@@ -5,7 +5,7 @@ services:
         volumes:
             - .:/app
         depends_on:
-            - celery
+            - redis
         ports:
             - "8000:8000"
     celery:
