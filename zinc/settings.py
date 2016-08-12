@@ -148,6 +148,10 @@ CELERYBEAT_SCHEDULE = {
     #     'task': 'zinc.vendors.celery.slow_task',
     #     'schedule': timedelta(minutes=1),
     # },
+    'lattice-ip-cron': {
+        'task': 'dns.tasks.lattice_ip_retriever',
+        'schedule': timedelta(minutes=1)
+    },
 }
 
 # =================
