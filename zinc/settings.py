@@ -144,10 +144,10 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 CELERYBEAT_SCHEDULE = {
-    # 'sample-slow-task': {
-    #     'task': 'zinc.vendors.celery.slow_task',
-    #     'schedule': timedelta(minutes=1),
-    # },
+    'sample-slow-task': {
+        'task': 'zinc.vendors.celery.slow_task',
+        'schedule': timedelta(minutes=1),
+    },
     'lattice-ip-cron': {
         'task': 'dns.tasks.lattice_ip_retriever',
         'schedule': timedelta(minutes=1)
