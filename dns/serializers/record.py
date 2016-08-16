@@ -11,7 +11,7 @@ class RecordSerializer(serializers.Serializer):
     value = serializers.CharField()
     ttl = serializers.IntegerField(min_value=300)
     managed = serializers.BooleanField(default=False)
-    dirty = serializers.BooleanField(default=False, editable=False)
+    dirty = serializers.BooleanField(default=False)
 
     def create(self, validated_data):
         validated_data['dirty'] = True
