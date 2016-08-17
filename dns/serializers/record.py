@@ -3,8 +3,11 @@ from rest_framework import serializers
 from ..models import ManagedRecord
 
 
-class RecordSerializer(serializers.Serializer):
-    RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SPF', 'SRV', 'NS', 'SOA', 'POLICY_ROUTED']
+class RecordSerializer(serializers.ModelSerializer):
+    RECORD_TYPES = [
+        'A', 'AAAA', 'CNAME', 'MX', 'TXT',
+        'SPF', 'SRV', 'NS', 'SOA', 'POLICY_ROUTED'
+    ]
 
     name = serializers.CharField(max_length=255)
     record_type = serializers.ChoiceField(choices=[(rtype, rtype) for rtype in RECORD_TYPES])
