@@ -1,13 +1,19 @@
-from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from rest_framework import generics
 
-from .models.zone import Zone
-from .serializers.zone import ZoneSerializer
+from .models import Zone
+from .serializers import ZoneSerializer
 
 
-class ZoneList(generics.ListCreateAPIView):
+class ZoneList(generics.ListAPIView):
+    queryset = Zone.objects.all()
     serializer_class = ZoneSerializer
 
-    def get_queryset(self):
-        queryset = Zone.objects.all()
-        return HttpResponse(queryset)
+
+class ZoneDetail(generics.GenericAPIView):
+    serializer_class = ZoneSerializer
+
+    def get_object(self, queryset=None):
+        zone_id = self.kwargs['zone_id']
+        zone = get_object_or_404(Zone, id=zone_id)
+        return zone
