@@ -10,4 +10,4 @@ class PolicyMember(models.Model):
     AWS_REGIONS = get_regions()
     healthcheck_id = models.IntegerField(editable=False, null=True)
     weight = models.PositiveIntegerField(default=10)
-    location = models.CharField(choices=AWS_REGIONS, max_length=10)
+    location = models.CharField(choices=AWS_REGIONS, max_length=20)
