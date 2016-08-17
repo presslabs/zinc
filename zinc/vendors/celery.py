@@ -15,14 +15,3 @@ app = Celery('zinc')
 # pickle the object when using Windows.
 app.config_from_object('django.conf:settings')
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
-
-
-@app.task(bind=True)
-def debug_task(self):
-    print('Request: {0!r}'.format(self.request))
-
-
-@app.task(base=QueueOnce, once={'key': [], 'graceful': True})
-def slow_task():
-    sleep(30)
-    return "Done!"

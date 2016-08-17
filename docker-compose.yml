@@ -14,7 +14,7 @@ services:
     celery:
         build: .
         env_file: ./docker-compose.env
-        command: dockerize -wait tcp://redis:6379 -timeout 30s celery worker --autoreload -B -A zinc.vendors.celery -l info
+        command: dockerize -wait tcp://redis:6379 -timeout 30s celery worker -B -A zinc.vendors.celery -l info
         volumes:
             - .:/app
         depends_on:
