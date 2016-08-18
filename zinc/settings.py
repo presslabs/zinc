@@ -132,6 +132,8 @@ LATTICE_URL = 'https://lattice.presslabs.net/'
 LATTICE_USER = ''
 LATTICE_PASS = ''
 
+LATTICE_ROLES = ['frontend-node', 'cdn-node']
+
 # CELERY
 
 BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')
@@ -144,13 +146,9 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 CELERYBEAT_SCHEDULE = {
-    # 'sample-slow-task': {
-    #     'task': 'zinc.vendors.celery.slow_task',
-    #     'schedule': timedelta(minutes=1),
-    # },
-    'lattice-ip-cron': {
+    'lattice_ip_retriever': {
         'task': 'dns.tasks.lattice_ip_retriever',
-        'schedule': timedelta(seconds=10)
+        'schedule': timedelta(minutes=1)
     },
 }
 

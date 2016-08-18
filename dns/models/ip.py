@@ -14,6 +14,7 @@ class IP(models.Model):
 
     name = models.CharField(max_length=24, verbose_name='Name')
     location = models.CharField(max_length=32, verbose_name='Location')
+    usable = models.BooleanField(default=True)
 
     def __unicode__(self):
         return '{}: {} / {] / {}'.format(self.name, self.provider, self.location, self.ip)
