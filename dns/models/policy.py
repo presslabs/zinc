@@ -13,12 +13,12 @@ class Policy(models.Model):
     def __unicode__(self):
         return self.name
 
+    @staticmethod
+    def modify_index(sender, instance, *args, **kwargs):
+        instance.modified_index += 1
+
     class Meta:
         verbose_name_plural = 'policies'
 
 
-def modify_index(sender, instance, *args, **kwargs):
-    instance.modified_index += 1
-
-
-pre_save.connect(modify_index, sender=Policy)
+pre_save.connect(Policy.modify_index, sender=Policy)
