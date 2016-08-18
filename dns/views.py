@@ -1,19 +1,33 @@
-from django.shortcuts import get_object_or_404
 from rest_framework import generics
 
-from .models import Zone
-from .serializers import ZoneSerializer
+from .models import ManagedRecord, Policy, Zone
+from .serializers import PolicySerializer, RecordSerializer, ZoneSerializer
 
 
-class ZoneList(generics.ListAPIView):
+class ZoneList(generics.ListCreateAPIView):
     queryset = Zone.objects.all()
     serializer_class = ZoneSerializer
 
 
-class ZoneDetail(generics.GenericAPIView):
+class ZoneDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ZoneSerializer
 
-    def get_object(self, queryset=None):
-        zone_id = self.kwargs['zone_id']
-        zone = get_object_or_404(Zone, id=zone_id)
-        return zone
+    def get_queryset(self):
+        return Zone.objects.filter(id=self.kwargs['pk'])
+
+
+class PolicyList(generics.ListCreateAPIView):
+    queryset = Policy.objects.all()
+    serializer_class = PolicySerializer
+
+
+class PolicyDetail(generics.RetrieveUpdateAPIView):
+    serializer_class = PolicySerializer
+
+    def get_queryset(self):
+        return Policy.objects.filter(id=self.kwargs['pk'])
+
+
+class RecordList(generics.ListCreateAPIView):
+    queryset = ManagedRecord.objects.all()
+    serializer_class = RecordSerializer

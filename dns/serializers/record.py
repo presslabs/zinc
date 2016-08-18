@@ -16,6 +16,11 @@ class RecordSerializer(serializers.ModelSerializer):
     managed = serializers.BooleanField(default=False)
     dirty = serializers.BooleanField(default=False)
 
+    class Meta:
+        model = ManagedRecord
+        fields = ('name', 'record_type', 'value', 'ttl', 'managed', 'dirty')
+        read_only_fields = ('managed', 'dirty')
+
     def create(self, validated_data):
         validated_data['dirty'] = True
         rtype = validated_data.get('record_type')
@@ -32,8 +37,3 @@ class RecordSerializer(serializers.ModelSerializer):
             instance.save()
 
         # TODO AWS stuff
-
-    class Meta:
-        model = ManagedRecord
-        fields = ('name', 'record_type', 'value', 'ttl', 'dirty')
-        read_only_fields = ('dirty')

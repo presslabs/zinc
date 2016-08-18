@@ -10,4 +10,4 @@ class ZoneSerializer(serializers.ModelSerializer):
     class Meta:
         model = Zone
         fields = ('name', 'root', 'policy', 'aws_id', 'records')
-        read_only_fields = ('policy', 'aws_id', 'records')
+        read_only_fields = ('aws_id', 'records')
