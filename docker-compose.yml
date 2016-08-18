@@ -23,3 +23,5 @@ services:
         image: redis
     lattice:
         image: lattice
+        ports:
+            - "8001:80"
