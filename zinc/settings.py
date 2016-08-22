@@ -153,6 +153,10 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
+AWS_KEY = ''
+AWS_SECRET = ''
+
+
 # =================
 # END OF CONFIG
 
