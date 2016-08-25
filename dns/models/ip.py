@@ -1,7 +1,6 @@
 from django.db import models
 
 from dns.validators import validate_hostname
-from zinc.vendors.lattice import lattice
 
 
 class IP(models.Model):
@@ -16,5 +15,10 @@ class IP(models.Model):
 
     enabled = models.BooleanField(default=True)
 
+    def __str__(self):
+        value = self.friendly_name or self.hostname
+
+        return '{} {}'.format(self.ip, value)
+
     def __unicode__(self):
-        return self.friendly_name or '{} - {}'.format(self.hostname, self.ip)
+        return self.__str__()

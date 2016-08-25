@@ -11,8 +11,11 @@ class Zone(models.Model):
     )
     route53_id = models.IntegerField(editable=False)
 
-    def __unicode__(self):
+    def __str__(self):
         return '{} {}'.format(self.pk, self.root)
+
+    def __unicode__(self):
+        return self.__str__()
 
 
 def mark_dirty(sender, instance, *args, **kwargs):

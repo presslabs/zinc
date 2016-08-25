@@ -10,8 +10,11 @@ class Policy(models.Model):
 
     members = models.ManyToManyField(PolicyMember)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
+
+    def __unicode__(self):
+        return self.__str__()
 
     @staticmethod
     def modify_index(sender, instance, *args, **kwargs):
