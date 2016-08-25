@@ -27,3 +27,9 @@ class IPAdmin(admin.ModelAdmin):
             return False
 
         return super(IPAdmin).has_delete_permission(request=request, obj=obj)
+
+    def get_actions(self, request):
+        actions = super(IPAdmin, self).get_actions(request)
+        if getattr(settings, 'DISABLE_IP_ADMIN', False) and 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
