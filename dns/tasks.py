@@ -13,13 +13,13 @@ from zinc.vendors.lattice import lattice
 logger = get_task_logger(__name__)
 
 
-@shared_task(base=QueueOnce, default_retry_delay=30, max_retries=3, soft_time_limit=600,
-             once={'key': [], 'graceful': True})
+@shared_task(base=QueueOnce, default_retry_delay=30, max_retries=3,
+             soft_time_limit=600, once={'key': [], 'graceful': True})
 def lattice_ip_retriever():
     try:
         servers = [server for server in lattice.servers() if
-                   list_overlap(server['roles'], settings.LATTICE_ROLES) and server['state'] not in ['unconfigured',
-                                                                                                     'decommissioned']]
+                   list_overlap(server['roles'], settings.LATTICE_ROLES) and
+                   server['state'] not in ['unconfigured', 'decommissioned']]
     except HTTPError:
         servers = []
 
@@ -28,8 +28,8 @@ def lattice_ip_retriever():
         for ip in server.ips:
             # TODO retrieve location
             usable = server['state'] == 'configured'
-            cron_ip = IP(ip=ip['ip'], provider=server['datacenter_name'], name=server['hostname'], location='TEST',
-                         usable=usable)
+            cron_ip = IP(ip=ip['ip'], provider=server['datacenter_name'],
+                         name=server['hostname'], location='TEST', usable=usable)
 
             try:
                 cron_ip.save()
