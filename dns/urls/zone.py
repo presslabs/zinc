@@ -1,6 +1,6 @@
 from django.conf.urls import url
 
-from ..views import RecordList, ZoneList, ZoneDetail
+from dns.views import RecordList, ZoneList, ZoneDetail
 
 
 urlpatterns = [

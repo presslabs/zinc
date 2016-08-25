@@ -4,8 +4,7 @@ import string
 import time
 from rest_framework import serializers
 
-from . import RecordSerializer
-from ..models import Zone
+from dns.models import Zone
 from zinc.vendors.boto3 import client
 
 

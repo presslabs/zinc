@@ -1,6 +1,6 @@
 from django.db import models
 
-from . import IP
+from dns.models import IP
 from zinc.vendors.boto3 import get_local_aws_regions
 
 

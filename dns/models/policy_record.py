@@ -1,6 +1,6 @@
 from django.db import models
 
-from . import Policy, Zone
+from dns.models import Policy, Zone
 
 
 class PolicyRecord(models.Model):

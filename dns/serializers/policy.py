@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ..models import Policy
+from dns.models import Policy
 
 
 class PolicySerializer(serializers.ModelSerializer):
