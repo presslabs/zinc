@@ -16,11 +16,11 @@ class IPAdmin(admin.ModelAdmin):
 
         return fields
 
-    def has_add_permission(self, request, obj=None):
+    def has_add_permission(self, request):
         if getattr(settings, 'DISABLE_IP_ADMIN', False):
             return False
 
-        return super(IPAdmin, self).has_add_permission(request=request, obj=obj)
+        return super(IPAdmin, self).has_add_permission(request=request)
 
     def has_delete_permission(self, request, obj=None):
         if getattr(settings, 'DISABLE_IP_ADMIN', False):
