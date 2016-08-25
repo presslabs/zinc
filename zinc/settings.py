@@ -127,6 +127,8 @@ STATIC_URL = '/static/'
 # FILL IN DATA HERE
 # =================
 
+DISABLE_IP_ADMIN = True
+
 
 # LATTICE API CREDENTIALS
 LATTICE_URL = 'https://lattice.presslabs.net/'

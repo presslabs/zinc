@@ -26,10 +26,11 @@ def lattice_ip_retriever():
     lattice_ips = set()
     for server in servers:
         for ip in server.ips:
+            enabled = server['state'] == 'configured'
             # TODO retrieve location
-            usable = server['state'] == 'configured'
-            cron_ip = IP(ip=ip['ip'], provider=server['datacenter_name'],
-                         name=server['hostname'], location='TEST', usable=usable)
+            friendly_name = '{} {}'.format(server['datacenter_name'], 'fake_location')
+            cron_ip = IP(ip=ip['ip'], hostname=server['hostname'],
+                         friendly_name=friendly_name, enabled=enabled)
 
             try:
                 cron_ip.save()

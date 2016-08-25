@@ -1,6 +1,6 @@
 from rest_framework import generics
 
-from .models import ManagedRecord, Policy, Zone
+from .models import PolicyRecord, Policy, Zone
 from .serializers import PolicySerializer, RecordSerializer, ZoneSerializer
 
 
@@ -29,5 +29,5 @@ class PolicyDetail(generics.RetrieveUpdateAPIView):
 
 
 class RecordList(generics.ListCreateAPIView):
-    queryset = ManagedRecord.objects.all()
+    queryset = PolicyRecord.objects.all()
     serializer_class = RecordSerializer
