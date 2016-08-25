@@ -20,13 +20,13 @@ class IPAdmin(admin.ModelAdmin):
         if getattr(settings, 'DISABLE_IP_ADMIN', False):
             return False
 
-        return super(IPAdmin).has_add_permission(request=request, obj=obj)
+        return super(IPAdmin, self).has_add_permission(request=request, obj=obj)
 
     def has_delete_permission(self, request, obj=None):
         if getattr(settings, 'DISABLE_IP_ADMIN', False):
             return False
 
-        return super(IPAdmin).has_delete_permission(request=request, obj=obj)
+        return super(IPAdmin, self).has_delete_permission(request=request, obj=obj)
 
     def get_actions(self, request):
         actions = super(IPAdmin, self).get_actions(request)
