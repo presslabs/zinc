@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from ..models import ManagedRecord
+from ..models import PolicyRecord
 
 
 class RecordSerializer(serializers.ModelSerializer):
@@ -17,7 +17,7 @@ class RecordSerializer(serializers.ModelSerializer):
     dirty = serializers.BooleanField(default=False)
 
     class Meta:
-        model = ManagedRecord
+        model = PolicyRecord
         fields = ('name', 'record_type', 'value', 'ttl', 'managed', 'dirty')
         read_only_fields = ('managed', 'dirty')
 
@@ -27,7 +27,7 @@ class RecordSerializer(serializers.ModelSerializer):
 
         if rtype == 'POLICY_ROUTED':
             validated_data['managed'] = True
-            ManagedRecord.objects.all().get_or_create(**validated_data)
+            PolicyRecord.objects.all().get_or_create(**validated_data)
 
         # TODO AWS stuff
 
