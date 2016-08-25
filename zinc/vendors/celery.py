@@ -7,7 +7,6 @@ from celery_once import QueueOnce
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'zinc.settings')
 
 from django.conf import settings  # noqa
-from time import sleep
 
 app = Celery('zinc')
 

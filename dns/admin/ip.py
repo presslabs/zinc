@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.conf import settings
 
-from ..models import IP
+from dns.models import IP
 
 
 @admin.register(IP)

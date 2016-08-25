@@ -6,7 +6,7 @@ from celery_once import QueueOnce
 
 from django.conf import settings
 
-from dns.models.ip import IP
+from dns.models import IP
 from dns.utils import list_overlap
 from zinc.vendors.lattice import lattice
 

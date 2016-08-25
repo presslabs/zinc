@@ -1,6 +1,6 @@
 from django.conf.urls import url
 
-from ..views import PolicyList, PolicyDetail
+from dns.views import PolicyList, PolicyDetail
 
 
 urlpatterns = [

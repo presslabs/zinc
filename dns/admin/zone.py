@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from ..models import Zone
+from dns.models import Zone
 
 
 @admin.register(Zone)

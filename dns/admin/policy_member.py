@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from ..models import PolicyMember
+from dns.models import PolicyMember
 
 
 @admin.register(PolicyMember)

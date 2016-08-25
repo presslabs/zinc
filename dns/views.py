@@ -1,7 +1,7 @@
 from rest_framework import generics
 
-from .models import PolicyRecord, Policy, Zone
-from .serializers import PolicySerializer, RecordSerializer, ZoneSerializer
+from dns.models import PolicyRecord, Policy, Zone
+from dns.serializers import PolicySerializer, RecordSerializer, ZoneSerializer
 
 
 class ZoneList(generics.ListCreateAPIView):

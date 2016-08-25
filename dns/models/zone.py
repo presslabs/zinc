@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save
 
-from ..validators import validate_domain
+from dns.validators import validate_domain
 
 
 class Zone(models.Model):

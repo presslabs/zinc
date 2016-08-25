@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models.signals import pre_save
 
-from . import PolicyMember
+from dns.models import PolicyMember
 
 
 class Policy(models.Model):
