@@ -1,7 +1,7 @@
 from django.db import models
 
 from dns.models import IP
-from zinc.vendors.boto3 import get_local_aws_regions
+from dns.utils.route53 import get_local_aws_regions
 
 
 class PolicyMember(models.Model):

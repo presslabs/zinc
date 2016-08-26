@@ -7,7 +7,7 @@ from celery_once import QueueOnce
 from django.conf import settings
 
 from dns.models import IP
-from dns.utils import list_overlap
+from dns.utils.generic import list_overlap
 from zinc.vendors.lattice import lattice
 
 logger = get_task_logger(__name__)
