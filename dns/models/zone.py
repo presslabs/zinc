@@ -11,7 +11,8 @@ class Zone(models.Model):
         validators=[validate_domain]
     )
     route53_id = models.CharField(max_length=32, unique=True, editable=False)
-    caller_reference = models.UUIDField(editable=False, unique=True)
+    caller_reference = models.CharField(max_length=32, editable=False,
+                                        unique=True)
 
     def clean(self):
         if self.route53_id:

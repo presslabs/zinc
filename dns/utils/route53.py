@@ -33,17 +33,46 @@ def generate_caller_ref():
 
 
 class Zone(object):
-    def __init__(self, id, root, caller_reference):
+    def __init__(self, id=None, root=None, caller_reference=None):
         self.id = id
         self.root = root
         self.caller_reference = caller_reference
+
+    def delete(self):
+        self._delete_records()
+        client.delete_hosted_zone(Id=self.id)
+
+    def _delete_records(self):
+        # TODO check NS SOA for default values and don't delete them! Not that you can..
+        while True:
+            response = client.list_resource_record_sets(HostedZoneId=self.id)
+
+            to_delete = []
+            for record in response['ResourceRecordSets']:
+                to_delete.append({
+                    'Action': 'DELETE',
+                    'ResourceRecordSet': record
+                })
+
+            if to_delete:
+                client.change_resource_record_sets(
+                    HostedZoneId=self.id,
+                    ChangeBatch={
+                        'Changes': to_delete
+                    })
+
+            if not response['IsTruncated']:
+                break
 
     @staticmethod
     def create(root):
         ref = uuid.uuid4()
         zone = client.create_hosted_zone(
             Name=root,
-            CallerReference='zinc {} {}'.format(ref, datetime.datetime.now())
+            CallerReference='zinc {} {}'.format(ref, datetime.datetime.now()),
+            HostedZoneConfig={
+                'Comment': 'zinc'
+            }
         )
 
         id = zone['HostedZone']['Id'].split('/')[2]
