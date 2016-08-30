@@ -1,7 +1,8 @@
 from rest_framework import generics
 
 from dns.models import PolicyRecord, Policy, Zone
-from dns.serializers import PolicySerializer, RecordSerializer, ZoneSerializer
+from dns.serializers import (PolicySerializer, RecordSerializer,
+                             ZoneSerializer, ZoneDetailSerializer)
 
 
 class ZoneList(generics.ListCreateAPIView):
@@ -10,7 +11,7 @@ class ZoneList(generics.ListCreateAPIView):
 
 
 class ZoneDetail(generics.RetrieveUpdateDestroyAPIView):
-    serializer_class = ZoneSerializer
+    serializer_class = ZoneDetailSerializer
 
     def get_queryset(self):
         return Zone.objects.filter(id=self.kwargs['pk'])
