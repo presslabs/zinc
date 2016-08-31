@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from requests.exceptions import HTTPError
 
 from celery.utils.log import get_task_logger
@@ -7,7 +8,7 @@ from celery_once import QueueOnce
 
 from django.conf import settings
 
-from dns.models import IP
+from dns.models import IP, Zone
 from dns.utils import route53
 from dns.utils.generic import list_overlap
 from zinc.vendors.lattice import lattice
@@ -45,9 +46,8 @@ def lattice_ip_retriever():
 
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
-def aws_delete_zone(self, zone_id):
-    # TODO clean up the records first
-    aws_zone = route53.Zone(id=zone_id)
+def aws_delete_zone(self, zone_id, root):
+    aws_zone = route53.Zone(id=zone_id, root=root)
 
     try:
         aws_zone.delete()

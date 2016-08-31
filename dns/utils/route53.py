@@ -43,12 +43,15 @@ class Zone(object):
         client.delete_hosted_zone(Id=self.id)
 
     def _delete_records(self):
-        # TODO check NS SOA for default values and don't delete them! Not that you can..
         while True:
             response = client.list_resource_record_sets(HostedZoneId=self.id)
 
             to_delete = []
             for record in response['ResourceRecordSets']:
+                if record['Type'] in ['NS', 'SOA'] and \
+                   record['Name'] == self.root + '.':
+                    continue
+
                 to_delete.append({
                     'Action': 'DELETE',
                     'ResourceRecordSet': record

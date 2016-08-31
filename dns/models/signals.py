@@ -10,5 +10,5 @@ def aws_delete(instance, **kwargs):
     if 'raw' in kwargs and kwargs['raw']:
         return
 
-    aws_delete_zone.delay(instance.route53_id)
+    aws_delete_zone.delay(instance.route53_id, instance.root)
 
