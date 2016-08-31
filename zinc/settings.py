@@ -135,7 +135,7 @@ LATTICE_URL = 'https://lattice.presslabs.net/'
 LATTICE_USER = ''
 LATTICE_PASS = ''
 
-LATTICE_ROLES = ['frontend-node', 'cdn-node']
+LATTICE_ROLES = []
 
 # CELERY
 

@@ -23,8 +23,10 @@ def lattice_ip_retriever():
         servers = [server for server in lattice.servers() if
                    list_overlap(server['roles'], settings.LATTICE_ROLES) and
                    server['state'] not in ['unconfigured', 'decommissioned']]
-    except HTTPError:
-        servers = []
+        locations = {d['id']: d['location'] for d in lattice.datacenters()}
+    except HTTPError as e:
+        logger.exception(e)
+        return
 
     lattice_ips = set()
     for server in servers:
@@ -32,10 +34,11 @@ def lattice_ip_retriever():
             enabled = server['state'] == 'configured'
 
             datacenter_id = int(server['datacenter_url'].split('/')[-1])
-            location = [d['location'] for d in lattice.datacenters() if d['id'] == datacenter_id]
-            location = location[0] if len(location) else 'fake_location'
+            location = locations.get(datacenter_id, 'fake_location')
 
-            friendly_name = '{} {} {}'.format(server['hostname'], server['datacenter_name'], location)
+            friendly_name = '{} {} {}'.format(server['hostname'],
+                                              server['datacenter_name'],
+                                              location)
             cron_ip = IP(ip=ip['ip'], hostname=server['hostname'],
                          friendly_name=friendly_name, enabled=enabled)
 
