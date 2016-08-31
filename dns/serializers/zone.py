@@ -35,7 +35,7 @@ class ZoneDetailSerializer(serializers.ModelSerializer):
     def get_ns(self, obj):
         self._get_aws_records(obj)
         ns = {}
-        root = '{}.'.format(obj.root) if not obj.root.endswith('.') else obj.root
+        root = '{}.'.format(obj.root)
 
         for record in self._aws_records:
             if record['Type'] == 'NS' and record['Name'] == root:
