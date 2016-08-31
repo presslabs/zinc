@@ -2,6 +2,7 @@ version: '2'
 services:
     zinc:
         build: .
+        env_file: ./docker-compose.env
         volumes:
             - .:/app
         command: dockerize -wait tcp://redis:6379 -timeout 30s ./manage.py runserver 0.0.0.0:8000
@@ -13,6 +14,7 @@ services:
     celery:
         build: .
         command: dockerize -wait tcp://redis:6379 -timeout 30s celery worker -B -A zinc.vendors.celery -l info
+        env_file: ./docker-compose.env
         volumes:
             - .:/app
         depends_on:
