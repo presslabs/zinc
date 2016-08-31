@@ -23,46 +23,17 @@ class ZoneSerializer(serializers.ModelSerializer):
 class ZoneDetailSerializer(serializers.ModelSerializer):
     ns = serializers.SerializerMethodField()
     records = serializers.SerializerMethodField()
-    _aws_records = []
-
-    def _get_aws_records(self, obj):
-        if self._aws_records:
-            return
-        else:
-            response = route53.client.list_resource_record_sets(HostedZoneId=obj.route53_id)
-            self._aws_records = response['ResourceRecordSets']
 
     def get_ns(self, obj):
-        self._get_aws_records(obj)
-        ns = {}
-        root = '{}.'.format(obj.root)
-
-        for record in self._aws_records:
-            if record['Type'] == 'NS' and record['Name'] == root:
-                ns = {
-                    'name': record['Name'],
-                    'type': record['Type'],
-                    'ttl': record['TTL'],
-                    'values': [r['Value'] for r in record['ResourceRecords']]
-                }
-            break
-        return ns
+        zone = route53.Zone(id=obj.route53_id, root=obj.root,
+                            caller_reference=obj.caller_reference)
+        return zone.aws_ns
 
     def get_records(self, obj):
-        self._get_aws_records(obj)
-        records = []
-        root = '{}.'.format(obj.root)
+        zone = route53.Zone(id=obj.route53_id, root=obj.root,
+                            caller_reference=obj.caller_reference)
 
-        for record in self._aws_records:
-            if not (record['Type'] == 'NS' and record['Name'] == root):
-                records.append({
-                    'name': record['Name'],
-                    'type': record['Type'],
-                    'ttl': record['TTL'],
-                    'values': [r['Value'] for r in record['ResourceRecords']]
-                })
-
-        return records
+        return zone.records
 
     class Meta:
         model = Zone

@@ -33,39 +33,79 @@ def generate_caller_ref():
 
 
 class Zone(object):
-    def __init__(self, id=None, root=None, caller_reference=None):
+    def __init__(self, id=None, root='', caller_reference=None):
         self.id = id
         self.root = root
         self.caller_reference = caller_reference
+        self._aws_records = []
+
+    @property
+    def aws_ns(self):
+        root = self._aws_root()
+        return self._filter_records(
+            lambda record: True if record['Type'] == 'NS' and
+                                   record['Name'] == root else False)[0]
+
+    @property
+    def records(self):
+        root = self._aws_root()
+        return self._filter_records(
+            lambda record: True if not (record['Type'] == 'NS' and
+                                        record['Name'] == root) else False)
+
+    def _filter_records(self, chooser):
+        self._cache_aws_records()
+
+        entries = []
+        for record in self._aws_records:
+            if chooser(record):
+                entries.append({
+                    'name': record['Name'],
+                    'type': record['Type'],
+                    'ttl': record['TTL'],
+                    'values': [r['Value'] for r in record['ResourceRecords']]
+                })
+
+        return entries
+
+    def _cache_aws_records(self):
+        if self._aws_records:
+            return
+
+        try:
+            response = client.list_resource_record_sets(HostedZoneId=self.id)
+            self._aws_records = response['ResourceRecordSets']
+        except Exception:
+            self._aws_records = []
+
+    def _aws_root(self):
+        return '{}.'.format(self.root)
 
     def delete(self):
         self._delete_records()
         client.delete_hosted_zone(Id=self.id)
 
     def _delete_records(self):
-        while True:
-            response = client.list_resource_record_sets(HostedZoneId=self.id)
+        self._cache_aws_records()
+        zone_root = self._aws_root()
 
-            to_delete = []
-            for record in response['ResourceRecordSets']:
-                if record['Type'] in ['NS', 'SOA'] and \
-                   record['Name'] == self.root + '.':
-                    continue
+        to_delete = []
+        for record in self._aws_records:
+            if record['Type'] in ['NS', 'SOA'] and \
+                            record['Name'] == zone_root:
+                continue
 
-                to_delete.append({
-                    'Action': 'DELETE',
-                    'ResourceRecordSet': record
+            to_delete.append({
+                'Action': 'DELETE',
+                'ResourceRecordSet': record
+            })
+
+        if to_delete:
+            client.change_resource_record_sets(
+                HostedZoneId=self.id,
+                ChangeBatch={
+                    'Changes': to_delete
                 })
-
-            if to_delete:
-                client.change_resource_record_sets(
-                    HostedZoneId=self.id,
-                    ChangeBatch={
-                        'Changes': to_delete
-                    })
-
-            if not response['IsTruncated']:
-                break
 
     @staticmethod
     def create(root):
