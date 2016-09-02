@@ -92,3 +92,6 @@ ENV/
 .idea
 local_settings.py
 celerybeat-schedule.*
+
+# Vim temp files
+*.sw?
