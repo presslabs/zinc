@@ -1,0 +1,47 @@
+FORMAT: 1A
+HOST: https://api.zinc.presslabs.com
+
+# Zinc API Specification
+
+
+# Group Zones
+
+## Zones Collection [/zones]
+### GET
++ Response 200 (application/json)
+    + Attributes
+        - zones (array[Zone Full])
+
+### POST
++ Request (application/json)
+    + Attributes
+        - zone (Zone Create)
++ Response 200 (application/json)
+    + Attributes
+        - zones (array[Zone Full])
+
+
+## Zone Resource [/zones/{id}]
++ Parameters
+    + id: `1` - Zinc zone ID
+
+### GET
++ Response 200 (application/json)
+    + Attributes
+        - Include Zone Full
+
+### PUT
++ Response 200
+
+### DELETE
++ Response 204 (application/json)
+
+
+# Data Structures
+
+## Zone Create (object)
+- root: `site.com.` (string, required) - Root domain of the DNS zone
+
+## Zone Full (object)
+- id: `1` (number) - Zinc zone ID
+- Include Zone Create
