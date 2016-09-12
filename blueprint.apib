@@ -1,47 +1,122 @@
 FORMAT: 1A
 HOST: https://api.zinc.presslabs.com
 
-# Zinc API Specification
+# zinc API Specification
+
+
+# Group Overview
+## Purpose
+zinc aims to provide a simple REST API for managing AWS Route53 hosted DNS zones and zone records. It also includes a `POLICY_ROUTED` custom DNS record type which is translated towards Route53 as an AWS ALIAS record. This has been implemented in order to benefit from records inside the same hosted zone pointing one to another, thus adding the possibility of using an in-house load balancer.
+## HTTP Methods
+The zinc API makes use of the following HTTP verbs:
+* `GET` - **Retrieve** a representation of the requested resource
+* `POST` - **Create** a new resource on an endpoint for all resources of this type. By POST-ing a new resource here we do not have any URI in mind for it, thus letting zinc assign one. The state of the new resource must be specified in the request body
+* `PUT` - **Update** or **Replace** a resource at a certain URI by providing the new state of the resource in the request body
+* `PATCH` - **Partially update** a resource by providing the parameters that need to be changed and their new values
+* `DELETE` - **Delete** a resource at a certain URI
+## Resources/Entities
+The entities that can be observed through the API endpoints are the following:
+* **Zone** - The representation for the Route53 hosted zones. They can be listed all at once, listed per resource and modified per resource.
+* **Record** - The representation for the Route53 resource record sets. Records can be listed within the zone endpoint and modified as a batch.
+* **Policy** - The representation for the zinc policies. Policies can be listed all at once or per resource and modified per resource. Policies can not be created or deleted using the API.
+## Limitations
+Beside the limitations imposed by the [Amazon Route53 API](http://docs.aws.amazon.com/Route53/latest/DeveloperGuide/DNSLimitations.html) and the [boto3 client](https://boto3.readthedocs.io/en/latest/reference/services/route53.html#Route53.Client.change_resource_record_sets), zinc limits a zone to having a maximum of 50 records. This way it is assured that a bulk update on the whole DNS zone can be made through a single API call and atomicity is provided.
+## Authentication
+Authentication will be required for any and every zinc API request. Authentication process `TBA`.
 
 
 # Group Zones
+The zones created/updated/deleted through the zinc API are further handled on AWS Route53.
 
-## Zones Collection [/zones]
-### GET
+## ZoneList [/zones]
+
+### Retrieve Route53 hosted DNS zones [GET]
 + Response 200 (application/json)
+    + Attributes (array[ZoneList])
++ Response 401 (application/json)
     + Attributes
-        - zones (array[Zone Full])
+        + message: `Authentication is required for this operation` (string)
 
-### POST
+### Create new Route53 hosted DNS zone [POST]
 + Request (application/json)
-    + Attributes
-        - zone (Zone Create)
+    + Attributes (ZoneCreate)
 + Response 200 (application/json)
+    + Attributes (array[ZoneList])
++ Response 401 (application/json)
     + Attributes
-        - zones (array[Zone Full])
+        + message: `Authentication is required for this operation` (string)
 
 
 ## Zone Resource [/zones/{id}]
 + Parameters
-    + id: `1` - Zinc zone ID
+    + id: `1` (number, required) - zinc zone ID
 
-### GET
+### Retrieve hosted DNS zone details [GET]
 + Response 200 (application/json)
+    + Attributes (ZoneDetail)
++ Response 401 (application/json)
     + Attributes
-        - Include Zone Full
+        + message: `Authentication is required for this operation` (string)
 
-### PUT
+### Update hosted DNS zone attribute/s [PATCH]
+A zone can be partially updated by specifying one or more of its attributes in the request body. In case of an invalid attribute a `Bad Request` response is returned.
++ Request (application/json)
+    + Attributes
+        + root: `site2.com.` (string)
++ Response 200 (application/json)
+    + Attributes (ZoneDetailChanged)
++ Response 400 (application/json)
+    + Attributes
+        + message: `Invalid attributes` (string)
++ Response 401 (application/json)
+    + Attributes
+        + message: `Authentication is required for this operation` (string)
+
+### Remove hosted DNS zone [DELETE]
++ Response 204
++ Response 401 (application/json)
+    + Attributes
+        + message: `Authentication is required for this operation` (string)
+
+
+# Group Records
+
+## Record List [/zones/{id}/records]
++ Parameters
+    + id: `1` (number, required) - zinc zone ID
+
+### Retrieve hosted DNS zone records [GET]
++ Response 200 (application/json)
+    + Attributes (array[Record])
++ Response 401 (application/json)
+    + Attributes
+        + message: `Authentication is required for this operation` (string)
+
+### Update records resource [PUT]
++ Request (application/json)
+    + Attributes (array[Record])
 + Response 200
-
-### DELETE
-+ Response 204 (application/json)
+    + Attributes (array[Record])
++ Response 401 (application/json)
+    + Attributes
+        + message: `Authentication is required for this operation` (string)
 
 
 # Data Structures
-
-## Zone Create (object)
+## Record (object)
+- ttl: `300` (number) - Record TTL
+- type: `A` (string) - Record type
+- name: `site.com.` (string) - Record name
+- values: `127.0.0.1`, `192.168.0.1` (array[string]) - A list of values held by the record
+## ZoneCreate (object)
 - root: `site.com.` (string, required) - Root domain of the DNS zone
-
-## Zone Full (object)
-- id: `1` (number) - Zinc zone ID
-- Include Zone Create
+## ZoneList (object)
+- id: `1` (number) - zinc zone ID
+- Include ZoneCreate
+## ZoneDetail (object)
+- Include ZoneList
+- ns (Record) - Nameserver record
+- records (array[Record]) - All other records
+## ZoneDetailChanged (object)
+- Include ZoneDetail
+- root: `site2.com.` (string)
