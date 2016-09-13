@@ -8,12 +8,19 @@ HOST: https://api.zinc.presslabs.com
 ## Purpose
 zinc aims to provide a simple REST API for managing AWS Route53 hosted DNS zones and zone records. It also includes a `POLICY_ROUTED` custom DNS record type which is translated towards Route53 as an AWS ALIAS record. This has been implemented in order to benefit from records inside the same hosted zone pointing one to another, thus adding the possibility of using an in-house load balancer.
 ## HTTP Methods
-The zinc API makes use of the following HTTP verbs:
+The zinc API makes use of the following HTTP methods:
 * `GET` - **Retrieve** a representation of the requested resource
 * `POST` - **Create** a new resource on an endpoint for all resources of this type. By POST-ing a new resource here we do not have any URI in mind for it, thus letting zinc assign one. The state of the new resource must be specified in the request body
 * `PUT` - **Update** or **Replace** a resource at a certain URI by providing the new state of the resource in the request body
 * `PATCH` - **Partially update** a resource by providing the parameters that need to be changed and their new values
 * `DELETE` - **Delete** a resource at a certain URI
+## Possible responses
+Depending on the request being made, zinc will return one of the following status codes as response:
+* `200` - The request has been successfully performed
+* `204` - The request for deleting a resource has been successful
+* `400` - The request body contains attributes that zinc does not know how to handle
+* `401` - The request requires authentication
+* `404` - zinc can not find the requested resource
 ## Resources/Entities
 The entities that can be observed through the API endpoints are the following:
 * **Zone** - The representation for the Route53 hosted zones. They can be listed all at once, listed per resource and modified per resource.
@@ -28,23 +35,23 @@ Authentication will be required for any and every zinc API request. Authenticati
 # Group Zones
 The zones created/updated/deleted through the zinc API are further handled on AWS Route53.
 
-## ZoneList [/zones]
+## Zone List [/zones]
 
 ### Retrieve Route53 hosted DNS zones [GET]
 + Response 200 (application/json)
-    + Attributes (array[ZoneList])
+    + Attributes (array[ZonesGet])
 + Response 401 (application/json)
-    + Attributes
-        + message: `Authentication is required for this operation` (string)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
 
 ### Create new Route53 hosted DNS zone [POST]
 + Request (application/json)
-    + Attributes (ZoneCreate)
+    + Attributes (ZonesPost)
 + Response 200 (application/json)
-    + Attributes (array[ZoneList])
+    + Attributes (array[ZonesGet])
 + Response 401 (application/json)
-    + Attributes
-        + message: `Authentication is required for this operation` (string)
+    + Attributes (AuthenticationRequired)
 
 
 ## Zone Resource [/zones/{id}]
@@ -53,30 +60,32 @@ The zones created/updated/deleted through the zinc API are further handled on AW
 
 ### Retrieve hosted DNS zone details [GET]
 + Response 200 (application/json)
-    + Attributes (ZoneDetail)
+    + Attributes (ZoneDetailGet)
 + Response 401 (application/json)
-    + Attributes
-        + message: `Authentication is required for this operation` (string)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
 
 ### Update hosted DNS zone attribute/s [PATCH]
-A zone can be partially updated by specifying one or more of its attributes in the request body. In case of an invalid attribute a `Bad Request` response is returned.
+A zone can be partially updated by specifying one or more of its attributes in the request body. In case of an invalid attribute, a `Bad Request` response is returned.
 + Request (application/json)
     + Attributes
         + root: `site2.com.` (string)
 + Response 200 (application/json)
-    + Attributes (ZoneDetailChanged)
+    + Attributes (ZoneDetailPatch)
 + Response 400 (application/json)
-    + Attributes
-        + message: `Invalid attributes` (string)
+    + Attributes (InvalidAttribute)
 + Response 401 (application/json)
-    + Attributes
-        + message: `Authentication is required for this operation` (string)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
 
 ### Remove hosted DNS zone [DELETE]
 + Response 204
 + Response 401 (application/json)
-    + Attributes
-        + message: `Authentication is required for this operation` (string)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
 
 
 # Group Records
@@ -87,36 +96,131 @@ A zone can be partially updated by specifying one or more of its attributes in t
 
 ### Retrieve hosted DNS zone records [GET]
 + Response 200 (application/json)
-    + Attributes (array[Record])
+    + Attributes (array[ARecord])
 + Response 401 (application/json)
-    + Attributes
-        + message: `Authentication is required for this operation` (string)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
 
 ### Update records resource [PUT]
 + Request (application/json)
-    + Attributes (array[Record])
+    + Attributes (array[ARecordPut])
 + Response 200
-    + Attributes (array[Record])
+    + Attributes (array[ARecordPut])
 + Response 401 (application/json)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
+
+
+# Group Policies
+
+## Policy List [/policies]
+
+## Retrieve zinc policies [GET]
++ Response 200 (application/json)
+    + Attributes (array[PoliciesGet])
++ Response 401 (application/json)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
+
+## Policy Resource [/policies/{id}]
++ Parameters
+    + id: `1` (number, required) - zinc policy ID
+
+## Retrieve a specific policy [GET]
++ Response 200 (application/json)
+    + Attributes (PoliciesGet)
++ Response 401 (application/json)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
+
+## Update a specific policy [PUT]
+A policy can be updated by specifying its new state in the request body. In case of an invalid attribute, a `Bad Request` response is returned.
++ Request (application/json)
+    + Attributes (PolicyPut)
++ Response 200 (application/json)
+    + Attributes (PolicyPut)
++ Response 400 (application/json)
+    + Attributes (InvalidAttribute)
++ Response 401 (application/json)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
+
+## Partially update a specific policy [PATCH]
+A policy can be partially updated by specifying one or more of its attributes in the request body. In case of an invalid attribute, a `Bad Request` response is returned.
++ Request (application/json)
     + Attributes
-        + message: `Authentication is required for this operation` (string)
+        + members: `3`, `4`, `5` (array[number])
++ Response 200 (application/json)
+    + Attributes (PolicyPatch)
++ Response 400 (application/json)
+    + Attributes (InvalidAttribute)
++ Response 401 (application/json)
+    + Attributes (AuthenticationRequired)
++ Response 404 (application/json)
+    + Attributes (ResourceNotFound)
 
 
 # Data Structures
-## Record (object)
+
+## ARecord (object)
 - ttl: `300` (number) - Record TTL
 - type: `A` (string) - Record type
 - name: `site.com.` (string) - Record name
-- values: `127.0.0.1`, `192.168.0.1` (array[string]) - A list of values held by the record
-## ZoneCreate (object)
+- values: `127.0.0.1` (array[string]) - A list of values held by the record
+
+## ARecordPut (object)
+- Include ARecord
+- ttl: `3600` (number) - Record TTL
+
+## NSRecord (object)
+- ttl: `300` (number) - Record TTL
+- type: `NS` (string) - Record type
+- name: `site.com.` (string) - Record name
+- values: `ns-333.foodns-22.com.`, `ns-123.bardns-32.co.uk.` (array[string]) - A list of values held by the record
+
+## ZonesPost (object)
 - root: `site.com.` (string, required) - Root domain of the DNS zone
-## ZoneList (object)
+
+## ZonesGet (object)
 - id: `1` (number) - zinc zone ID
-- Include ZoneCreate
-## ZoneDetail (object)
-- Include ZoneList
-- ns (Record) - Nameserver record
-- records (array[Record]) - All other records
-## ZoneDetailChanged (object)
-- Include ZoneDetail
+- Include ZonesPost
+
+## ZoneDetailGet (object)
+- Include ZonesGet
+- ns (NSRecord) - Nameserver record
+- records (array[ARecord]) - All other records
+
+## ZoneDetailPatch (object)
+- id: `1` (number)
 - root: `site2.com.` (string)
+- ns (NSRecord) - Nameserver record
+- records (array[ARecord]) - All other records
+
+## PoliciesGet (object)
+- name: `Policy1` (string) - Policy name
+- members: `1`, `2`, `3` (array[number]) - IDs of the policy members held by the policy
+
+## PolicyGet (object)
+- Include PoliciesGet
+
+## PolicyPut (object)
+- Include PolicyGet
+- members: `2`, `3` (array[number])
+
+## PolicyPatch (object)
+- Include PolicyGet
+- members: `3`, `4`, `5` (array[number])
+
+## AuthenticationRequired (object)
+- message: `Authentication is required for this operation` (string)
+
+## InvalidAttribute (object)
+- message: `Invalid attributes` (string)
+
+## ResourceNotFound (object)
+- message: `Requested resource not found` (string)
