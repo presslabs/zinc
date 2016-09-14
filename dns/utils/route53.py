@@ -43,8 +43,8 @@ class Zone(object):
     def aws_ns(self):
         root = self._aws_root()
         return self._filter_records(
-            lambda record: True if record['Type'] == 'NS' and
-                                   record['Name'] == root else False)[0]
+            lambda record: True if (record['Type'] == 'NS' and
+                                    record['Name'] == root) else False)[0]
 
     @property
     def records(self):
@@ -55,12 +55,13 @@ class Zone(object):
 
     def _filter_records(self, chooser):
         self._cache_aws_records()
+        root = self._aws_root()
 
         entries = []
         for record in self._aws_records:
             if chooser(record):
                 entries.append({
-                    'name': record['Name'],
+                    'name': '@' if record['Name'] == root else record['Name'].replace(root, ''),
                     'type': record['Type'],
                     'ttl': record['TTL'],
                     'values': [r['Value'] for r in record['ResourceRecords']]
