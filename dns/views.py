@@ -1,13 +1,9 @@
 from rest_framework import generics
 
-from dns.models import PolicyRecord, Policy, Zone
+from dns.models import Policy, Zone
 from dns.serializers import (PolicySerializer, RecordSerializer,
                              ZoneSerializer, ZoneDetailSerializer)
-
-
-class UpdateDestroyApiView(generics.CreateAPIView, generics.DestroyAPIView,
-                           generics.UpdateAPIView):
-    pass
+from dns.utils import route53
 
 
 class ZoneList(generics.ListCreateAPIView):
@@ -34,6 +30,15 @@ class PolicyDetail(generics.RetrieveUpdateAPIView):
         return Policy.objects.filter(id=self.kwargs['pk'])
 
 
-class RecordList(UpdateDestroyApiView):
-    queryset = PolicyRecord.objects.all()
+class RecordList(generics.UpdateAPIView, generics.ListAPIView):
+    lookup_field = 'zone_id'
     serializer_class = RecordSerializer
+
+    def get_queryset(self):
+        zone = Zone.objects.filter(id=self.kwargs['zone_id'])[0]
+        route53_zone = route53.Zone(zone.route53_id, zone.root)
+
+        records = route53_zone.records
+        records.append(route53_zone.ns)
+
+        return records

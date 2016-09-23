@@ -3,7 +3,7 @@ from rest_framework import serializers
 from dns.models import PolicyRecord
 
 
-class RecordSerializer(serializers.ModelSerializer):
+class RecordSerializer(serializers.Serializer):
     RECORD_TYPES = [
         'A', 'AAAA', 'CNAME', 'MX', 'TXT',
         'SPF', 'SRV', 'NS', 'SOA', 'POLICY_ROUTED'
@@ -11,19 +11,18 @@ class RecordSerializer(serializers.ModelSerializer):
 
     name = serializers.CharField(max_length=255)
     record_type = serializers.ChoiceField(choices=[(rtype, rtype) for rtype in RECORD_TYPES])
-    value = serializers.CharField()
+    values = serializers.CharField()
     ttl = serializers.IntegerField(min_value=300)
     managed = serializers.BooleanField(default=False)
     dirty = serializers.BooleanField(default=False)
 
     class Meta:
-        model = PolicyRecord
-        fields = ('name', 'record_type', 'value', 'ttl', 'managed', 'dirty')
+        fields = ('name', 'record_type', 'values', 'ttl', 'managed', 'dirty')
         read_only_fields = ('managed', 'dirty')
 
     def create(self, validated_data):
         validated_data['dirty'] = True
-        rtype = validated_data.get('record_type')
+        rtype = validated_data.pop('record_type')
 
         if rtype == 'POLICY_ROUTED':
             validated_data['managed'] = True

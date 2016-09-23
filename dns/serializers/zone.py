@@ -27,7 +27,7 @@ class ZoneDetailSerializer(serializers.ModelSerializer):
     def get_ns(self, obj):
         zone = route53.Zone(id=obj.route53_id, root=obj.root,
                             caller_reference=obj.caller_reference)
-        return zone.aws_ns
+        return zone.ns
 
     def get_records(self, obj):
         zone = route53.Zone(id=obj.route53_id, root=obj.root,
