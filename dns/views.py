@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics
 
 from dns.models import Policy, Zone
@@ -36,7 +37,7 @@ class RecordList(generics.UpdateAPIView, generics.ListAPIView):
     serializer_class = RecordSerializer
 
     def get_queryset(self):
-        zone = Zone.objects.filter(id=self.kwargs['zone_id'])[0]
+        zone = get_object_or_404(Zone, pk=self.kwargs['zone_id'])
         route53_zone = route53.Zone(zone.route53_id, zone.root)
 
         records = route53_zone.records
