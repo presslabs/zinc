@@ -1,13 +1,10 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics
 
-from dns.models import PolicyRecord, Policy, Zone
+from dns.models import Policy, Zone
 from dns.serializers import (PolicySerializer, RecordSerializer,
                              ZoneSerializer, ZoneDetailSerializer)
-
-
-class UpdateDestroyApiView(generics.CreateAPIView, generics.DestroyAPIView,
-                           generics.UpdateAPIView):
-    pass
+from dns.utils import route53
 
 
 class ZoneList(generics.ListCreateAPIView):
@@ -16,10 +13,11 @@ class ZoneList(generics.ListCreateAPIView):
 
 
 class ZoneDetail(generics.RetrieveUpdateDestroyAPIView):
+    lookup_url_kwarg = 'zone_id'
     serializer_class = ZoneDetailSerializer
 
     def get_queryset(self):
-        return Zone.objects.filter(id=self.kwargs['pk'])
+        return Zone.objects.filter(id=self.kwargs['zone_id'])
 
 
 class PolicyList(generics.ListCreateAPIView):
@@ -34,6 +32,15 @@ class PolicyDetail(generics.RetrieveUpdateAPIView):
         return Policy.objects.filter(id=self.kwargs['pk'])
 
 
-class RecordList(UpdateDestroyApiView):
-    queryset = PolicyRecord.objects.all()
+class RecordList(generics.UpdateAPIView, generics.ListAPIView):
+    lookup_field = 'zone_id'
     serializer_class = RecordSerializer
+
+    def get_queryset(self):
+        zone = get_object_or_404(Zone, pk=self.kwargs['zone_id'])
+        route53_zone = route53.Zone(zone.route53_id, zone.root)
+
+        records = route53_zone.records
+        records.append(route53_zone.ns)
+
+        return records

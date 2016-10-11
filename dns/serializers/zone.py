@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from dns.models import Zone
+from dns.serializers import RecordSerializer
 from dns.utils import route53
 
 
@@ -27,13 +28,13 @@ class ZoneDetailSerializer(serializers.ModelSerializer):
     def get_ns(self, obj):
         zone = route53.Zone(id=obj.route53_id, root=obj.root,
                             caller_reference=obj.caller_reference)
-        return zone.aws_ns
+        return RecordSerializer(zone.ns).data
 
     def get_records(self, obj):
         zone = route53.Zone(id=obj.route53_id, root=obj.root,
                             caller_reference=obj.caller_reference)
 
-        return zone.records
+        return [RecordSerializer(r).data for r in zone.records]
 
     class Meta:
         model = Zone
