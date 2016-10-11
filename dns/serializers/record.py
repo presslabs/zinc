@@ -11,7 +11,7 @@ class RecordSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=255)
     record_type = serializers.ChoiceField(choices=[(rtype, rtype) for rtype in RECORD_TYPES])
-    values = serializers.CharField()
+    values = serializers.ListField()
     ttl = serializers.IntegerField(min_value=300)
     managed = serializers.BooleanField(default=False)
     dirty = serializers.BooleanField(default=False)

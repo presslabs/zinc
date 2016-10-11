@@ -12,10 +12,11 @@ class ZoneList(generics.ListCreateAPIView):
 
 
 class ZoneDetail(generics.RetrieveUpdateDestroyAPIView):
+    lookup_url_kwarg = 'zone_id'
     serializer_class = ZoneDetailSerializer
 
     def get_queryset(self):
-        return Zone.objects.filter(id=self.kwargs['pk'])
+        return Zone.objects.filter(id=self.kwargs['zone_id'])
 
 
 class PolicyList(generics.ListCreateAPIView):

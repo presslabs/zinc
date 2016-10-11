@@ -63,11 +63,11 @@ class Zone(object):
             else:
                 entries.append(
                     Record(
-                        record['Name'],
-                        record['Type'],
-                        ', '.join([r['Value'] for r in record['ResourceRecords']]),
-                        record['TTL'],
-                        True if record['Type'] in ['NS', 'POLICY_ROUTED'] else False
+                        name=record['Name'],
+                        record_type=record['Type'],
+                        values=[r['Value'] for r in record['ResourceRecords']],
+                        ttl=record['TTL'],
+                        managed=True if record['Type'] in ['NS', 'POLICY_ROUTED'] else False
                     )
                 )
 
