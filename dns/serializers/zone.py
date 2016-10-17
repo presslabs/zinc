@@ -6,8 +6,6 @@ from dns.utils import route53
 
 
 class ZoneSerializer(serializers.HyperlinkedModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='zones')
-
     class Meta:
         model = Zone
         fields = ['url', 'root']
@@ -26,7 +24,6 @@ class ZoneSerializer(serializers.HyperlinkedModelSerializer):
 class ZoneDetailSerializer(serializers.HyperlinkedModelSerializer):
     ns = serializers.SerializerMethodField()
     records = serializers.SerializerMethodField()
-    url = serializers.HyperlinkedIdentityField(view_name='zones')
 
     def get_ns(self, obj):
         zone = route53.Zone(id=obj.route53_id, root=obj.root,
