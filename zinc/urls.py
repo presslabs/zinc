@@ -18,6 +18,7 @@ from django.contrib import admin
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-    url(r'^zones/?', include('dns.urls.zone')),
-    url(r'^policies/?', include('dns.urls.policy')),
+    url(r'^zones/', include('dns.urls.zone')),
+    url(r'^policies/', include('dns.urls.policy')),
+    url(r'^policy-members/', include('dns.urls.policy_member')),
 ]

@@ -7,7 +7,6 @@ from dns.models import PolicyMember
 class Policy(models.Model):
     name = models.CharField(max_length=255, unique=True, null=False)
     modified_index = models.PositiveIntegerField(default=0, editable=False)
-
     members = models.ManyToManyField(PolicyMember)
 
     def __str__(self):
