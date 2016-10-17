@@ -5,10 +5,10 @@ from dns.serializers import RecordSerializer
 from dns.utils import route53
 
 
-class ZoneSerializer(serializers.ModelSerializer):
+class ZoneSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Zone
-        fields = ['id', 'root']
+        fields = ['url', 'root']
 
     def create(self, validated_data):
         try:
@@ -21,7 +21,7 @@ class ZoneSerializer(serializers.ModelSerializer):
                                    **validated_data)
 
 
-class ZoneDetailSerializer(serializers.ModelSerializer):
+class ZoneDetailSerializer(serializers.HyperlinkedModelSerializer):
     ns = serializers.SerializerMethodField()
     records = serializers.SerializerMethodField()
 
@@ -38,4 +38,4 @@ class ZoneDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Zone
-        fields = ['id', 'root', 'ns', 'records']
+        fields = ['url', 'root', 'ns', 'records']
