@@ -13,7 +13,7 @@ class ZoneList(generics.ListCreateAPIView):
     serializer_class = ZoneSerializer
 
 
-class ZoneDetail(generics.RetrieveUpdateDestroyAPIView):
+class ZoneDetail(generics.RetrieveDestroyAPIView):
     queryset = Zone.objects.all()
     serializer_class = ZoneDetailSerializer
 
