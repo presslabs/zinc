@@ -158,6 +158,11 @@ CELERYBEAT_SCHEDULE = {
 AWS_KEY = ''
 AWS_SECRET = ''
 
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    )
+}
 
 # =================
 # END OF CONFIG
