@@ -2,7 +2,7 @@ import uuid
 import boto3
 import datetime
 
-from botocore.exceptions import ClientError  # noqa
+from botocore.exceptions import ClientError
 from boto3.session import Session
 from django.conf import settings
 
@@ -40,32 +40,37 @@ class Zone(object):
         self._aws_records = []
 
     @property
-    def aws_ns(self):
+    def ns(self):
         root = self._aws_root()
-        return self._filter_records(
+        return self._records(
             lambda record: True if (record['Type'] == 'NS' and
                                     record['Name'] == root) else False)[0]
 
     @property
     def records(self):
         root = self._aws_root()
-        return self._filter_records(
+        return self._records(
             lambda record: True if not (record['Type'] == 'NS' and
                                         record['Name'] == root) else False)
 
-    def _filter_records(self, chooser):
+    def _records(self, chooser=None):
         self._cache_aws_records()
         root = self._aws_root()
 
         entries = []
         for record in self._aws_records:
-            if chooser(record):
-                entries.append({
-                    'name': '@' if record['Name'] == root else record['Name'].replace(root, ''),
-                    'type': record['Type'],
-                    'ttl': record['TTL'],
-                    'values': [r['Value'] for r in record['ResourceRecords']]
-                })
+            if chooser and not chooser(record):
+                continue
+            else:
+                entries.append(
+                    Record(
+                        name='@' if record['Name'] == root else record['Name'].replace(root, ''),
+                        record_type=record['Type'],
+                        values=[r['Value'] for r in record['ResourceRecords']],
+                        ttl=record['TTL'],
+                        managed=True if record['Type'] in ['NS', 'POLICY_ROUTED'] else False
+                    )
+                )
 
         return entries
 
@@ -122,3 +127,13 @@ class Zone(object):
         id = zone['HostedZone']['Id'].split('/')[2]
 
         return Zone(id, root, ref)
+
+
+class Record(object):
+    def __init__(self, name, record_type, values, ttl, managed, dirty=False):
+        self.name = name
+        self.record_type = record_type
+        self.values = values
+        self.ttl = ttl
+        self.managed = managed
+        self.dirty = dirty
