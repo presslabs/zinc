@@ -55,6 +55,7 @@ class Zone(object):
 
     def _records(self, chooser=None):
         self._cache_aws_records()
+        root = self._aws_root()
 
         entries = []
         for record in self._aws_records:
@@ -63,7 +64,7 @@ class Zone(object):
             else:
                 entries.append(
                     Record(
-                        name=record['Name'],
+                        name='@' if record['Name'] == root else record['Name'].replace(root, ''),
                         record_type=record['Type'],
                         values=[r['Value'] for r in record['ResourceRecords']],
                         ttl=record['TTL'],
