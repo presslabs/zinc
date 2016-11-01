@@ -155,6 +155,10 @@ CELERYBEAT_SCHEDULE = {
     },
 }
 
+# HASHIDS
+
+HASHIDS_MIN_LENGTH = 0
+
 AWS_KEY = ''
 AWS_SECRET = ''
 
@@ -164,6 +168,6 @@ AWS_SECRET = ''
 
 
 try:
-    from local_settings import *
-except ImportError as e:
+    from zinc.local_settings import *
+except ImportError:
     pass
