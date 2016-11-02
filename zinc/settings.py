@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'admin_reorder',
     'dns',
 ]
 
@@ -52,6 +53,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
 ]
 
 ROOT_URLCONF = 'zinc.urls'
@@ -123,6 +125,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
 STATIC_URL = '/static/'
+
+ADMIN_REORDER = [
+    # Keep original label and models
+    'sites',
+    'auth',
+
+    {'app': 'dns', 'models': ('dns.Zone', 'dns.PolicyRecord')},
+    {'app': 'dns', 'label': 'Policy', 'models': ('dns.Policy', 'dns.IP')}
+]
 
 # FILL IN DATA HERE
 # =================

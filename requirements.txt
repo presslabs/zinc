@@ -7,3 +7,5 @@ celery==3.1.23
 celery_once==0.1.4
 redis==2.10.5
 json-merge-patch==0.1
+django-modeladmin-reorder==0.2
+
