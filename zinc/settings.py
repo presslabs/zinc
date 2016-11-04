@@ -135,18 +135,6 @@ ADMIN_REORDER = [
     {'app': 'dns', 'label': 'Policy', 'models': ('dns.Policy', 'dns.IP')}
 ]
 
-# FILL IN DATA HERE
-# =================
-
-DISABLE_IP_ADMIN = True
-
-
-# LATTICE API CREDENTIALS
-LATTICE_URL = 'https://lattice.presslabs.net/'
-LATTICE_USER = ''
-LATTICE_PASS = ''
-
-LATTICE_ROLES = []
 
 # CELERY
 
@@ -158,13 +146,6 @@ ONCE_DEFAULT_TIMEOUT = 60 * 10
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-
-CELERYBEAT_SCHEDULE = {
-    'lattice_ip_retriever': {
-        'task': 'dns.tasks.lattice_ip_retriever',
-        'schedule': timedelta(minutes=1)
-    },
-}
 
 AWS_KEY = ''
 AWS_SECRET = ''
