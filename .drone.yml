@@ -1,0 +1,14 @@
+build:
+    zinc:
+        image: presslabs/zinc
+        environment:
+            - BROKER_URL=redis://redis:6379/0
+            - CELERY_RESULT_BACKEND=redis://redis:6379/1
+            - ONCE_REDIS_URL=redis://redis:6379/2
+        commands:
+            - pip install -U -r requirements/test.txt
+            - python manage.py test -v2
+
+compose:
+    redis:
+        image: redis
