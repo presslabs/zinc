@@ -18,10 +18,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--url', default='')
+        parser.add_argument('--user', default='')
+        parser.add_argument('--password', default='')
         parser.add_argument('--roles', nargs='*')
 
     def handle(self, *args, **options):
-        lattice = lattice_vendor(options['url'])
+        lattice = lattice_vendor(options['url'],
+                                 options['user'],
+                                 options['password'])
 
         try:
             servers = [server for server in lattice.servers() if
@@ -41,7 +45,7 @@ class Command(BaseCommand):
                 enabled = server['state'] == 'configured'
 
                 datacenter_id = int(
-                    server['datacenter_url'].split('/')[-1])
+                    server['datacenter_url'].split('?')[0].split('/')[-1])
                 location = locations.get(datacenter_id, 'fake_location')
 
                 friendly_name = '{} {} {}'.format(server['hostname'],
@@ -61,15 +65,16 @@ class Command(BaseCommand):
         IP.objects.filter(ip__in=ips_to_remove).delete()
 
 
-def lattice_vendor(url):
+def lattice_vendor(url, user, password):
     parts = urlparse(url)
 
     if url.startswith('http://'):
         lattice.config.secure = False
+        lattice.config.verify = False
 
     lattice.config.host = parts.netloc
     lattice.config.prefix = parts.path
     lattice.config.append_slash = True
-    lattice.config.auth = HTTPBasicAuth(parts.username, parts.password)
+    lattice.config.auth = HTTPBasicAuth(user, password)
 
     return lattice
