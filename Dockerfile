@@ -21,7 +21,6 @@ COPY . /app
 RUN pip install -r requirements.txt
 
 ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE zinc.local_settings
 RUN ./manage.py migrate
 
 CMD [ "python", "./manage.py", "runserver", "0.0.0.0:8000" ]
