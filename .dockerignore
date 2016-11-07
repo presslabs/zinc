@@ -1,2 +1,5 @@
 celerybeat-schedule.*
 .git
+secrets.yml
+celery1.log
+db.sqlite3
