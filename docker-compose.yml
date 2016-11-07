@@ -8,7 +8,6 @@ services:
         command: dockerize -wait tcp://redis:6379 -timeout 30s ./manage.py runserver 0.0.0.0:8000
         depends_on:
             - redis
-            - lattice
         ports:
             - "8000:8000"
     celery:
@@ -21,7 +20,3 @@ services:
             - redis
     redis:
         image: redis
-    lattice:
-        image: lattice
-        ports:
-            - "8001:80"
