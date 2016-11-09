@@ -75,8 +75,11 @@ class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
 
         return initial_request
 
+    def post(self, request, *args, **kwargs):
+        return self.patch(request, *args, **kwargs)
+
     def patch(self, request, *args, **kwargs):
-        return super(ZoneDetail, self).patch(request, args, kwargs)
+        return super(ZoneDetail, self).patch(request, *args, **kwargs)
 
 
 class PolicyList(ListAPIView):
