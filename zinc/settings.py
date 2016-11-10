@@ -13,8 +13,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-from datetime import timedelta
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -40,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'admin_reorder',
     'dns',
 ]
 
@@ -52,6 +51,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder',
 ]
 
 ROOT_URLCONF = 'zinc.urls'
@@ -124,18 +124,15 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# FILL IN DATA HERE
-# =================
+ADMIN_REORDER = [
+    # Keep original label and models
+    'sites',
+    'auth',
 
-DISABLE_IP_ADMIN = True
+    {'app': 'dns', 'models': ('dns.Zone', 'dns.PolicyRecord')},
+    {'app': 'dns', 'label': 'Policy', 'models': ('dns.Policy', 'dns.IP')}
+]
 
-
-# LATTICE API CREDENTIALS
-LATTICE_URL = 'https://lattice.presslabs.net/'
-LATTICE_USER = ''
-LATTICE_PASS = ''
-
-LATTICE_ROLES = []
 
 # CELERY
 
@@ -148,13 +145,6 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-CELERYBEAT_SCHEDULE = {
-    'lattice_ip_retriever': {
-        'task': 'dns.tasks.lattice_ip_retriever',
-        'schedule': timedelta(minutes=1)
-    },
-}
-
 # HASHIDS
 
 HASHIDS_MIN_LENGTH = 0
@@ -162,6 +152,11 @@ HASHIDS_MIN_LENGTH = 0
 AWS_KEY = ''
 AWS_SECRET = ''
 
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    )
+}
 
 # =================
 # END OF CONFIG
