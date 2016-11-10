@@ -1,4 +1,3 @@
-from .policy_member import PolicyMemberSerializer
-from .policy import PolicySerializer
-from .record import RecordSerializer
-from .zone import ZoneSerializer, ZoneDetailSerializer
+from dns.serializers.policy import PolicySerializer, PolicyMemberSerializer
+from dns.serializers.record import RecordSetSerializer, RecordSerializer
+from dns.serializers.zone import ZoneListSerializer, ZoneDetailSerializer

@@ -13,8 +13,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-from datetime import timedelta
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -147,6 +145,10 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
+# HASHIDS
+
+HASHIDS_MIN_LENGTH = 0
+
 AWS_KEY = ''
 AWS_SECRET = ''
 
@@ -161,6 +163,6 @@ REST_FRAMEWORK = {
 
 
 try:
-    from local_settings import *
-except ImportError as e:
+    from zinc.local_settings import *
+except ImportError:
     pass
