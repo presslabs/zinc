@@ -1,4 +1,6 @@
 # zinc
+[![Build Status](https://drone.presslabs.net/api/badges/PressLabs/zinc/status.svg)](https://drone.presslabs.net/PressLabs/zinc)
+
 Route 53 zone manager.
 
 zinc provides a simple REST API for managing zones hosted using Amazon Route 53. A presentation of the API endpoints and more specifications is available in the [blueprint](https://github.com/PressLabs/zinc/blob/master/blueprint.apib).
