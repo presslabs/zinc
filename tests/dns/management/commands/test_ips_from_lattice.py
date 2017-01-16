@@ -1,92 +1,92 @@
-import responses
-
-from mock import MagicMock, call
-
 from django.core.management import call_command
-from django.test import TestCase
+from mock import MagicMock, call
+import pytest
+import responses
 
 from dns.models.ip import IP
 from factories.dns.ip_factory import IPFactory
 from dns.management.commands.ips_from_lattice import Command
 
 
-class TestCommand(TestCase):
-    def test_command_arguments(self):
-        parser = MagicMock()
-        command = Command()
+def test_command_arguments():
+    parser = MagicMock()
+    command = Command()
 
-        command.add_arguments(parser)
+    command.add_arguments(parser)
 
-        parser.add_argument.assert_has_calls([
-            call('--url', default=''),
-            call('--user', default=''),
-            call('--password', default=''),
-            call('--roles', nargs='*')
-        ], any_order=True)
+    parser.add_argument.assert_has_calls([
+        call('--url', default=''),
+        call('--user', default=''),
+        call('--password', default=''),
+        call('--roles', nargs='*')
+    ], any_order=True)
 
-    @responses.activate
-    def test_resets_existing_ips_on_run(self):
-        for url in ['http://lattice/servers/', 'http://lattice/datacenters/']:
-            responses.add(responses.GET, url,
-                          body='[]',
-                          content_type='application/json')
 
-        IPFactory(ip='123.123.123.123')
+@pytest.mark.django_db
+@responses.activate
+def test_resets_existing_ips_on_run():
+    for url in ['http://lattice/servers/', 'http://lattice/datacenters/']:
+        responses.add(responses.GET, url,
+                      body='[]',
+                      content_type='application/json')
 
-        self.assertEqual(IP.objects.exists(), True)
+    IPFactory(ip='123.123.123.123')
 
-        args = []
-        opts = {
-            'url': 'http://lattice',
-            'user': 'user',
-            'password': 'password',
-            'roles': ['frontend-node', 'cdn-node']
-        }
-        call_command('ips_from_lattice', *args, **opts)
+    assert IP.objects.exists() is True
 
-        self.assertEqual(IP.objects.exists(), False)
+    args = []
+    opts = {
+        'url': 'http://lattice',
+        'user': 'user',
+        'password': 'password',
+        'roles': ['frontend-node', 'cdn-node']
+    }
+    call_command('ips_from_lattice', *args, **opts)
+    assert IP.objects.exists() is False
 
-    @responses.activate
-    def test_adds_only_ips_from_servers_in_specified_roles(self):
-        _mock_lattice_responses()
 
-        args = []
-        opts = {
-            'url': 'http://lattice',
-            'user': 'user',
-            'password': 'password',
-            'roles': ['frontend-node', 'cdn-node']
-        }
-        call_command('ips_from_lattice', *args, **opts)
+@pytest.mark.django_db
+@responses.activate
+def test_adds_only_ips_from_servers_in_specified_roles():
+    _mock_lattice_responses()
 
-        self.assertEqual(IP.objects.count(), 2)
-        self.assertEqual(IP.objects.filter(ip__in=['123.123.123.123',
-                                                   '123.123.123.124']).count(),
-                         2)
+    args = []
+    opts = {
+        'url': 'http://lattice',
+        'user': 'user',
+        'password': 'password',
+        'roles': ['frontend-node', 'cdn-node']
+    }
+    call_command('ips_from_lattice', *args, **opts)
 
-    @responses.activate
-    def test_fields_on_written_ip(self):
-        _mock_lattice_responses()
+    assert IP.objects.count() == 2
+    assert IP.objects.filter(ip__in=['123.123.123.123', '123.123.123.124']).count() == 2
 
-        args = []
-        opts = {
-            'url': 'http://lattice',
-            'user': 'user',
-            'password': 'password',
-            'roles': ['random-node']
-        }
-        call_command('ips_from_lattice', *args, **opts)
 
-        ip = IP.objects.get(ip='123.123.123.125')
+@pytest.mark.django_db
+@responses.activate
+def test_fields_on_written_ip():
+    _mock_lattice_responses()
 
-        expected_fields = {
-            'ip': '123.123.123.125',
-            'friendly_name': 'b AMS2 Amsterdam, NL',
-            'enabled': True,
-            'hostname': 'b'
-        }
-        for field, value in expected_fields.items():
-            self.assertEqual(getattr(ip, field), value)
+    args = []
+    opts = {
+        'url': 'http://lattice',
+        'user': 'user',
+        'password': 'password',
+        'roles': ['random-node']
+    }
+    call_command('ips_from_lattice', *args, **opts)
+
+    ip = IP.objects.get(ip='123.123.123.125')
+
+    expected_fields = {
+        'ip': '123.123.123.125',
+        'friendly_name': 'b AMS2 Amsterdam, NL',
+        'enabled': True,
+        'hostname': 'b'
+    }
+    for field, value in expected_fields.items():
+        assert getattr(ip, field) == value
 
 
 def _mock_lattice_responses():
