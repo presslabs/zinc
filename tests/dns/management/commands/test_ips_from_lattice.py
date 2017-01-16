@@ -32,7 +32,7 @@ def test_resets_existing_ips_on_run():
 
     IPFactory(ip='123.123.123.123')
 
-    assert IP.objects.exists() is True
+    assert IP.objects.exists()
 
     args = []
     opts = {
@@ -42,7 +42,7 @@ def test_resets_existing_ips_on_run():
         'roles': ['frontend-node', 'cdn-node']
     }
     call_command('ips_from_lattice', *args, **opts)
-    assert IP.objects.exists() is False
+    assert not IP.objects.exists()
 
 
 @pytest.mark.django_db
@@ -50,14 +50,13 @@ def test_resets_existing_ips_on_run():
 def test_adds_only_ips_from_servers_in_specified_roles():
     _mock_lattice_responses()
 
-    args = []
     opts = {
         'url': 'http://lattice',
         'user': 'user',
         'password': 'password',
         'roles': ['frontend-node', 'cdn-node']
     }
-    call_command('ips_from_lattice', *args, **opts)
+    call_command('ips_from_lattice', *[], **opts)
 
     assert IP.objects.count() == 2
     assert IP.objects.filter(ip__in=['123.123.123.123', '123.123.123.124']).count() == 2
@@ -85,8 +84,11 @@ def test_fields_on_written_ip():
         'enabled': True,
         'hostname': 'b'
     }
-    for field, value in expected_fields.items():
-        assert getattr(ip, field) == value
+    attributes = {
+        field: getattr(ip, field)
+        for field in expected_fields.keys()
+    }
+    assert attributes == expected_fields
 
 
 def _mock_lattice_responses():
