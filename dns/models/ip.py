@@ -9,7 +9,6 @@ class IP(models.Model):
         protocol='IPv4',
         verbose_name='IP Address'
     )
-
     hostname = models.CharField(max_length=64, validators=[validate_hostname])
     friendly_name = models.TextField(blank=True)
 

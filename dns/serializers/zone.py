@@ -8,7 +8,7 @@ from dns.utils import route53
 class ZoneListSerializer(HyperlinkedModelSerializer):
     class Meta:
         model = Zone
-        fields = ['root', 'url']
+        fields = ['root', 'url', 'id']
 
     def create(self, validated_data):
         try:

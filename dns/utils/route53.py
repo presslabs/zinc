@@ -37,10 +37,10 @@ def generate_caller_ref():
 
 
 class Zone(object):
-    def __init__(self, *args, **kwargs):
-        self.id = kwargs.get('id', None)
-        self.root = kwargs.get('root', '')
-        self.caller_reference = kwargs.get('caller_reference', None)
+    def __init__(self, id=None, root='', caller_reference=None):
+        self.id = id
+        self.root = (root)
+        self.caller_reference = caller_reference
         self._aws_records = []
         self._change_batch = []
 
