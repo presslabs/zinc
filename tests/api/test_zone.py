@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 
 from dns import models as m
 from dns.utils import route53
+from tests.fixtures import CleanupClient
 
 
 @pytest.fixture
@@ -21,14 +22,15 @@ class Moto:
             }
         }
 
-    def delete_hosted_zone(self, Id):
+    def _cleanup_hosted_zones(self):
         pass
+
 
 @pytest.fixture(
     # scope='module',
     params=[
         Moto,
-        lambda: route53.client,
+        lambda: CleanupClient(route53.client),
     ],
     ids=['fake_boto', 'with_aws']
 )
@@ -38,6 +40,7 @@ def boto_client(request):
     patcher.start()
     def cleanup():
         patcher.stop()
+        client._cleanup_hosted_zones()
     request.addfinalizer(cleanup)
     return client
 
@@ -56,6 +59,3 @@ def test_create_zone(api_client, boto_client):
     assert resp.data['root'] == root
     _id = resp.data['id']
     assert list(m.Zone.objects.all().values_list('id', 'root')) == [(_id, root)]
-
-    #TODO: this needs to move to fixture cleanup
-    boto_client.delete_hosted_zone(Id=m.Zone.objects.first().route53_id)
