@@ -13,7 +13,7 @@ build:
       - DJANGO_SETTINGS_MODULE=zinc.settings
     commands:
       - pip install -U -r requirements/test.txt
-      - py.test --capture=no --tb=native
+      - py.test --capture=no --tb=native -k 'not with_aws'
 
 compose:
   redis:
