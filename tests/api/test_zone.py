@@ -22,7 +22,8 @@ def test_create_zone(api_client):
     )
     assert resp.status_code == 201, resp.data
     assert resp.data['root'] == root
-    # assert resp.data['id'] is not None
-    assert [zone.root for zone in m.Zone.objects.all()] == [root]
-    m.Zone.objects.first().route53_id
+    _id = resp.data['id']
+    assert list(m.Zone.objects.all().values_list('id', 'root')) == [(_id, root)]
+
+    #TODO: this needs to move to fixture cleanup
     client.delete_hosted_zone(Id=m.Zone.objects.first().route53_id)

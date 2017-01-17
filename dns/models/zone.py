@@ -8,20 +8,15 @@ from dns.utils import route53
 
 
 class Zone(models.Model):
-    id = HashidField(
-            editable=False,
-            min_length=getattr(settings, 'HASHIDS_MIN_LENGTH', 7),
-            primary_key=True
-         )
     root = models.CharField(max_length=255, validators=[validate_domain])
     route53_id = models.CharField(max_length=32, unique=True, editable=False)
     caller_reference = models.CharField(max_length=32, editable=False,
                                         unique=True)
 
     def clean(self):
-        if self.route53_id:
+        # TODO: this probably should be in save
+        if self.route53_id is not None:
             return
-
         try:
             zone = route53.Zone.create(self.root)
         except route53.ClientError as e:
