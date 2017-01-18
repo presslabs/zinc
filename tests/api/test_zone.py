@@ -7,6 +7,8 @@ from dns import models as m
 from dns.utils import route53
 from tests.fixtures import CleanupClient
 
+from django_dynamic_fixture import G
+
 
 @pytest.fixture
 def api_client():
@@ -59,3 +61,34 @@ def test_create_zone(api_client, boto_client):
     assert resp.data['root'] == root
     _id = resp.data['id']
     assert list(m.Zone.objects.all().values_list('id', 'root')) == [(_id, root)]
+
+
+@pytest.mark.django_db
+def test_create_zone_passing_wrong_params(api_client):
+    resp = api_client.post(
+        '/zones/',
+        data={
+            'id': 'asd',
+            'root': 'asdasd'
+        }
+    )
+    assert resp.status_code == 400, resp.data
+
+
+@pytest.mark.django_db
+def test_list_zones(api_client):
+    G(m.Zone, root='1.example.com')
+    G(m.Zone, root='2.example.com')
+    response = api_client.get('/zones/')
+
+    assert 'url' in response.data[0]
+    assert (list(m.Zone.objects.all().values_list('id', 'root')) ==
+            [(z['id'], z['root']) for z in response.data])
+
+
+@pytest.mark.django_db
+def test_detail_zone(api_client):
+    zone = G(m.Zone, root='1.example.com')
+    response = api_client.get('/zones/%s/' % zone.id)
+
+    assert response.data['root'] == zone.root
