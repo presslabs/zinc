@@ -96,3 +96,6 @@ celerybeat-schedule.*
 # Vim temp files
 *.sw?
 secrets.yml
+
+# pylint
+.pylintrc
