@@ -1,6 +1,7 @@
 -r production.txt
 
 mock==2.0.0
+factory-boy==2.8.1
 django-dynamic-fixture==1.9.1
 responses==0.5.1
 pytest==3.0.5
