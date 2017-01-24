@@ -22,6 +22,21 @@ class CleanupClient:
     def _cleanup_hosted_zones(self):
         for zone_id in self._zone_ids:
             try:
+                records = self.list_resource_record_sets(HostedZoneId=zone_id)
+                for record in records['ResourceRecordSets']:
+                    if record['Type'] == 'A':
+                        self.change_resource_record_sets(
+                            HostedZoneId=zone_id,
+                            ChangeBatch={
+                                'Comment': 'zinc-fixture',
+                                'Changes': [
+                                    {
+                                        'Action': 'DELETE',
+                                        'ResourceRecordSet': record
+                                    },
+                                ]
+                            })
+
                 self._client.delete_hosted_zone(Id=zone_id)
             except botocore.exceptions.ClientError as excp:
                 print("Failed to delete", zone_id, excp.response['Error']['Code'])

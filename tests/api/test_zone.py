@@ -1,14 +1,16 @@
-# pylint: disable=E1101,W0613,W0621
+# pylint: disable=no-member,unused-argument,protected-access,redefined-outer-name
 import pytest
-from mock import patch
+import json
+from datetime import datetime
 
+from django_dynamic_fixture import G
+from mock import patch
 from rest_framework.test import APIClient
 
 from dns import models as m
 from dns.utils import route53
 from tests.fixtures import CleanupClient
 
-from django_dynamic_fixture import G
 
 
 @pytest.fixture
@@ -18,6 +20,8 @@ def api_client():
 
 class Moto:
     """"Mock boto"""
+    response = {}
+
     def create_hosted_zone(self, **kwa):
         return {
             'HostedZone': {
@@ -28,46 +32,20 @@ class Moto:
     def _cleanup_hosted_zones(self):
         pass
 
+    def set_route53_response(self,Id, response):
+        self.response.update({Id: response})
+
     def delete_hosted_zone(self, Id=None):
         pass
 
-    def change_resource_record_sets(self, *args, **kwargs):
-        pass
+    def change_resource_record_sets(self, HostedZoneId, ChangeBatch):
+        for change in ChangeBatch['Changes']:
+            self.response.update({HostedZoneId: {
+                'ResourceRecordSets': [change['ResourceRecordSet']]
+            }})
 
     def list_resource_record_sets(self, HostedZoneId=None):
-        return {
-            'IsTruncated': False,
-            'MaxItems': '100',
-            'ResourceRecordSets': [{
-                'Name': 'testing.com.',
-                'ResourceRecords': [
-                    {'Value': 'ns-1449.awsdns-53.org.'},
-                    {'Value': 'ns-689.awsdns-22.net.'},
-                    {'Value': 'ns-1584.awsdns-06.co.uk.'},
-                    {'Value': 'ns-33.awsdns-04.com.'}
-                ],
-                'TTL': 172800,
-                'Type': 'NS'
-            },
-            {
-                'Name': 'testing.com.',
-                'ResourceRecords': [
-                    {'Value': ('ns-1449.awsdns-53.org. awsdns-hostmaster'
-                               '.amazon.com. 1 7200 900 1209600 86400')}
-                ],
-                'TTL': 900,
-                'Type': 'SOA'
-            }],
-            'ResponseMetadata': {
-                'HTTPHeaders': {'content-length': '902',
-                'content-type': 'text/xml',
-                'date': 'Thu, 19 Jan 2017 16:30:47 GMT',
-                'x-amzn-requestid': 'a24c16ba-de64-11e6-a56d-97d11b971af4'},
-                'HTTPStatusCode': 200,
-                'RequestId': 'a24c16ba-de64-11e6-a56d-97d11b971af4',
-                'RetryAttempts': 0
-            }
-        } if HostedZoneId == 'ZOXRVCT8C8119' else {}
+        return self.response[HostedZoneId]
 
 
 @pytest.fixture(
@@ -87,6 +65,63 @@ def boto_client(request):
         client._cleanup_hosted_zones()
     request.addfinalizer(cleanup)
     return client
+
+
+@pytest.fixture(
+    params=[
+        Moto,
+        lambda: CleanupClient(route53.client),
+    ],
+    ids=['fake_boto', 'with_aws']
+)
+def zone(request):
+    client = request.param()
+
+    caller_ref = 'zinc ref-fixture {}'.format(datetime.now())
+    zone = client.create_hosted_zone(
+            Name='test-zinc.net',
+            CallerReference=caller_ref,
+            HostedZoneConfig={
+                'Comment': 'zinc-fixture'
+            }
+        )
+
+    zone_id = zone['HostedZone']['Id'].split('/')[2]
+
+
+    client.change_resource_record_sets(
+        HostedZoneId=zone_id,
+        ChangeBatch={
+            'Comment': 'zinc-fixture',
+            'Changes': [
+                {
+                    'Action': 'CREATE',
+                    'ResourceRecordSet': {
+                        'Name': 'test.test-zinc.net',
+                        'Type': 'A',
+                        'TTL': 300,
+                        'ResourceRecords': [
+                            {
+                                'Value': '1.1.1.1',
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    )
+    patcher = patch('dns.utils.route53.client', client)
+    patcher.start()
+    def cleanup():
+        patcher.stop()
+
+        client._cleanup_hosted_zones()
+    request.addfinalizer(cleanup)
+    zone = m.Zone(root='test-zinc.net', route53_id=zone_id, caller_reference=caller_ref)
+    zone.save()
+    return zone
+
+
 
 
 
@@ -115,6 +150,7 @@ def test_create_zone_passing_wrong_params(api_client, boto_client):
         }
     )
     assert resp.status_code == 400, resp.data
+    assert resp.data['root'] == ['Invalid root domain']
 
 
 @pytest.mark.django_db
@@ -140,6 +176,28 @@ def test_detail_zone(api_client, boto_client):
 def test_detail_zone_with_real_zone(api_client, boto_client):
     # zone already exists in AWS.
     zone = G(m.Zone, root='testing.com', route53_id='ZOXRVCT8C8119')
+    boto_client.set_route53_response(zone.route53_id, {
+        'ResourceRecordSets': [{
+            'Name': 'testing.com.',
+            'ResourceRecords': [
+                {'Value': 'ns-1449.awsdns-53.org.'},
+                {'Value': 'ns-689.awsdns-22.net.'},
+                {'Value': 'ns-1584.awsdns-06.co.uk.'},
+                {'Value': 'ns-33.awsdns-04.com.'}
+            ],
+            'TTL': 172800,
+            'Type': 'NS'
+        },
+        {
+            'Name': 'testing.com.',
+            'ResourceRecords': [
+                {'Value': ('ns-1449.awsdns-53.org. awsdns-hostmaster'
+                            '.amazon.com. 1 7200 900 1209600 86400')}
+            ],
+            'TTL': 900,
+            'Type': 'SOA'
+        }],
+    })
     response = api_client.get(
         '/zones/%s/' % zone.id,
     )
@@ -166,3 +224,22 @@ def test_detail_zone_with_real_zone(api_client, boto_client):
             "name": "@"
         }
     }
+
+
+@pytest.mark.django_db
+def test_zone_patch_with_records(api_client, zone):
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records': {
+                '7Q45ew5E0vOMq': {
+                    'values': ['2.2.2.2'],
+                    'type': 'A',
+                    'ttl': 300,
+                    'name': 'ceva'
+                }
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    print(response.data)
