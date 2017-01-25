@@ -50,7 +50,7 @@ class Zone(object):
         action = 'DELETE' if record.get('delete', False) else 'UPSERT'
         self._change_batch.append({
             'Action': action,
-            'ResourceRecordSet': RecordHandler.encode(record, self.root)
+            'ResourceRecordSet': RecordHandler.encode(record, self._aws_root())
         })
 
     def _reset_change_batch(self):
