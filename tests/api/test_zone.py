@@ -56,23 +56,20 @@ def test_detail_zone(api_client, boto_client):
     assert response.data['records'] == {}
 
 @pytest.mark.django_db
-@pytest.mark.xfail
 def test_detail_zone_with_real_zone(api_client, zone):
     response = api_client.get(
         '/zones/%s/' % zone.id,
     )
-    assert response.data['records']['GeOz6jyW6WmlB'] == {
+    assert response.data['records']['7Q45ew5E0vOMq'] == {
         'values': ['1.1.1.1'],
-        'name': 'test.test-zinc.net',
+        'name': 'test',
         'ttl': 300,
         'type': 'A'
     }
 
 @pytest.mark.django_db
-@pytest.mark.xfail
 def test_zone_patch_with_records(api_client, zone):
-    api_client.get('/zones/%s/' % zone.id)
-    record_hash = 'GeOz6jyW6WmlB'
+    record_hash = '7Q45ew5E0vOMq'
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
