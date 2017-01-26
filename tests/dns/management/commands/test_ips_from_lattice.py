@@ -3,7 +3,7 @@ from mock import MagicMock, call
 import pytest
 import responses
 
-from dns.models.ip import IP
+from dns.models import IP
 from factories.dns.ip_factory import IPFactory
 from dns.management.commands.ips_from_lattice import Command
 
