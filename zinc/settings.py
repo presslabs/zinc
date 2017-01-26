@@ -152,7 +152,14 @@ AWS_KEY = ''
 AWS_SECRET = ''
 
 REST_FRAMEWORK = {
+    'PAGE_SIZE': 100,
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.JSONParser',
+    ),
     'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.BrowsableAPIRenderer',
         'rest_framework.renderers.JSONRenderer',
     )
 }

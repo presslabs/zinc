@@ -37,23 +37,24 @@ def test_create_zone_passing_wrong_params(api_client, boto_client):
 
 
 @pytest.mark.django_db
-def test_list_zones(api_client, boto_client):
-    G(m.Zone, root='1.example.com')
-    G(m.Zone, root='2.example.com')
+def test_list_zones(api_client):
+    zones = [G(m.Zone, root='1.example.com'),
+             G(m.Zone, root='2.example.com')]
     response = api_client.get('/zones/')
 
-    assert 'url' in response.data[0]
+    assert [result['url'] for result in response.data['results']] == [
+        "http://testserver/zones/{}".format(zone.id) for zone in zones]
     assert (list(m.Zone.objects.all().values_list('id', 'root')) ==
-            [(z['id'], z['root']) for z in response.data])
+            [(zone['id'], zone['root']) for zone in response.data['results']])
 
 
 @pytest.mark.django_db
 def test_detail_zone(api_client, boto_client):
     zone = G(m.Zone, root='1.example.com')
     response = api_client.get('/zones/%s/' % zone.id)
-
     assert response.data['root'] == zone.root
     assert response.data['records'] == {}
+
 
 @pytest.mark.django_db
 def test_detail_zone_with_real_zone(api_client, zone):
