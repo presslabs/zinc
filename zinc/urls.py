@@ -22,3 +22,11 @@ urlpatterns = [
     url(r'^policies/', include('dns.urls.policy')),
     url(r'^policy-members/', include('dns.urls.policy_member')),
 ]
+
+try:
+    from rest_framework_swagger.views import get_swagger_view
+except ImportError:
+    pass
+else:
+    schema_view = get_swagger_view(title='API')
+    urlpatterns.append(url(r'^swagger/$', schema_view))
