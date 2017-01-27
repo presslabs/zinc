@@ -49,7 +49,7 @@ def test_list_zones(api_client):
 
 
 @pytest.mark.django_db
-def test_detail_zone(api_client, boto_client):
+def test_detail_zone(api_client):
     zone = G(m.Zone, root='1.example.com')
     response = api_client.get('/zones/%s/' % zone.id)
     assert response.data['root'] == zone.root
@@ -91,3 +91,18 @@ def test_zone_patch_with_records(api_client, zone):
         'name': 'test',
         'values': ['2.2.2.2']
     }
+
+@pytest.mark.django_db
+#@pytest.mark.xfail
+def test_zone_delete_record(api_client, zone):
+    record_hash = '7Q45ew5E0vOMq'
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records': {
+                record_hash: None
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert record_hash not in response.data['records']

@@ -62,9 +62,12 @@ class Zone(object):
                 HostedZoneId=self.id,
                 ChangeBatch={'Changes': self._change_batch}
             )
+            # clear cache
             self._reset_change_batch()
-        except ClientError as exc:
-            print(exc)
+            self._aws_records = []
+        except ClientError as error:
+            print('Error on commit({}): {}, changes: {}'.format(self.root, error, self._change_batch))
+
 
     def records(self, rfilter=None):
         return self._records(rfilter)
@@ -161,8 +164,8 @@ class RecordHandler(ABCMeta):
             'ResourceRecords': [{'Value': v} for v in record['values']]
         }
 
-        if delete:
-            return encoded_record
+        #if delete:
+        #    return encoded_record
 
         ttl = record.get('ttl', None)
         if ttl:
