@@ -45,12 +45,13 @@ class RecordSerializer(Serializer):
     def to_internal_value(self, data):
         if data.get('delete', False):
             data = OrderedDict({
-                    'delete': data['delete'],
-                    'name': data['name'],
-                    'set_id': data['set_id'],
-                    'type': data['type'],
-                    'values': data['values']
-                   })
+                'delete': data['delete'],
+                'name': data['name'],
+                'set_id': data['set_id'],
+                'type': data['type'],
+                'values': data['values'],
+                'ttl': data['ttl']
+            })
         else:
             data = super(RecordSerializer, self).to_internal_value(data)
 
@@ -67,6 +68,7 @@ class RecordSetSerializer(DictField):
     child = RecordSerializer(partial=False)
 
     def update(self, zone, **validated_data):
+        # TODO: remove this
         _zone = route53.Zone(id=zone.route53_id, root=zone.root)
 
         for key, record in validated_data.items():

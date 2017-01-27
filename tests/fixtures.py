@@ -82,9 +82,12 @@ class Moto:
 
     def change_resource_record_sets(self, HostedZoneId, ChangeBatch):
         for change in ChangeBatch['Changes']:
-            self.response.update({HostedZoneId: {
-                'ResourceRecordSets': [change['ResourceRecordSet']]
-            }})
+            if change['Action'] == 'DELETE':
+                self.response.update({HostedZoneId: {}})
+            else:
+                self.response.update({HostedZoneId: {
+                    'ResourceRecordSets': [change['ResourceRecordSet']]
+                }})
 
     def list_resource_record_sets(self, HostedZoneId=None):
         return self.response[HostedZoneId]

@@ -25,8 +25,8 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
     records = RecordSetSerializer()
 
     class Meta:
-        fields = ['root', 'url', 'records']
         model = Zone
+        fields = ['root', 'url', 'records']
         read_only_fields = ['root', 'url']
 
     def __init__(self, *args, **kwargs):
@@ -34,7 +34,7 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
         self.partial = False
 
     def update(self, instance, validated_data):
-        records = self.get_fields()['records']
-        records.update(instance, **validated_data['records'])
+
+        instance.records = validated_data['records']
 
         return instance

@@ -13,6 +13,10 @@ class Zone(models.Model):
     caller_reference = models.CharField(max_length=32, editable=False,
                                         unique=True)
 
+    def __init__(self, *args, **kwargs):
+        self._route53_instance = None
+        super(Zone, self).__init__(*args, **kwargs)
+
     def clean(self):
         # TODO: this probably should be in save
         if self.route53_id is not None:
@@ -26,9 +30,21 @@ class Zone(models.Model):
         self.caller_reference = zone.caller_reference
 
     @property
+    def route53_zone(self):
+        if not self._route53_instance:
+            self._route53_instance = route53.Zone(id=self.route53_id, root=self.root)
+
+        return self._route53_instance
+
+    @property
     def records(self):
-        zone = route53.Zone(id=self.route53_id, root=self.root)
-        return zone.records
+        return self.route53_zone.records()
+
+    @records.setter
+    def records(self, records):
+        for _, record in records.items():
+            self.route53_zone.add_record_changes(record)
+        self.route53_zone.commit()
 
     def __str__(self):
         return '{} {}'.format(self.pk, self.root)
