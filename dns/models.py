@@ -31,6 +31,24 @@ class IP(models.Model):
         return self.__str__()
 
 
+class Policy(models.Model):
+    id = HashidField(
+            editable=False,
+            min_length=getattr(settings, 'HASHIDS_MIN_LENGTH', 7),
+            primary_key=True
+         )
+    name = models.CharField(max_length=255, unique=True, null=False)
+
+    def __str__(self):
+        return self.name
+
+    def __unicode__(self):
+        return self.__str__()
+
+    class Meta:
+        verbose_name_plural = 'policies'
+
+
 class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
 
@@ -41,6 +59,7 @@ class PolicyMember(models.Model):
          )
     location = models.CharField(choices=AWS_REGIONS, max_length=20)
     ip = models.ForeignKey(IP, on_delete=models.CASCADE)
+    policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
     healthcheck_id = models.IntegerField(editable=False, null=True)
     weight = models.PositiveIntegerField(default=10)
 
@@ -49,25 +68,6 @@ class PolicyMember(models.Model):
 
     def __unicode__(self):
         return self.__str__()
-
-
-class Policy(models.Model):
-    id = HashidField(
-            editable=False,
-            min_length=getattr(settings, 'HASHIDS_MIN_LENGTH', 7),
-            primary_key=True
-         )
-    name = models.CharField(max_length=255, unique=True, null=False)
-    members = models.ManyToManyField(PolicyMember)
-
-    def __str__(self):
-        return self.name
-
-    def __unicode__(self):
-        return self.__str__()
-
-    class Meta:
-        verbose_name_plural = 'policies'
 
 
 class Zone(models.Model):

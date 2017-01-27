@@ -4,7 +4,7 @@ from dns.models import Policy, PolicyMember
 
 
 class PolicyMemberInline(admin.TabularInline):
-    model = Policy.members.through
+    model = PolicyMember
     extra = 1
     verbose_name = 'member'
     verbose_name_plural = 'members'
