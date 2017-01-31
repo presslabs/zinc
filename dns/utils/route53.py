@@ -46,8 +46,12 @@ class Zone(object):
 
     # TODO check why parameter validation fails in botocore on deletion
     # TODO fix changing a record's name/type. Now it creates a new one
-    def add_record_changes(self, record):
-        action = 'DELETE' if record.get('delete', False) else 'UPSERT'
+    def add_record_changes(self, record, key=None):
+        if key is not None and key not in self.records():
+            action = 'CREATE'
+        else:
+            action = 'DELETE' if record.get('delete', False) else 'UPSERT'
+
         self._change_batch.append({
             'Action': action,
             'ResourceRecordSet': RecordHandler.encode(record, self._aws_root())
