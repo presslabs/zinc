@@ -1,9 +1,10 @@
+import uuid
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
-from hashid_field import HashidField
 
 from dns.tasks import aws_delete_zone
 from dns.utils import route53
@@ -32,11 +33,7 @@ class IP(models.Model):
 
 
 class Policy(models.Model):
-    id = HashidField(
-            editable=False,
-            min_length=getattr(settings, 'HASHIDS_MIN_LENGTH', 7),
-            primary_key=True
-         )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True, null=False)
 
     def __str__(self):
@@ -52,11 +49,7 @@ class Policy(models.Model):
 class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
 
-    id = HashidField(
-            editable=False,
-            min_length=getattr(settings, 'HASHIDS_MIN_LENGTH', 7),
-            primary_key=True
-         )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     location = models.CharField(choices=AWS_REGIONS, max_length=20)
     ip = models.ForeignKey(IP, on_delete=models.CASCADE)
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
@@ -124,11 +117,7 @@ def aws_delete(instance, **kwargs):
 
 
 class PolicyRecord(models.Model):
-    id = HashidField(
-            editable=False,
-            min_length=getattr(settings, 'HASHIDS_MIN_LENGTH', 7),
-            primary_key=True
-         )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
     policy = models.ForeignKey(Policy)
     dirty = models.BooleanField(default=True, editable=False)
