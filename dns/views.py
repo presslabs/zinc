@@ -3,8 +3,9 @@ from django.conf import settings
 from rest_framework.generics import (CreateAPIView, ListAPIView, ListCreateAPIView,
                                      RetrieveAPIView, RetrieveUpdateAPIView,
                                      RetrieveUpdateDestroyAPIView)
+from rest_framework import viewsets
 
-from dns.models import Policy, PolicyMember, Zone
+from dns import models # import Policy, PolicyMember, Zone
 from dns.parsers import JSONMergePatchParser
 from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
                              ZoneDetailSerializer, ZoneListSerializer)
@@ -13,13 +14,13 @@ from dns.utils.generic import dict_key_intersection
 
 
 class ZoneList(ListCreateAPIView):
-    queryset = Zone.objects.all()
+    queryset = models.Zone.objects.all()
     serializer_class = ZoneListSerializer
 
 
 class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
     parser_classes = (JSONMergePatchParser,)
-    queryset = Zone.objects.all()
+    queryset = models.Zone.objects.all()
     serializer_class = ZoneDetailSerializer
 
     @property
@@ -35,16 +36,11 @@ class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
         return super(ZoneDetail, self).patch(request, *args, **kwargs)
 
 
-class PolicyList(ListAPIView):
-    queryset = Policy.objects.all()
+class Policy(viewsets.ModelViewSet):
     serializer_class = PolicySerializer
-
-
-class PolicyDetail(RetrieveUpdateAPIView):
-    queryset = Policy.objects.all()
-    serializer_class = PolicySerializer
+    queryset = models.Policy.objects.all()
 
 
 class PolicyMemberDetail(RetrieveAPIView):
-    queryset = PolicyMember.objects.all()
+    queryset = models.PolicyMember.objects.all()
     serializer_class = PolicyMemberSerializer

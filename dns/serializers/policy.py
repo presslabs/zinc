@@ -1,11 +1,10 @@
-from rest_framework.serializers import (HyperlinkedModelSerializer,
-                                        HyperlinkedRelatedField, ModelSerializer)
-
+from rest_framework import serializers
 from dns.models import Policy, PolicyMember
 
 
-class PolicySerializer(HyperlinkedModelSerializer):
-    members = HyperlinkedRelatedField(
+class PolicySerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.CharField(read_only=True)
+    members = serializers.HyperlinkedRelatedField(
         many=True,
         view_name='policymember-detail',
         queryset=PolicyMember.objects.all()
@@ -13,10 +12,11 @@ class PolicySerializer(HyperlinkedModelSerializer):
 
     class Meta:
         model = Policy
-        fields = ['name', 'members', 'url']
+        fields = ['id', 'name', 'members', 'url']
 
 
-class PolicyMemberSerializer(ModelSerializer):
+class PolicyMemberSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(read_only=True)
     class Meta:
         model = PolicyMember
-        fields = ['location', 'ip', 'weight']
+        fields = ['id', 'location', 'ip', 'weight']
