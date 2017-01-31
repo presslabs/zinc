@@ -2,7 +2,6 @@
 import pytest
 import json
 
-from mock import patch, MagicMock
 from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -97,6 +96,66 @@ def test_zone_patch_with_records(api_client, zone):
 
 
 @pytest.mark.django_db
+def test_update_bunch_of_records(api_client, zone):
+    record1_hash = '7Q45ew5E0vOMq'
+    record1 = {
+        'values': ['2.2.2.2'],
+        'type': 'A',
+        'ttl': 300,
+        'name': 'test'
+    }
+    record2 = {
+        'name': 'detest',
+        'ttl': 400,
+        'type': 'NS',
+        'values': ['ns.test.com', 'ns2.test.com']
+    }
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records':{
+                record1_hash: record1,
+                'new': record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records'][record1_hash] == record1
+    assert response.data['records']['50Y6bP8D1V4B3'] == record2
+
+@pytest.mark.django_db
+def test_delete_bunch_of_records(api_client, zone):
+    record1_hash = '7Q45ew5E0vOMq'
+    record1 = {
+        'values': ['2.2.2.2'],
+        'type': 'A',
+        'ttl': 300,
+        'name': 'test'
+    }
+    record2_hash = '50Y6bP8D1V4B3'
+    record2 = {
+        'name': 'detest',
+        'ttl': 400,
+        'type': 'NS',
+        'values': ['ns.test.com', 'ns2.test.com']
+    }
+    zone.records = {'new': record2}
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records':{
+                record1_hash: record1,
+                record2_hash: None
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records'][record1_hash] == record1
+    assert record2_hash not in response.data['records']
+
+
+
+@pytest.mark.django_db
 def test_zone_delete_record(api_client, zone):
     record_hash = '7Q45ew5E0vOMq'
     response = api_client.patch(
@@ -121,3 +180,4 @@ def test_delete_a_zone(api_client, zone, settings):
         m.Zone.objects.get(pk=zone.id)
 
     assert response.data == None
+
