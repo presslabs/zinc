@@ -2,7 +2,9 @@
 import pytest
 import json
 
+from mock import patch, MagicMock
 from django_dynamic_fixture import G
+from django.core.exceptions import ObjectDoesNotExist
 
 from tests.fixtures import api_client, boto_client, zone
 from dns import models as m
@@ -95,7 +97,6 @@ def test_zone_patch_with_records(api_client, zone):
 
 
 @pytest.mark.django_db
-# @pytest.mark.xfail
 def test_zone_delete_record(api_client, zone):
     record_hash = '7Q45ew5E0vOMq'
     response = api_client.patch(
@@ -108,3 +109,15 @@ def test_zone_delete_record(api_client, zone):
         content_type='application/merge-patch+json'
     )
     assert record_hash not in response.data['records']
+
+@pytest.mark.django_db
+def test_delete_a_zone(api_client, zone, settings):
+    settings.CELERY_ALWAYS_EAGER = True
+    response = api_client.delete(
+        '/zones/%s/' % zone.id
+    )
+
+    with pytest.raises(ObjectDoesNotExist) as _:
+        m.Zone.objects.get(pk=zone.id)
+
+    assert response.data == None
