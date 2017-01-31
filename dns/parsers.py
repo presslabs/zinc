@@ -4,6 +4,7 @@ from rest_framework.parsers import BaseParser, JSONParser
 
 from dns.utils.generic import dict_key_intersection
 
+
 class JSONMergePatchParser(BaseParser):
     """
     Attempt at making a parser for json merge patch payloads

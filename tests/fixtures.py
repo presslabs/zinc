@@ -74,7 +74,7 @@ class Moto:
     def _cleanup_hosted_zones(self):
         pass
 
-    def set_route53_response(self,Id, response):
+    def set_route53_response(self, Id, response):
         self.response.update({Id: response})
 
     def delete_hosted_zone(self, Id=None):
@@ -105,6 +105,7 @@ def boto_client(request):
     client = request.param()
     patcher = patch('dns.utils.route53.client', client)
     patcher.start()
+
     def cleanup():
         patcher.stop()
         client._cleanup_hosted_zones()
@@ -155,5 +156,3 @@ def zone(request, boto_client):
     zone = m.Zone(root=zone_name, route53_id=zone_id, caller_reference=caller_ref)
     zone.save()
     return zone
-
-

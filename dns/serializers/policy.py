@@ -17,6 +17,7 @@ class PolicySerializer(serializers.HyperlinkedModelSerializer):
 
 class PolicyMemberSerializer(serializers.ModelSerializer):
     id = serializers.CharField(read_only=True)
+
     class Meta:
         model = PolicyMember
         fields = ['id', 'location', 'ip', 'weight']

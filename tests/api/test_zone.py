@@ -68,6 +68,7 @@ def test_detail_zone_with_real_zone(api_client, zone):
         'type': 'A'
     }
 
+
 @pytest.mark.django_db
 def test_zone_patch_with_records(api_client, zone):
     record_hash = '7Q45ew5E0vOMq'
@@ -92,8 +93,9 @@ def test_zone_patch_with_records(api_client, zone):
         'values': ['2.2.2.2']
     }
 
+
 @pytest.mark.django_db
-#@pytest.mark.xfail
+# @pytest.mark.xfail
 def test_zone_delete_record(api_client, zone):
     record_hash = '7Q45ew5E0vOMq'
     response = api_client.patch(

@@ -5,7 +5,7 @@ from rest_framework.generics import (CreateAPIView, ListAPIView, ListCreateAPIVi
                                      RetrieveUpdateDestroyAPIView)
 from rest_framework import viewsets
 
-from dns import models # import Policy, PolicyMember, Zone
+from dns import models
 from dns.parsers import JSONMergePatchParser
 from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
                              ZoneDetailSerializer, ZoneListSerializer)

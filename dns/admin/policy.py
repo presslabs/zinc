@@ -17,4 +17,3 @@ class PolicyAdmin(admin.ModelAdmin):
 
 
 admin.site.register(PolicyMember)
-

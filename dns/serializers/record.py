@@ -83,7 +83,8 @@ class RecordSetSerializer(DictField):
 
                     _, created = PolicyRecord.objects.get_or_create(**precord_data)
                     if not created:
-                        raise ValidationError("Record '{name}' already exists.".format(name=record['name']))
+                        raise ValidationError(
+                            "Record '{name}' already exists.".format(name=record['name']))
 
                     # TODO Build the record tree
                 except Policy.DoesNotExist:
