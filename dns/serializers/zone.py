@@ -34,7 +34,14 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
         self.partial = False
 
     def update(self, instance, validated_data):
+        validated_records = validated_data['records']
+        for record_hash, record in instance.records.items():
+            if (record_hash in validated_data['records'] and
+                (record['name'] != validated_records[record_hash]['name'] or
+                 record['type'] != validated_records[record_hash]['type'])):
+                record['delete'] = True
+                validated_records.update({record_hash: record,
+                                          'new': validated_records[record_hash]})
 
-        instance.records = validated_data['records']
-
+        instance.records = validated_records
         return instance

@@ -44,8 +44,11 @@ class Zone(object):
         self._aws_records = []
         self._change_batch = []
 
-    # TODO check why parameter validation fails in botocore on deletion
-    # TODO fix changing a record's name/type. Now it creates a new one
+    def add_records(self, records):
+        for record_hash, record in records.items():
+            self.add_record_changes(record, key=record_hash)
+        self.commit()
+
     def add_record_changes(self, record, key=None):
         if not key or key not in self.records():
             action = 'CREATE'
