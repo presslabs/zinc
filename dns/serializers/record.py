@@ -20,7 +20,7 @@ class RecordSerializer(Serializer):
 
     name = CharField(max_length=255)
     type = ChoiceField(choices=[(type, type) for type in RECORD_TYPES])
-    ttl = IntegerField(default=None, allow_null=True, min_value=300, required=False)
+    ttl = IntegerField(allow_null=True, min_value=300, required=True)
     values = ListField(child=CharField(), required=True)
     set_id = CharField(min_length=HASHIDS_MIN_LENGTH, required=False)
     managed = BooleanField(default=False, read_only=True)
