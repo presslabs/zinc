@@ -244,3 +244,44 @@ def test_add_record_without_values(api_client, zone):
         content_type='application/merge-patch+json'
     )
     assert response.data['records'] == {'values': ['This field is required.']}
+
+
+@pytest.mark.django_db
+def test_add_record_without_ttl(api_client, zone):
+    record2_hash = 'new'
+    record2 = {
+        'name': 'something',
+        'type': 'A',
+        'values': ['1.2.3.4'],
+    }
+    response = api_client.post(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records':{
+                record2_hash: record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records'] == {'ttl': ['This field is required.']}
+
+
+@pytest.mark.django_db
+def test_add_record_ttl_invalid(api_client, zone):
+    record2_hash = 'new'
+    record2 = {
+        'name': 'something',
+        'type': 'A',
+        'values': ['1.2.3.4'],
+        'ttl': 0
+    }
+    response = api_client.post(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records':{
+                record2_hash: record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records'] == {'ttl': ['Ensure this value is greater than or equal to 300.']}

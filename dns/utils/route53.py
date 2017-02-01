@@ -223,6 +223,7 @@ class RecordHandler(ABCMeta):
                 decoded_record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
             else:
                 decoded_record['values'] = [r['Value'] for r in record.get('ResourceRecords', [])]
-                decoded_record['ttl'] = record['TTL']
+                if 'TTL' in record:
+                    decoded_record['ttl'] = record['TTL']
 
         return decoded_record
