@@ -224,3 +224,23 @@ def test_delete_a_zone(api_client, zone, settings):
         m.Zone.objects.get(pk=zone.id)
 
     assert not response.data
+
+
+@pytest.mark.django_db
+def test_add_record_without_values(api_client, zone):
+    record2_hash = 'new'
+    record2 = {
+        'name': 'test',
+        'ttl': 400,
+        'type': 'A',
+    }
+    response = api_client.post(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records':{
+                record2_hash: record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records'] == {'values': ['This field is required.']}
