@@ -17,7 +17,7 @@ class JSONMergePatchParser(BaseParser):
         patch = JSONParser().parse(stream, media_type, parser_context)
 
         for key, record in patch['records'].items():
-            if not record:
+            if not record and key in zone_records:
                 patch['records'].update({key: {'delete': True}})
 
         zone_records = dict_key_intersection(zone_records, patch['records'])

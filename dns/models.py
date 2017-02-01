@@ -98,8 +98,8 @@ class Zone(models.Model):
 
     @records.setter
     def records(self, records):
-        for key, record in records.items():
-            self.route53_zone.add_record_changes(record, key=key)
+        for record_hash, record in records.items():
+            self.route53_zone.add_record_changes(record, key=record_hash)
         self.route53_zone.commit()
 
     def __str__(self):
