@@ -1,7 +1,8 @@
 from rest_framework.serializers import (HyperlinkedModelSerializer, ValidationError)
+from rest_framework.fields import DictField
 
 from dns.models import Zone
-from dns.serializers import RecordSetSerializer
+from dns.serializers import RecordSerializer
 from dns.utils import route53
 
 
@@ -22,7 +23,7 @@ class ZoneListSerializer(HyperlinkedModelSerializer):
 
 
 class ZoneDetailSerializer(HyperlinkedModelSerializer):
-    records = RecordSetSerializer()
+    records = DictField(child=RecordSerializer(partial=False))
 
     class Meta:
         model = Zone

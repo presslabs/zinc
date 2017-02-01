@@ -1,13 +1,10 @@
 from collections import OrderedDict
 from django.conf import settings
-from rest_framework.exceptions import ValidationError
 from rest_framework.fields import (BooleanField, CharField, ChoiceField,
-                                   DictField, IntegerField, ListField)
+                                   IntegerField, ListField)
 from rest_framework.serializers import Serializer
 
 from dns.exceptions import UnprocessableEntity
-from dns.models import Policy, PolicyRecord
-from dns.utils import route53
 
 HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)
 
@@ -62,7 +59,3 @@ class RecordSerializer(Serializer):
             key: val for key, val in value.items()
             if key in self.visible_fields
         }
-
-
-class RecordSetSerializer(DictField):
-    child = RecordSerializer(partial=False)
