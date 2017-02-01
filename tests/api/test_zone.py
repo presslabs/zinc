@@ -237,7 +237,7 @@ def test_add_record_without_values(api_client, zone):
     response = api_client.post(
         '/zones/%s/' % zone.id,
         data=json.dumps({
-            'records':{
+            'records': {
                 record2_hash: record2
             }
         }),
@@ -257,7 +257,7 @@ def test_add_record_without_ttl(api_client, zone):
     response = api_client.post(
         '/zones/%s/' % zone.id,
         data=json.dumps({
-            'records':{
+            'records': {
                 record2_hash: record2
             }
         }),
@@ -278,10 +278,77 @@ def test_add_record_ttl_invalid(api_client, zone):
     response = api_client.post(
         '/zones/%s/' % zone.id,
         data=json.dumps({
-            'records':{
+            'records': {
                 record2_hash: record2
             }
         }),
         content_type='application/merge-patch+json'
     )
-    assert response.data['records'] == {'ttl': ['Ensure this value is greater than or equal to 300.']}
+    assert response.data['records'] == {
+        'ttl': ['Ensure this value is greater than or equal to 300.']
+    }
+
+
+@pytest.mark.django_db
+def test_change_name_of_record(api_client, zone):
+    record2_hash = '7Q45ew5E0vOMq'
+    record2 = {
+        'name': 'altceva',
+        'type': 'A',
+        'values': ['1.1.1.1'],
+        'ttl': 300
+    }
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records': {
+                record2_hash: record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records']['geE2gXwXDmx7D'] == record2
+    assert record2_hash not in response.data['records']
+
+
+@pytest.mark.django_db
+def test_change_ttl_of_record(api_client, zone):
+    record2_hash = '7Q45ew5E0vOMq'
+    record2 = {
+        'name': 'test',
+        'type': 'A',
+        'values': ['1.1.1.1'],
+        'ttl': 550
+    }
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records': {
+                record2_hash: record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records']['7Q45ew5E0vOMq'] == record2
+
+
+@pytest.mark.django_db
+def test_change_type_of_record(api_client, zone):
+    record2_hash = '7Q45ew5E0vOMq'
+    record2 = {
+        'name': 'altceva',
+        'type': 'CNAME',
+        'values': ['new.presslabs.net'],
+        'ttl': 300
+    }
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records': {
+                record2_hash: record2
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records']['nBl2zBJW83zVP'] == record2
+    assert record2_hash not in response.data['records']

@@ -66,33 +66,3 @@ class RecordSerializer(Serializer):
 
 class RecordSetSerializer(DictField):
     child = RecordSerializer(partial=False)
-
-    def update(self, zone, **validated_data):
-        # TODO: remove this
-        _zone = route53.Zone(id=zone.route53_id, root=zone.root)
-
-        for key, record in validated_data.items():
-            if key == 'new' and record['type'] == 'POLICY_ROUTED':
-                try:
-                    policy_pk = Policy.objects.values_list('pk', flat=True).get(name=record['name'])
-                    precord_data = {
-                        'name': record['name'],
-                        'policy': policy_pk,
-                        'zone': zone.pk
-                    }
-
-                    _, created = PolicyRecord.objects.get_or_create(**precord_data)
-                    if not created:
-                        raise ValidationError(
-                            "Record '{name}' already exists.".format(name=record['name']))
-
-                    # TODO Build the record tree
-                except Policy.DoesNotExist:
-                    msg = ("Can`t associate policy record '{name}'! The policy "
-                           "named '{name}' does not exist.".format(name=record['name']))
-                    raise ValidationError(msg)
-                continue
-
-            _zone.add_record_changes(record)
-
-        _zone.commit()
