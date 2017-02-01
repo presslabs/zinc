@@ -113,7 +113,7 @@ def test_update_bunch_of_records(api_client, zone):
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
-            'records':{
+            'records': {
                 record1_hash: record1,
                 'new': record2
             }
@@ -151,7 +151,7 @@ def test_delete_bunch_of_records(api_client, zone):
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
-            'records':{
+            'records': {
                 record1_hash: record1,
                 record2_hash: None,
                 record3_hash: None
@@ -185,7 +185,7 @@ def test_delete_nonexistent_records(api_client, zone):
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
-            'records':{
+            'records': {
                 record1_hash: record1,
                 record2_hash: None,
                 record3_hash: None
