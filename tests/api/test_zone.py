@@ -123,6 +123,7 @@ def test_update_bunch_of_records(api_client, zone):
     assert response.data['records'][record1_hash] == record1
     assert response.data['records']['50Y6bP8D1V4B3'] == record2
 
+
 @pytest.mark.django_db
 def test_delete_bunch_of_records(api_client, zone):
     record1_hash = '7Q45ew5E0vOMq'
@@ -139,20 +140,62 @@ def test_delete_bunch_of_records(api_client, zone):
         'type': 'NS',
         'values': ['ns.test.com', 'ns2.test.com']
     }
-    zone.records = {'new': record2}
+    record3_hash = 'ELGbwLwmXjwWm'
+    record3 = {
+        'name': 'cdn',
+        'ttl': 400,
+        'type': 'A',
+        'values': ['1.2.3.4', '2.3.4.5']
+    }
+    zone.records = {'new': record2, '234': record3}
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
             'records':{
                 record1_hash: record1,
-                record2_hash: None
+                record2_hash: None,
+                record3_hash: None
             }
         }),
         content_type='application/merge-patch+json'
     )
     assert response.data['records'][record1_hash] == record1
     assert record2_hash not in response.data['records']
+    assert record3_hash not in response.data['records']
 
+
+@pytest.mark.django_db
+def test_delete_nonexistent_records(api_client, zone):
+    record1_hash = '7Q45ew5E0vOMq'
+    record1 = {
+        'values': ['2.2.2.2'],
+        'type': 'A',
+        'ttl': 300,
+        'name': 'test'
+    }
+    record2_hash = '50Y6bP8D1V4B3'
+    record2 = {
+        'name': 'detest',
+        'ttl': 400,
+        'type': 'NS',
+        'values': ['ns.test.com', 'ns2.test.com']
+    }
+    record3_hash = 'non-existen'
+    zone.records = {'new': record2}
+    response = api_client.patch(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records':{
+                record1_hash: record1,
+                record2_hash: None,
+                record3_hash: None
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+    assert response.data['records'][record1_hash] == record1
+    assert record2_hash not in response.data['records']
+    assert record3_hash not in response.data['records']
 
 
 @pytest.mark.django_db
@@ -169,6 +212,7 @@ def test_zone_delete_record(api_client, zone):
     )
     assert record_hash not in response.data['records']
 
+
 @pytest.mark.django_db
 def test_delete_a_zone(api_client, zone, settings):
     settings.CELERY_ALWAYS_EAGER = True
@@ -179,5 +223,4 @@ def test_delete_a_zone(api_client, zone, settings):
     with pytest.raises(ObjectDoesNotExist) as _:
         m.Zone.objects.get(pk=zone.id)
 
-    assert response.data == None
-
+    assert not response.data
