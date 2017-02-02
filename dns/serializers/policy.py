@@ -6,7 +6,7 @@ class PolicySerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.CharField(read_only=True)
     members = serializers.HyperlinkedRelatedField(
         many=True,
-        view_name='policymember-detail',
+        view_name='policy-member-detail',
         queryset=PolicyMember.objects.all()
     )
 

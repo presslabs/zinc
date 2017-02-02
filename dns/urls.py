@@ -12,7 +12,7 @@ urlpatterns = [
     url(r'^zones/$', views.ZoneList.as_view(), name='zone-list'),
     url(r'^zones/(?P<pk>[0-9]+)/?$',
         views.ZoneDetail.as_view(), name='zone-detail'),
-    url(r'^policy-members/(?P<pk>[a-zA-Z0-9]+)/?$',
-        views.PolicyMemberDetail.as_view(), name='policymember-detail'),
+    url(r'^policy-members/(?P<pk>[a-zA-Z0-9-]+)/$',
+        views.PolicyMemberDetail.as_view(), name='policy-member-detail'),
 
 ]
