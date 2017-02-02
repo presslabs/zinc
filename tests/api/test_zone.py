@@ -47,7 +47,7 @@ def test_create_zone_passing_wrong_params(api_client, boto_client):
 
 
 @pytest.mark.django_db
-def test_list_zones(api_client):
+def test_list_zones(api_client, boto_client):
     zones = [G(m.Zone, root='1.example.com'),
              G(m.Zone, root='2.example.com')]
     response = api_client.get('/zones/')
