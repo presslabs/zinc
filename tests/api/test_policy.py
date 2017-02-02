@@ -67,6 +67,7 @@ def test_policy_with_records(api_client):
     assert response.status_code == 200, response
     assert response.data == policy_to_dict(policy)
 
+
 @pytest.mark.django_db
 def test_policy_deletion(api_client):
     policy = G(m.Policy)
@@ -83,6 +84,7 @@ def test_policy_deletion(api_client):
     assert m.PolicyMember.objects.count() == 0
     assert m.Policy.objects.count() == 0
 
+
 def record_to_dict(record):
     return {
         'id': str(record.id),
@@ -90,6 +92,7 @@ def record_to_dict(record):
         'ip': record.ip.ip,
         'weight': record.weight,
     }
+
 
 @pytest.mark.django_db
 def test_policy_member(api_client):

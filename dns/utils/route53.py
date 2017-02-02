@@ -64,6 +64,9 @@ class Zone(object):
         self._change_batch = []
 
     def commit(self):
+        if self._change_batch is None:
+            return
+
         try:
             client.change_resource_record_sets(
                 HostedZoneId=self.id,
@@ -161,6 +164,8 @@ class RecordHandler(ABCMeta):
     @classmethod
     def encode(cls, record, root):
         delete = record.get('delete', False)
+        if delete:
+            del record['delete']
 
         encoded_record = {
             'Name': cls._add_root(record['name'], root),
@@ -168,9 +173,10 @@ class RecordHandler(ABCMeta):
             'ResourceRecords': [{'Value': v} for v in record['values']]
         }
 
-        ttl = record.get('ttl', None)
-        if ttl:
-            encoded_record['TTL'] = ttl
+        for extra in ['TTL', 'Weight', 'Region', 'AliasTarget',
+                      'HealthCheckId', 'TrafficPolicyInstanceId']:
+            if extra.lower() in [field.replace('_', '') for field in record]:
+                encoded_record[extra] = record[extra.lower()]
 
         return encoded_record
 
