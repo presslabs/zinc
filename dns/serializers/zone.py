@@ -45,4 +45,5 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
                                           'new': validated_records[record_hash]})
 
         instance.records = validated_records
+        instance.save()
         return instance

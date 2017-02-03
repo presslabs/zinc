@@ -47,7 +47,6 @@ class Zone(object):
     def add_records(self, records):
         for record_hash, record in records.items():
             self.add_record_changes(record, key=record_hash)
-        self.commit()
 
     def add_record_changes(self, record, key=None):
         if not key or key not in self.records():
@@ -64,7 +63,7 @@ class Zone(object):
         self._change_batch = []
 
     def commit(self):
-        if self._change_batch is None:
+        if not self._change_batch:
             return
 
         try:
@@ -170,13 +169,16 @@ class RecordHandler(ABCMeta):
         encoded_record = {
             'Name': cls._add_root(record['name'], root),
             'Type': record['type'],
-            'ResourceRecords': [{'Value': v} for v in record['values']]
+            'ResourceRecords': [{'Value': v} for v in record.get('values', [])]
         }
 
-        for extra in ['TTL', 'Weight', 'Region', 'AliasTarget',
+        if 'ttl' in record:
+            encoded_record['TTL'] = record['ttl']
+
+        for extra in ['Weight', 'Region', 'AliasTarget',
                       'HealthCheckId', 'TrafficPolicyInstanceId']:
-            if extra.lower() in [field.replace('_', '') for field in record]:
-                encoded_record[extra] = record[extra.lower()]
+            if extra in record:
+                encoded_record[extra] = record[extra]
 
         return encoded_record
 
