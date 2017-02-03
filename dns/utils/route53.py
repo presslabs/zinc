@@ -56,7 +56,7 @@ class Zone(object):
 
         self._change_batch.append({
             'Action': action,
-            'ResourceRecordSet': RecordHandler.encode(record, self._aws_root())
+            'ResourceRecordSet': RecordHandler.encode(record, self.root)
         })
 
     def _reset_change_batch(self):
@@ -86,7 +86,7 @@ class Zone(object):
         entries = {}
 
         for aws_record in self._aws_records:
-            record = RecordHandler.decode(aws_record, self._aws_root(), self.id)
+            record = RecordHandler.decode(aws_record, self.root, self.id)
 
             if record:
                 if rfilter and not rfilter(record):
@@ -107,16 +107,13 @@ class Zone(object):
         response = client.list_resource_record_sets(HostedZoneId=self.id)
         self._aws_records = response['ResourceRecordSets']
 
-    def _aws_root(self):
-        return '{}.'.format(self.root)
-
     def delete(self):
         self._delete_records()
         client.delete_hosted_zone(Id=self.id)
 
     def _delete_records(self):
         self._cache_aws_records()
-        zone_root = self._aws_root()
+        zone_root = self.root
 
         to_delete = []
         for record in self._aws_records:

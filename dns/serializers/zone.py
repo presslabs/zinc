@@ -12,8 +12,12 @@ class ZoneListSerializer(HyperlinkedModelSerializer):
         fields = ['root', 'url', 'id']
 
     def create(self, validated_data):
+        root = validated_data['root']
+        if not root.endswith('.'):
+            validated_data['root'] += '.'
+
         try:
-            zone = route53.Zone.create(validated_data.get('root', ''))
+            zone = route53.Zone.create(validated_data['root'])
         except route53.ClientError as e:
             raise ValidationError(detail=str(e))
 
