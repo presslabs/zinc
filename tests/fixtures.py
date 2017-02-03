@@ -151,7 +151,7 @@ def zone(request, boto_client):
     client = boto_client
 
     caller_ref = 'zinc ref-fixture {}'.format(datetime.now())
-    zone_name = 'test-zinc.net'
+    zone_name = 'test-zinc.net.'
 
     zone = client.create_hosted_zone(
         Name=zone_name,
@@ -171,7 +171,7 @@ def zone(request, boto_client):
                 {
                     'Action': 'CREATE',
                     'ResourceRecordSet': {
-                        'Name': 'test.%s.' % zone_name,
+                        'Name': 'test.%s' % zone_name,
                         'Type': 'A',
                         'TTL': 300,
                         'ResourceRecords': [

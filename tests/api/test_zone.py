@@ -20,7 +20,7 @@ def strip_ns_and_soa(records):
 
 @pytest.mark.django_db
 def test_create_zone(api_client, boto_client):
-    root = 'example.com.presslabs.com'
+    root = 'example.com.presslabs.com.'
     resp = api_client.post(
         '/zones/',
         data={
@@ -48,8 +48,8 @@ def test_create_zone_passing_wrong_params(api_client, boto_client):
 
 @pytest.mark.django_db
 def test_list_zones(api_client, boto_client):
-    zones = [G(m.Zone, root='1.test-zinc.com', route53_id=None),
-             G(m.Zone, root='2.test-zinc.com', route53_id=None)]
+    zones = [G(m.Zone, root='1.test-zinc.com.', route53_id=None),
+             G(m.Zone, root='2.test-zinc.com.', route53_id=None)]
 
     response = api_client.get('/zones/')
 
