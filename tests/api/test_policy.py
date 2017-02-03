@@ -88,7 +88,7 @@ def test_policy_deletion(api_client):
 def record_to_dict(record):
     return {
         'id': str(record.id),
-        'location': record.location,
+        'region': record.region,
         'ip': record.ip.ip,
         'weight': record.weight,
     }
