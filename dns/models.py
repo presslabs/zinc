@@ -44,14 +44,14 @@ class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    location = models.CharField(choices=AWS_REGIONS, max_length=20)
+    region = models.CharField(choices=AWS_REGIONS, max_length=20)
     ip = models.ForeignKey(IP, on_delete=models.CASCADE)
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
     healthcheck_id = models.IntegerField(editable=False, null=True)
     weight = models.PositiveIntegerField(default=10)
 
     def __str__(self):
-        return '{} {} {}'.format(self.ip, self.location, self.weight)
+        return '{} {} {}'.format(self.ip, self.region, self.weight)
 
 
 class Zone(models.Model):
@@ -118,24 +118,42 @@ class PolicyRecord(models.Model):
     @transaction.atomic
     def apply_record(self):
         records = {}
+        regions = []
+
+        # TODO: better naming
+        name = '_{}'.format(self.id)
+        identifier = self.policy.name
+
         for policy_member in self.policy.members.all():
-            # TODO: better naming
-            name = '_{}'.format(self.id)
-            identifier = '{}-node-{}'.format(self.name, policy_member.id)
-            records.update({'new': {
-                'name': name,
-                'ttl': 30,
-                'type': 'A',
-                'valuse': [policy_member.ip.ip],
-                'set_identifier': identifier,
-                'weight': policy_member.weight,
-                'health_check_id': str(policy_member.healthcheck_id),
-                'alias_target': {
-                    'HostedZoneId': self.zone.route53_id,
-                    'DNSName': self.zone.name,
-                    'EvaluateTargetHealth': False
+            records.update({
+                policy_member.id: {
+                    'name': name,
+                    'ttl': 30,
+                    'type': 'A',
+                    'valuse': [policy_member.ip.ip],
+                    'set_identifier': identifier,
+                    'weight': policy_member.weight,
+                    'health_check_id': str(policy_member.healthcheck_id),
+                },
+            })
+
+            if policy_member.region not in regions:
+                regions.append(policy_member.region)
+
+        for region in regions:
+            records.update({
+                region: {
+                    'name': '_{}{}'.format(region, name),
+                    'type': 'A',
+                    'alias_target': {
+                        'HostedZoneId': self.zone.route53_id,
+                        'DNSName': name,
+                        'EvaluateTargetHealth': True
+                    },
+                    'region': region,
+                    'set_identifier': '{}-{}'.format(identifier, region),
                 }
-            }})
+            })
 
         self.zone.records = records
         self.zone.save()

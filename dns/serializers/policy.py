@@ -20,4 +20,4 @@ class PolicyMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PolicyMember
-        fields = ['id', 'location', 'ip', 'weight']
+        fields = ['id', 'region', 'ip', 'weight']
