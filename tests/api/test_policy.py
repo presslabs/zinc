@@ -6,7 +6,7 @@ from tests.fixtures import api_client, boto_client, zone
 from dns import models as m
 
 
-def policy_member_to_dict(member):
+def policy_member_to_url(member):
     return 'http://testserver/policy-members/{}/'.format(member.id)
 
 
@@ -14,7 +14,7 @@ def policy_to_dict(policy):
     return {
         'id': str(policy.id),
         'name': policy.name,
-        'members': [policy_member_to_dict(member) for member in policy.members.all()],
+        'members': [policy_member_to_url(member) for member in policy.members.all()],
         'url': 'http://testserver/policies/{}/'.format(policy.id)
     }
 
@@ -69,7 +69,7 @@ def test_policy_with_records(api_client):
 
 
 @pytest.mark.django_db
-def test_policy_deletion(api_client):
+def test_policy_deletion_1(api_client):
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy)
     G(m.PolicyMember, policy=policy)
@@ -85,6 +85,25 @@ def test_policy_deletion(api_client):
     assert m.Policy.objects.count() == 0
 
 
+@pytest.mark.django_db
+def test_policy_deletion_2(api_client):
+    policy2 = G(m.Policy)
+    policy = G(m.Policy)
+    G(m.PolicyMember, policy=policy)
+    G(m.PolicyMember, policy=policy)
+    G(m.PolicyMember, policy=policy2)
+    assert m.PolicyMember.objects.count() == 3
+
+    response = api_client.delete(
+        '/policies/%s/' % policy.id,
+        format='json',
+    )
+
+    assert response.status_code == 200, response
+    assert m.PolicyMember.objects.count() == 1
+    assert m.Policy.objects.count() == 1
+
+
 def record_to_dict(record):
     return {
         'id': str(record.id),
@@ -95,7 +114,7 @@ def record_to_dict(record):
 
 
 @pytest.mark.django_db
-def test_policy_member(api_client):
+def test_policy_member_detail(api_client):
     member = G(m.PolicyMember)
     response = api_client.get(
         '/policy-members/%s/' % member.id,

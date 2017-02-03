@@ -1,4 +1,5 @@
 import uuid
+from collections import OrderedDict
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -117,41 +118,52 @@ class PolicyRecord(models.Model):
 
     @transaction.atomic
     def apply_record(self):
-        records = {}
+        records = OrderedDict()
         regions = []
-
-        # TODO: better naming
-        name = '_{}'.format(self.id)
-        identifier = self.policy.name
 
         for policy_member in self.policy.members.all():
             records.update({
                 policy_member.id: {
-                    'name': name,
+                    'name': '_{}.{}'.format(self.policy.name, policy_member.region),
                     'ttl': 30,
                     'type': 'A',
-                    'valuse': [policy_member.ip.ip],
-                    'set_identifier': identifier,
-                    'weight': policy_member.weight,
-                    'health_check_id': str(policy_member.healthcheck_id),
+                    'values': [policy_member.ip.ip],
+                    'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
+                    'Weight': policy_member.weight,
+                    # 'HealthCheckId': str(policy_member.healthcheck_id),
                 },
             })
 
             if policy_member.region not in regions:
                 regions.append(policy_member.region)
 
+        # TODO: check for rigon for all ips down
+        # if just a single region for changing alisa type from load balancing to simple.
         for region in regions:
             records.update({
                 region: {
-                    'name': '_{}{}'.format(region, name),
+                    'name': '_{}'.format(self.policy.name),
                     'type': 'A',
-                    'alias_target': {
-                        'HostedZoneId': self.zone.route53_id,
-                        'DNSName': name,
-                        'EvaluateTargetHealth': True
+                    'AliasTarget': {
+                        'HostedZoneId': self.zone.route53_zone.id,
+                        'DNSName': '_{}.{}'.format(self.policy.name, region),
+                        'EvaluateTargetHealth': len(regions) > 1
                     },
-                    'region': region,
-                    'set_identifier': '{}-{}'.format(identifier, region),
+                    'Region': region,
+                    'SetIdentifier': region,
+                }
+            })
+
+        if regions:
+            records.update({
+                'new': {
+                    'name': self.name,
+                    'type': 'A',
+                    'AliasTarget': {
+                        'HostedZoneId': self.zone.route53_zone.id,
+                        'DNSName': '_{}'.format(self.policy.name),
+                        'EvaluateTargetHealth': False
+                    }
                 }
             })
 
