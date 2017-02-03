@@ -8,6 +8,7 @@ from dns import models as m
 
 @pytest.mark.django_db
 def test_policy_record(zone):
+    zone, client = zone
     policy = G(m.Policy)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 

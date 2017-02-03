@@ -48,8 +48,9 @@ def test_create_zone_passing_wrong_params(api_client, boto_client):
 
 @pytest.mark.django_db
 def test_list_zones(api_client, boto_client):
-    zones = [G(m.Zone, root='1.example.com'),
-             G(m.Zone, root='2.example.com')]
+    zones = [G(m.Zone, root='1.test-zinc.com', route53_id=None),
+             G(m.Zone, root='2.test-zinc.com', route53_id=None)]
+
     response = api_client.get('/zones/')
 
     assert [result['url'] for result in response.data['results']] == [
@@ -155,6 +156,7 @@ def test_delete_bunch_of_records(api_client, zone):
         'values': ['1.2.3.4', '2.3.4.5']
     }
     zone.records = {'new': record2, '234': record3}
+    zone.save()
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
@@ -190,6 +192,7 @@ def test_delete_nonexistent_records(api_client, zone):
     }
     record3_hash = 'non-existen'
     zone.records = {'new': record2}
+    zone.save()
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
@@ -344,9 +347,7 @@ def test_change_ttl_of_record(api_client, zone):
         }),
         content_type='application/merge-patch+json'
     )
-    # import ipdb; ipdb.set_trace()
     assert response.data['records']['7Q45ew5E0vOMq'] == record2
-    # import ipdb; ipdb.set_trace()
     # assert record2 in client.list_resource_record_sets(zone.route53_id)['ResourceRecordSets']
 
 
