@@ -1,22 +1,29 @@
 # pylint: disable=no-member,unused-argument,protected-access,redefined-outer-name
 import random
 import string
-from mock import patch
+from copy import deepcopy
 from datetime import datetime
 
-import pytest
 import botocore
-from rest_framework.test import APIClient
+import pytest
+from mock import patch
 
 from dns import models as m
 from dns.utils import route53
+from rest_framework.test import APIClient
+
+
+def random_ascii(length):
+    return "".join(
+        random.choice(string.ascii_letters) for _ in range(length)
+    )
 
 
 class CleanupClient:
     """Wraps real boto3 client and tracks zone creation, so it can clean up at the end"""
     def __init__(self, client):
         self._client = client
-        self._zone_ids = set([])
+        self._zones = {}
 
     def __getattr__(self, attr_name):
         return getattr(self._client, attr_name)
@@ -27,15 +34,19 @@ class CleanupClient:
     def create_hosted_zone(self, **kwa):
         resp = self._client.create_hosted_zone(**kwa)
         zone_id = resp['HostedZone']['Id']
-        self._zone_ids.add(zone_id)
+        self._zones[zone_id] = resp['HostedZone']['Name']
         return resp
 
     def _cleanup_hosted_zones(self):
-        for zone_id in self._zone_ids:
+        for zone_id, zone_name in list(self._zones.items()):
             try:
                 records = self.list_resource_record_sets(HostedZoneId=zone_id)
                 for record in records['ResourceRecordSets']:
-                    if record['Type'] not in ('NS', 'SOA'):
+                    if record['Type'] == 'SOA' or (
+                            record['Type'] == 'NS' and record['Name'] == zone_name):
+                        # the SOA and the root NS can't be deleted, so we skip these
+                        continue
+                    try:
                         self.change_resource_record_sets(
                             HostedZoneId=zone_id,
                             ChangeBatch={
@@ -47,10 +58,12 @@ class CleanupClient:
                                     },
                                 ]
                             })
-
+                    except botocore.exceptions.ClientError as excp:
+                        print("Failed to delete record", record, excp.response['Error'])
                 self._client.delete_hosted_zone(Id=zone_id)
             except botocore.exceptions.ClientError as excp:
-                print("Failed to delete", zone_id, excp.response['Error']['Code'])
+                print("Failed to delete", zone_id, excp.response['Error'])
+            del self._zones[zone_id]
 
 
 @pytest.fixture
@@ -62,44 +75,63 @@ class Moto:
     """"Mock boto"""
 
     def __init__(self):
-        self.response = {}
+        self._zones = {}
+        # self.response = {}
 
-    def create_hosted_zone(self, **kwa):
+    def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
+        # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
+        zone_id = "{}/{}/{}".format(random_ascii(4), random_ascii(4), random_ascii(4))
+        self._zones[zone_id] = {}
         return {
             'HostedZone': {
-                'Id': 'Fake/Fake/Fake'
+                'Id': zone_id
             }
         }
 
     def _cleanup_hosted_zones(self):
-        pass
+        self._zones = {}
 
-    def set_route53_response(self, Id, response):
-        self.response.update({Id: response})
+    def delete_hosted_zone(self, Id):
+        self._zones.pop(Id)
 
-    def delete_hosted_zone(self, Id=None):
-        pass
+    @staticmethod
+    def _remove_record(records, record):
+        f_index = None
+        # print('to_delete', _record)
+        for index, _record in enumerate(records):
+            # print('other', record)
+            if ((_record['Name'] == record['Name'])
+                and (_record['Type'] == record['Type'])):
+                f_index = index
+                break
+        else:
+            return
+        records.pop(f_index)
 
     def change_resource_record_sets(self, HostedZoneId, ChangeBatch):
-        zone = self.response.get(HostedZoneId, {})
-        records = zone.get('ResourceRecordSets', [])
+        zone = self._zones[HostedZoneId]
+        records = zone.setdefault('ResourceRecordSets', [])
 
         for change in ChangeBatch['Changes']:
             if change['Action'] == 'DELETE':
-                records.remove(change['ResourceRecordSet'])
+                self._remove_record(records, change['ResourceRecordSet'])
+            elif change['Action'] == 'UPSERT':
+                self._remove_record(records, change['ResourceRecordSet'])
+                records.append(change['ResourceRecordSet'])
+            elif change['Action'] == 'CREATE':
+                records.append(change['ResourceRecordSet'])
             else:
-                records += [change['ResourceRecordSet']]
-
-        self.response.update({HostedZoneId: {
-            'ResourceRecordSets': records
-        }})
+                raise AssertionError(change['Action'])
 
     def list_resource_record_sets(self, HostedZoneId=None):
         return self.response[HostedZoneId]
 
+    @property
+    def response(self):
+        return deepcopy(self._zones)
+
 
 @pytest.fixture(
-    # scope='module',
     params=[
         Moto,
         lambda: CleanupClient(route53.client),
@@ -126,16 +158,14 @@ def zone(request, boto_client):
     zone_name = 'test-zinc.net'
 
     zone = client.create_hosted_zone(
-            Name=zone_name,
-            CallerReference=caller_ref,
-            HostedZoneConfig={
-                'Comment': 'zinc-fixture-%s' % "".join(
-                    random.choice(string.ascii_letters) for _ in range(6)
-                )
-            }
-        )
+        Name=zone_name,
+        CallerReference=caller_ref,
+        HostedZoneConfig={
+            'Comment': 'zinc-fixture-%s' % random_ascii(6)
+        }
+    )
 
-    zone_id = zone['HostedZone']['Id'].split('/')[2]
+    zone_id = zone['HostedZone']['Id']
 
     client.change_resource_record_sets(
         HostedZoneId=zone_id,
@@ -160,4 +190,4 @@ def zone(request, boto_client):
     )
     zone = m.Zone(root=zone_name, route53_id=zone_id, caller_reference=caller_ref)
     zone.save()
-    return zone
+    return zone, client

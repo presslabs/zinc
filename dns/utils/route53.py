@@ -102,11 +102,8 @@ class Zone(object):
         if self._aws_records:
             return
 
-        try:
-            response = client.list_resource_record_sets(HostedZoneId=self.id)
-            self._aws_records = response['ResourceRecordSets']
-        except Exception:
-            self._aws_records = []
+        response = client.list_resource_record_sets(HostedZoneId=self.id)
+        self._aws_records = response['ResourceRecordSets']
 
     def _aws_root(self):
         return '{}.'.format(self.root)
@@ -147,7 +144,7 @@ class Zone(object):
             }
         )
 
-        id = zone['HostedZone']['Id'].split('/')[2]
+        id = zone['HostedZone']['Id'] #.split('/')[2]
 
         return cls(id, root, ref)
 
