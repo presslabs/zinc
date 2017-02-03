@@ -9,6 +9,15 @@ from tests.fixtures import api_client, boto_client, zone
 from dns import models as m
 
 
+def strip_ns_and_soa(records):
+    """The NS and SOA records are managed by AWS, so we won't care about them in tests"""
+    return {
+        record_id: record
+        for record_id, record in records.items()
+        if record['name'] != '@' and record['type'] not in ('NS', 'SOA')
+    }
+
+
 @pytest.mark.django_db
 def test_create_zone(api_client, boto_client):
     root = 'example.com.presslabs.com'
@@ -50,28 +59,24 @@ def test_list_zones(api_client):
 
 
 @pytest.mark.django_db
-def test_detail_zone(api_client):
-    zone = G(m.Zone, root='1.example.com')
-    response = api_client.get('/zones/%s/' % zone.id)
-    assert response.data['root'] == zone.root
-    assert response.data['records'] == {}
-
-
-@pytest.mark.django_db
-def test_detail_zone_with_real_zone(api_client, zone):
+def test_detail_zone(api_client, zone):
+    zone, client = zone
     response = api_client.get(
         '/zones/%s/' % zone.id,
     )
-    assert response.data['records']['7Q45ew5E0vOMq'] == {
-        'values': ['1.1.1.1'],
-        'name': 'test',
-        'ttl': 300,
-        'type': 'A'
+    assert strip_ns_and_soa(response.data['records']) == {
+        '7Q45ew5E0vOMq': {
+            'values': ['1.1.1.1'],
+            'name': 'test',
+            'ttl': 300,
+            'type': 'A',
+        }
     }
 
 
 @pytest.mark.django_db
 def test_zone_patch_with_records(api_client, zone):
+    zone, client = zone
     record_hash = '7Q45ew5E0vOMq'
     response = api_client.patch(
         '/zones/%s/' % zone.id,
@@ -97,6 +102,7 @@ def test_zone_patch_with_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_update_bunch_of_records(api_client, zone):
+    zone, client = zone
     record1_hash = '7Q45ew5E0vOMq'
     record1 = {
         'values': ['2.2.2.2'],
@@ -126,6 +132,7 @@ def test_update_bunch_of_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_delete_bunch_of_records(api_client, zone):
+    zone, client = zone
     record1_hash = '7Q45ew5E0vOMq'
     record1 = {
         'values': ['2.2.2.2'],
@@ -166,6 +173,7 @@ def test_delete_bunch_of_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_delete_nonexistent_records(api_client, zone):
+    zone, client = zone
     record1_hash = '7Q45ew5E0vOMq'
     record1 = {
         'values': ['2.2.2.2'],
@@ -200,6 +208,7 @@ def test_delete_nonexistent_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_zone_delete_record(api_client, zone):
+    zone, client = zone
     record_hash = '7Q45ew5E0vOMq'
     response = api_client.patch(
         '/zones/%s/' % zone.id,
@@ -215,6 +224,7 @@ def test_zone_delete_record(api_client, zone):
 
 @pytest.mark.django_db
 def test_delete_a_zone(api_client, zone, settings):
+    zone, client = zone
     settings.CELERY_ALWAYS_EAGER = True
     response = api_client.delete(
         '/zones/%s/' % zone.id
@@ -228,6 +238,7 @@ def test_delete_a_zone(api_client, zone, settings):
 
 @pytest.mark.django_db
 def test_add_record_without_values(api_client, zone):
+    zone, client = zone
     record2_hash = 'new'
     record2 = {
         'name': 'test',
@@ -248,6 +259,7 @@ def test_add_record_without_values(api_client, zone):
 
 @pytest.mark.django_db
 def test_add_record_without_ttl(api_client, zone):
+    zone, client = zone
     record2_hash = 'new'
     record2 = {
         'name': 'something',
@@ -268,6 +280,7 @@ def test_add_record_without_ttl(api_client, zone):
 
 @pytest.mark.django_db
 def test_add_record_ttl_invalid(api_client, zone):
+    zone, client = zone
     record2_hash = 'new'
     record2 = {
         'name': 'something',
@@ -291,6 +304,7 @@ def test_add_record_ttl_invalid(api_client, zone):
 
 @pytest.mark.django_db
 def test_change_name_of_record(api_client, zone):
+    zone, client = zone
     record2_hash = '7Q45ew5E0vOMq'
     record2 = {
         'name': 'altceva',
@@ -313,6 +327,7 @@ def test_change_name_of_record(api_client, zone):
 
 @pytest.mark.django_db
 def test_change_ttl_of_record(api_client, zone):
+    zone, client = zone
     record2_hash = '7Q45ew5E0vOMq'
     record2 = {
         'name': 'test',
@@ -329,11 +344,15 @@ def test_change_ttl_of_record(api_client, zone):
         }),
         content_type='application/merge-patch+json'
     )
+    # import ipdb; ipdb.set_trace()
     assert response.data['records']['7Q45ew5E0vOMq'] == record2
+    # import ipdb; ipdb.set_trace()
+    # assert record2 in client.list_resource_record_sets(zone.route53_id)['ResourceRecordSets']
 
 
 @pytest.mark.django_db
 def test_change_type_of_record(api_client, zone):
+    zone, client = zone
     record2_hash = '7Q45ew5E0vOMq'
     record2 = {
         'name': 'altceva',
