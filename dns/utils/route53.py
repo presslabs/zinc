@@ -38,6 +38,8 @@ def generate_caller_ref():
 
 class Zone(object):
     def __init__(self, id=None, root='', caller_reference=None):
+        if id.startswith('/hostedzone/'):
+            id = id[len('/hostedzone/'):]
         self.id = id
         self.root = (root)
         self.caller_reference = caller_reference
@@ -77,6 +79,7 @@ class Zone(object):
         except ClientError as error:
             print('Error on commit({}): {}, changes: {}'.format(
                 self.root, error, self._change_batch))
+            raise
 
     def records(self, rfilter=None):
         return self._records(rfilter)
@@ -166,13 +169,21 @@ class RecordHandler(ABCMeta):
         encoded_record = {
             'Name': cls._add_root(record['name'], root),
             'Type': record['type'],
-            'ResourceRecords': [{'Value': v} for v in record.get('values', [])]
         }
+        if 'values' in record:
+            encoded_record['ResourceRecords'] = [{'Value': v} for v in record['values']]
 
         if 'ttl' in record:
             encoded_record['TTL'] = record['ttl']
 
-        for extra in ['Weight', 'Region', 'AliasTarget',
+        if 'AliasTarget' in record:
+            encoded_record['AliasTarget'] = {
+                'DNSName': cls._add_root(record['AliasTarget']['DNSName'], root),
+                'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
+                'HostedZoneId': record['AliasTarget']['HostedZoneId'],
+            }
+
+        for extra in ['Weight', 'Region', 'SetIdentifier',
                       'HealthCheckId', 'TrafficPolicyInstanceId']:
             if extra in record:
                 encoded_record[extra] = record[extra]
