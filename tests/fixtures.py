@@ -76,7 +76,6 @@ class Moto:
 
     def __init__(self):
         self._zones = {}
-        # self.response = {}
 
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
         # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
@@ -97,11 +96,8 @@ class Moto:
     @staticmethod
     def _remove_record(records, record):
         f_index = None
-        # print('to_delete', _record)
         for index, _record in enumerate(records):
-            # print('other', record)
-            if ((_record['Name'] == record['Name'])
-                and (_record['Type'] == record['Type'])):
+            if ((_record['Name'] == record['Name']) and (_record['Type'] == record['Type'])):
                 f_index = index
                 break
         else:
