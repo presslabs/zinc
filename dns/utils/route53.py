@@ -144,7 +144,7 @@ class Zone(object):
             }
         )
 
-        id = zone['HostedZone']['Id'] #.split('/')[2]
+        id = zone['HostedZone']['Id']
 
         return cls(id, root, ref)
 
