@@ -220,8 +220,7 @@ class RecordHandler(ABCMeta):
         def root_ns_soa(record, root):
             return record['Name'] == root and record['Type'] in ['NS', 'SOA']
 
-        set_id = record.get('SetIdentifier', None)
-        set_id = set_id or hashids.encode(record['Name'], record['Type'], set_id)
+        set_id = hashids.encode_record(record)
 
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
