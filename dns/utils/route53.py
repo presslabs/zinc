@@ -162,9 +162,7 @@ class RecordHandler(ABCMeta):
 
     @classmethod
     def encode(cls, record, root):
-        delete = record.get('delete', False)
-        if delete:
-            del record['delete']
+        delete = record.pop('delete', False)
 
         encoded_record = {
             'Name': cls._add_root(record['name'], root),
