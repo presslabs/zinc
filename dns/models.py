@@ -1,5 +1,4 @@
 import uuid
-from collections import OrderedDict
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -81,6 +80,9 @@ class Zone(models.Model):
 
         return super(Zone, self).save(*args, **kwargs)
 
+    def add_record(self, record):
+        self.route53_zone.add_record_changes(record, key=hashids.encode_record(record))
+
     @property
     def route53_zone(self):
         if not self._route53_instance:
@@ -119,11 +121,9 @@ class PolicyRecord(models.Model):
 
     @transaction.atomic
     def apply_record(self):
-        records = OrderedDict()
-        regions = []
 
         for policy_member in self.policy.members.all():
-            record = {
+            self.zone.add_record({
                 'name': '_{}.{}'.format(self.policy.name, policy_member.region),
                 'ttl': 30,
                 'type': 'A',
@@ -131,15 +131,12 @@ class PolicyRecord(models.Model):
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
                 # 'HealthCheckId': str(policy_member.healthcheck_id),
-            }
-            records.update({hashids.encode_record(record): record})
-
-            if policy_member.region not in regions:
-                regions.append(policy_member.region)
+            })
 
         # TODO: check for rigon for all ips down
+        regions = set([pm.region for pm in self.policy.members.all()])
         for region in regions:
-            record = {
+            self.zone.add_record({
                 'name': '_{}'.format(self.policy.name),
                 'type': 'A',
                 'AliasTarget': {
@@ -149,23 +146,19 @@ class PolicyRecord(models.Model):
                 },
                 'Region': region,
                 'SetIdentifier': region,
-            }
-            records.update({hashids.encode_record(record): record})
+            })
 
         if regions:
-            records.update({
-                'new': {
-                    'name': self.name,
-                    'type': 'A',
-                    'AliasTarget': {
-                        'HostedZoneId': self.zone.route53_zone.id,
-                        'DNSName': '_{}'.format(self.policy.name),
-                        'EvaluateTargetHealth': False
-                    }
+            self.zone.add_record({
+                'name': self.name,
+                'type': 'A',
+                'AliasTarget': {
+                    'HostedZoneId': self.zone.route53_zone.id,
+                    'DNSName': '_{}'.format(self.policy.name),
+                    'EvaluateTargetHealth': False
                 }
             })
 
-        self.zone.records = records
         self.zone.save()
         self.dirty = False
         self.save()
