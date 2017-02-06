@@ -11,6 +11,7 @@ from dns.tasks import aws_delete_zone
 from dns.utils import route53
 from dns.utils.route53 import get_local_aws_regions
 from dns.validators import validate_domain, validate_hostname
+from zinc.vendors import hashids
 
 
 class IP(models.Model):
@@ -122,37 +123,34 @@ class PolicyRecord(models.Model):
         regions = []
 
         for policy_member in self.policy.members.all():
-            records.update({
-                policy_member.id: {
-                    'name': '_{}.{}'.format(self.policy.name, policy_member.region),
-                    'ttl': 30,
-                    'type': 'A',
-                    'values': [policy_member.ip.ip],
-                    'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
-                    'Weight': policy_member.weight,
-                    # 'HealthCheckId': str(policy_member.healthcheck_id),
-                },
-            })
+            record = {
+                'name': '_{}.{}'.format(self.policy.name, policy_member.region),
+                'ttl': 30,
+                'type': 'A',
+                'values': [policy_member.ip.ip],
+                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
+                'Weight': policy_member.weight,
+                # 'HealthCheckId': str(policy_member.healthcheck_id),
+            }
+            records.update({hashids.encode_record(record): record})
 
             if policy_member.region not in regions:
                 regions.append(policy_member.region)
 
         # TODO: check for rigon for all ips down
-        # if just a single region for changing alisa type from load balancing to simple.
         for region in regions:
-            records.update({
-                region: {
-                    'name': '_{}'.format(self.policy.name),
-                    'type': 'A',
-                    'AliasTarget': {
-                        'HostedZoneId': self.zone.route53_zone.id,
-                        'DNSName': '_{}.{}'.format(self.policy.name, region),
-                        'EvaluateTargetHealth': len(regions) > 1
-                    },
-                    'Region': region,
-                    'SetIdentifier': region,
-                }
-            })
+            record = {
+                'name': '_{}'.format(self.policy.name),
+                'type': 'A',
+                'AliasTarget': {
+                    'HostedZoneId': self.zone.route53_zone.id,
+                    'DNSName': '_{}.{}'.format(self.policy.name, region),
+                    'EvaluateTargetHealth': len(regions) > 1
+                },
+                'Region': region,
+                'SetIdentifier': region,
+            }
+            records.update({hashids.encode_record(record): record})
 
         if regions:
             records.update({

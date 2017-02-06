@@ -2,7 +2,7 @@
 import pytest
 from django_dynamic_fixture import G
 
-from tests.fixtures import boto_client, zone
+from tests.fixtures import zone
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
 
@@ -134,7 +134,7 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone):
         G(m.PolicyMember, policy=policy, region=regions[1]),
     ]
 
-    policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
     policy_record.apply_record()
 
@@ -169,6 +169,53 @@ def test_policy_record_tree_within_members(zone):
             'Type': 'A'
         },
     ] + policy_members_to_list([], policy_record)
+
+    assert strip_ns_and_soa(
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    ) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_policy_record_tree_with_two_trees(zone):
+    zone, client = zone
+    policy = G(m.Policy)
+
+    regions = get_local_aws_regions()
+
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0]),
+        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0]),
+        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0]),
+        G(m.PolicyMember, policy=policy, region=regions[1]),
+    ]
+
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    policy_record2 = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
+
+    policy_record.apply_record()
+    policy_record2.apply_record()
+
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },
+    ] + policy_members_to_list(policy_members, policy_record) + [
+       {
+           'Name': ('{}.{}'.format(policy_record2.name, zone.root)
+                    if policy_record2.name != '@' else zone.root),
+           'Type': 'A',
+           'AliasTarget': {
+               'HostedZoneId': zone.route53_zone.id,
+               'DNSName': '_{}.{}'.format(policy.name, zone.root),
+               'EvaluateTargetHealth': False
+           }
+       }
+    ]
 
     assert strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
