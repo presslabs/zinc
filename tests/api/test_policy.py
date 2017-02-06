@@ -87,11 +87,11 @@ def test_policy_deletion_1(api_client):
 
 @pytest.mark.django_db
 def test_policy_deletion_2(api_client):
-    policy2 = G(m.Policy)
+    policy_to_keep = G(m.Policy)
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy)
     G(m.PolicyMember, policy=policy)
-    G(m.PolicyMember, policy=policy2)
+    member_to_keep = G(m.PolicyMember, policy=policy_to_keep)
     assert m.PolicyMember.objects.count() == 3
 
     response = api_client.delete(
@@ -100,8 +100,8 @@ def test_policy_deletion_2(api_client):
     )
 
     assert response.status_code == 200, response
-    assert m.PolicyMember.objects.count() == 1
-    assert m.Policy.objects.count() == 1
+    assert list(m.Policy.objects.all()) == [policy_to_keep]
+    assert list(m.PolicyMember.objects.all()) == [member_to_keep]
 
 
 def record_to_dict(record):
