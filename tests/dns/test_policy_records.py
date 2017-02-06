@@ -237,18 +237,18 @@ def test_policy_record_tree_with_two_trees(zone):
             'ResourceRecords': [{'Value': '1.1.1.1'}],
             'TTL': 300,
             'Type': 'A'
-        },
+        },  # this is a ordinary record. should be not modified.
+        # we expect to have the policy tree created just once.
     ] + policy_members_to_list(policy_members, policy_record) + [
        {
-           'Name': ('{}.{}'.format(policy_record2.name, zone.root)
-                    if policy_record2.name != '@' else zone.root),
+           'Name': '{}.{}'.format(policy_record2.name, zone.root),
            'Type': 'A',
            'AliasTarget': {
                'HostedZoneId': zone.route53_zone.id,
                'DNSName': '_{}.{}'.format(policy.name, zone.root),
                'EvaluateTargetHealth': False
            }
-       }
+       }  # also we need to have the cdn policy_record ALIAS to the same policy.
     ]
 
     assert strip_ns_and_soa(

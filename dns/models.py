@@ -40,6 +40,37 @@ class Policy(models.Model):
     class Meta:
         verbose_name_plural = 'policies'
 
+    @transaction.atomic
+    def apply_policy(self, zone):
+        for policy_member in self.members.all():
+            zone.add_record({
+                'name': '_{}.{}'.format(self.name, policy_member.region),
+                'ttl': 30,
+                'type': 'A',
+                'values': [policy_member.ip.ip],
+                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
+                'Weight': policy_member.weight,
+                # 'HealthCheckId': str(policy_member.healthcheck_id),
+            })
+
+        # TODO: check for rigon for all ips down
+        regions = set([pm.region for pm in self.members.all()])
+        for region in regions:
+            zone.add_record({
+                'name': '_{}'.format(self.name),
+                'type': 'A',
+                'AliasTarget': {
+                    'HostedZoneId': zone.route53_zone.id,
+                    'DNSName': '_{}.{}'.format(self.name, region),
+                    'EvaluateTargetHealth': len(regions) > 1
+                },
+                'Region': region,
+                'SetIdentifier': region,
+            })
+
+        zone.save()
+        return regions
+
 
 class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
@@ -121,34 +152,7 @@ class PolicyRecord(models.Model):
 
     @transaction.atomic
     def apply_record(self):
-
-        for policy_member in self.policy.members.all():
-            self.zone.add_record({
-                'name': '_{}.{}'.format(self.policy.name, policy_member.region),
-                'ttl': 30,
-                'type': 'A',
-                'values': [policy_member.ip.ip],
-                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
-                'Weight': policy_member.weight,
-                # 'HealthCheckId': str(policy_member.healthcheck_id),
-            })
-
-        # TODO: check for rigon for all ips down
-        regions = set([pm.region for pm in self.policy.members.all()])
-        for region in regions:
-            self.zone.add_record({
-                'name': '_{}'.format(self.policy.name),
-                'type': 'A',
-                'AliasTarget': {
-                    'HostedZoneId': self.zone.route53_zone.id,
-                    'DNSName': '_{}.{}'.format(self.policy.name, region),
-                    'EvaluateTargetHealth': len(regions) > 1
-                },
-                'Region': region,
-                'SetIdentifier': region,
-            })
-
-        if regions:
+        if self.policy.apply_policy(self.zone):
             self.zone.add_record({
                 'name': self.name,
                 'type': 'A',
