@@ -372,3 +372,59 @@ def test_change_type_of_record(api_client, zone):
     )
     assert response.data['records']['nBl2zBJW83zVP'] == record2
     assert record2_hash not in response.data['records']
+
+
+@pytest.mark.django_db
+def test_hidden_records(api_client, zone):
+    zone, client = zone
+    zone.add_record({
+        'name': '{}_ceva'.format(m.RECORD_PREFIX),
+        'ttl': 300,
+        'type': 'A',
+        'valuse': ['1.2.3.4']
+    })
+    zone.save()
+    response = api_client.get(
+        '/zones/%s/' % zone.id,
+    )
+    assert strip_ns_and_soa(response.data['records']) == {
+        '7Q45ew5E0vOMq': {
+            'values': ['1.1.1.1'],
+            'name': 'test',
+            'ttl': 300,
+            'type': 'A',
+        }
+    }
+
+
+@pytest.mark.django_db
+def test_alias_records(api_client, zone):
+    zone, client = zone
+    zone.add_record({
+        'name': 'ceva',
+        'ttl': 300,
+        'type': 'A',
+        'AliasTarget': {
+            'HostedZoneId': zone.route53_zone.id,
+            'DNSName': 'test',
+            'EvaluateTargetHealth': False
+        }
+    })
+    zone.save()
+    response = api_client.get(
+        '/zones/%s/' % zone.id,
+    )
+    assert strip_ns_and_soa(response.data['records']) == {
+        '7Q45ew5E0vOMq': {
+            'values': ['1.1.1.1'],
+            'name': 'test',
+            'ttl': 300,
+            'type': 'A',
+        },
+        '1PmO1g16yxgGJ': {
+            'name': 'ceva',
+            'ttl': 300,
+            'type': 'A',
+            'values': ['ALIAS test.test-zinc.net.']
+        }
+    }

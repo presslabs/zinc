@@ -1,16 +1,11 @@
-import json
-from django.conf import settings
-from rest_framework.generics import (CreateAPIView, ListAPIView, ListCreateAPIView,
-                                     RetrieveAPIView, RetrieveUpdateAPIView,
-                                     RetrieveUpdateDestroyAPIView)
+from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
+                                     RetrieveAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework import viewsets
 
 from dns import models
 from dns.parsers import JSONMergePatchParser
 from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
                              ZoneDetailSerializer, ZoneListSerializer)
-from dns.utils import route53
-from dns.utils.generic import dict_key_intersection
 
 
 class ZoneList(ListCreateAPIView):

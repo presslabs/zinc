@@ -13,6 +13,9 @@ from dns.validators import validate_domain, validate_hostname
 from zinc.vendors import hashids
 
 
+RECORD_PREFIX = '_zn'
+
+
 class IP(models.Model):
     ip = models.GenericIPAddressField(
         primary_key=True,
@@ -44,7 +47,7 @@ class Policy(models.Model):
     def apply_policy(self, zone):
         for policy_member in self.members.all():
             zone.add_record({
-                'name': '_{}.{}'.format(self.name, policy_member.region),
+                'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'ttl': 30,
                 'type': 'A',
                 'values': [policy_member.ip.ip],
@@ -57,11 +60,11 @@ class Policy(models.Model):
         regions = set([pm.region for pm in self.members.all()])
         for region in regions:
             zone.add_record({
-                'name': '_{}'.format(self.name),
+                'name': '{}_{}'.format(RECORD_PREFIX, self.name),
                 'type': 'A',
                 'AliasTarget': {
                     'HostedZoneId': zone.route53_zone.id,
-                    'DNSName': '_{}.{}'.format(self.name, region),
+                    'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.name, region),
                     'EvaluateTargetHealth': len(regions) > 1
                 },
                 'Region': region,
@@ -158,7 +161,7 @@ class PolicyRecord(models.Model):
                 'type': 'A',
                 'AliasTarget': {
                     'HostedZoneId': self.zone.route53_zone.id,
-                    'DNSName': '_{}'.format(self.policy.name),
+                    'DNSName': '{}_{}'.format(RECORD_PREFIX, self.policy.name),
                     'EvaluateTargetHealth': False
                 }
             })

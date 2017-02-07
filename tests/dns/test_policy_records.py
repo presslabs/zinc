@@ -29,10 +29,10 @@ def policy_members_to_list(policy_members, policy_record):
     regions = set([pm.region for pm in policy_members])
     records_for_regions = [
         {
-            'Name': '_{}.test-zinc.net.'.format(policy.name),
+            'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
             'Type': 'A',
             'AliasTarget': {
-                'DNSName': '_{}.{}.test-zinc.net.'.format(policy.name, region),
+                'DNSName': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name, region),
                 'EvaluateTargetHealth': len(regions) > 1,
                 'HostedZoneId': zone.route53_zone.id
             },
@@ -41,7 +41,8 @@ def policy_members_to_list(policy_members, policy_record):
         } for region in regions]
     records_for_policy_members = [
         {
-            'Name': '_{}.{}.test-zinc.net.'.format(policy.name, policy_member.region),
+            'Name': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
+                                                     policy_member.region),
             'Type': 'A',
             'ResourceRecords': [{'Value': policy_member.ip.ip}],
             'TTL': 30,
@@ -56,7 +57,7 @@ def policy_members_to_list(policy_members, policy_record):
                 'Type': 'A',
                 'AliasTarget': {
                     'HostedZoneId': zone.route53_zone.id,
-                    'DNSName': '_{}.{}'.format(policy.name, zone.root),
+                    'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
                     'EvaluateTargetHealth': False
                 }
             }
@@ -78,17 +79,17 @@ def test_policy_member_to_list_helper():
     assert result == [
         {
             'AliasTarget': {
-                'DNSName': '_%s.%s.test-zinc.net.' % (policy.name, region),
+                'DNSName': '_zn_%s.%s.test-zinc.net.' % (policy.name, region),
                 'EvaluateTargetHealth': False,
                 'HostedZoneId': zone.route53_id
             },
-            'Name': '_%s.test-zinc.net.' % policy.name,
+            'Name': '_zn_%s.test-zinc.net.' % policy.name,
             'Region': region,
             'SetIdentifier': region,
             'Type': 'A'
         },
         {
-            'Name': '_%s.%s.test-zinc.net.' % (policy.name, region),
+            'Name': '_zn_%s.%s.test-zinc.net.' % (policy.name, region),
             'ResourceRecords': [{'Value': policy_members[0].ip.ip}],
             'SetIdentifier': '%s-%s' % (policy_members[0].id, region),
             'TTL': 30,
@@ -97,7 +98,7 @@ def test_policy_member_to_list_helper():
         },
         {
             'AliasTarget': {
-                'DNSName': '_%s.%s' % (policy.name, zone.root),
+                'DNSName': '_zn_%s.%s' % (policy.name, zone.root),
                 'EvaluateTargetHealth': False,
                 'HostedZoneId': 'Fake'
             },
@@ -245,7 +246,7 @@ def test_policy_record_tree_with_two_trees(zone):
            'Type': 'A',
            'AliasTarget': {
                'HostedZoneId': zone.route53_zone.id,
-               'DNSName': '_{}.{}'.format(policy.name, zone.root),
+               'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
                'EvaluateTargetHealth': False
            }
        }  # also we need to have the cdn policy_record ALIAS to the same policy.
