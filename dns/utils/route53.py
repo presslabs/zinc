@@ -189,19 +189,23 @@ class RecordHandler:
 
     @classmethod
     def decode(cls, record, root, route53_id):
-
-        """
-        Determine if a R53 DNS record is of type ALIAS
-        """
+        # Determine if a R53 DNS record is of type ALIAS
         def alias_record(record):
             return 'AliasTarget' in record.keys()
 
-        """
-        Determine if a record is the NS or SOA record of the root domain
-        """
+        # Determine if a R53 DNS record is actually a policy record
+        def policy_record(record, route53_id):
+            PolicyRecord = apps.get_model(app_label='dns', model_name='PolicyRecord')
+            return PolicyRecord.objects.filter(
+                name=cls._strip_root(record['Name'], root),
+                zone__route53_id=route53_id
+            ).exists()
+
+        # Determine if a record is the NS or SOA record of the root domain
         def root_ns_soa(record, root):
             return record['Name'] == root and record['Type'] in ['NS', 'SOA']
 
+        set_id = hashids.encode_record(record)
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
             'type': record['Type'],
