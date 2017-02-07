@@ -151,7 +151,7 @@ class Zone(object):
         return cls(id, root, ref)
 
 
-class RecordHandler(ABCMeta):
+class RecordHandler:
     @classmethod
     def _add_root(cls, name, root):
         return root if name == '@' else '{}.{}'.format(name, root)
