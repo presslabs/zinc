@@ -1,7 +1,7 @@
 from rest_framework.serializers import (HyperlinkedModelSerializer, ValidationError)
 from rest_framework.fields import DictField
 
-from dns.models import Zone, RECORD_PREFIX
+from dns.models import Zone, RECORD_PREFIX, PolicyRecord
 from dns.serializers import RecordSerializer
 from dns.utils import route53
 
