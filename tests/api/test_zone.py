@@ -381,7 +381,7 @@ def test_hidden_records(api_client, zone):
         'name': '{}_ceva'.format(m.RECORD_PREFIX),
         'ttl': 300,
         'type': 'A',
-        'valuse': ['1.2.3.4']
+        'values': ['1.2.3.4']
     })
     zone.save()
     response = api_client.get(
@@ -402,13 +402,12 @@ def test_alias_records(api_client, zone):
     zone, client = zone
     zone.add_record({
         'name': 'ceva',
-        'ttl': 300,
         'type': 'A',
         'AliasTarget': {
             'HostedZoneId': zone.route53_zone.id,
             'DNSName': 'test',
             'EvaluateTargetHealth': False
-        }
+        },
     })
     zone.save()
     response = api_client.get(
@@ -423,7 +422,6 @@ def test_alias_records(api_client, zone):
         },
         '1PmO1g16yxgGJ': {
             'name': 'ceva',
-            'ttl': 300,
             'type': 'A',
             'values': ['ALIAS test.test-zinc.net.']
         }

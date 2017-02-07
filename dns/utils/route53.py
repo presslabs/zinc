@@ -200,9 +200,9 @@ class RecordHandler:
         def policy_record(record):
             PolicyRecord = apps.get_model(app_label='dns', model_name='PolicyRecord')
             return PolicyRecord.objects.filter(
-                                            name=cls._strip_root(record['Name'], root),
-                                            zone__route53_id=route53_id
-                                        ).exists()
+                name=cls._strip_root(record['Name'], root),
+                zone__route53_id=route53_id
+            ).exists()
 
         """
         Determine if a record is the NS or SOA record of the root domain
@@ -214,7 +214,8 @@ class RecordHandler:
 
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
-            'type': record['Type'],
+            'type': ('POLICY_ROUTED' if alias_record(record) and
+                     policy_record(record) else record['Type']),
             'managed': (
                 (record.get('SetIdentifier', False) and True) or
                 root_ns_soa(record, root) or (alias_record(record))
