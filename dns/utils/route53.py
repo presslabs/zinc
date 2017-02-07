@@ -1,13 +1,12 @@
-import uuid
-import boto3
 import datetime
-from abc import ABCMeta
+import uuid
 
-from botocore.exceptions import ClientError
+import boto3
 from boto3.session import Session
+from botocore.exceptions import ClientError
+from django.apps import apps
 from django.conf import settings
 
-from django.apps import apps
 from zinc.vendors import hashids
 
 AWS_KEY = getattr(settings, 'AWS_KEY', '')
