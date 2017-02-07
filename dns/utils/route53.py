@@ -161,8 +161,6 @@ class RecordHandler:
 
     @classmethod
     def encode(cls, record, root):
-        delete = record.pop('delete', False)
-
         encoded_record = {
             'Name': cls._add_root(record['name'], root),
             'Type': record['type'],
@@ -189,11 +187,6 @@ class RecordHandler:
 
     @classmethod
     def decode(cls, record, root, route53_id):
-        """
-        Hide all '_policy' records
-        """
-        if record['Name'].startswith('_policy'):
-            return None
 
         """
         Determine if a R53 DNS record is of type ALIAS
@@ -204,7 +197,7 @@ class RecordHandler:
         """
         Determine if a R53 DNS record is actually a policy record
         """
-        def policy_record(record, route53_id):
+        def policy_record(record):
             PolicyRecord = apps.get_model(app_label='dns', model_name='PolicyRecord')
             return PolicyRecord.objects.filter(
                                             name=cls._strip_root(record['Name'], root),
@@ -221,21 +214,22 @@ class RecordHandler:
 
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
-            'type': 'POLICY_ROUTED' if policy_record(record, route53_id) else record['Type'],
+            'type': record['Type'],
             'managed': (
                 (record.get('SetIdentifier', False) and True) or
-                root_ns_soa(record, root) or
-                (alias_record(record) and not policy_record(record, route53_id))
+                root_ns_soa(record, root) or (alias_record(record))
             ),
             'set_id': set_id
         }
+
+        if 'TTL' in record:
+            decoded_record['ttl'] = record['TTL']
 
         if decoded_record['type'] != 'POLICY_ROUTED':
             if alias_record(record):
                 decoded_record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
             else:
-                decoded_record['values'] = [r['Value'] for r in record.get('ResourceRecords', [])]
-                if 'TTL' in record:
-                    decoded_record['ttl'] = record['TTL']
+                decoded_record['values'] = [value['Value'] for value in
+                                            record.get('ResourceRecords', [])]
 
         return decoded_record
