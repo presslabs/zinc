@@ -3,8 +3,10 @@ from django.conf import settings
 from rest_framework.fields import (BooleanField, CharField, ChoiceField,
                                    IntegerField, ListField)
 from rest_framework.serializers import Serializer
+from rest_framework.exceptions import ValidationError
 
 from dns.exceptions import UnprocessableEntity
+from dns.models import RECORD_PREFIX
 
 HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)
 
@@ -37,6 +39,12 @@ class RecordSerializer(Serializer):
     def run_validation(self, data):
         if data.get('managed', False):
             raise UnprocessableEntity('Record {key} is managed.'.format(key=data['set_id']))
+
+        if data.get('name', '').startswith(RECORD_PREFIX):
+            raise ValidationError(
+                ('Record {} can\'t start with {}. '
+                 'It\'s a reserved prefix.').format(data['name'], RECORD_PREFIX)
+            )
         return super(RecordSerializer, self).run_validation(data)
 
     def to_internal_value(self, data):

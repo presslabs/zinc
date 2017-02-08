@@ -426,3 +426,28 @@ def test_alias_records(api_client, zone):
             'values': ['ALIAS test.test-zinc.net.']
         }
     }
+
+
+@pytest.mark.django_db
+def test_validation_prefix(api_client, zone):
+    zone, _ = zone
+    response = api_client.post(
+        '/zones/%s/' % zone.id,
+        data=json.dumps({
+            'records': {
+                'new': {
+                    'name': '_zn_something',
+                    'ttl': 300,
+                    'type': 'CNAME',
+                    'values': ['www.google.com']
+                }
+            }
+        }),
+        content_type='application/merge-patch+json'
+    )
+
+    assert response.data == {
+        'records': [
+            'Record _zn_something can\'t start with _zn. It\'s a reserved prefix.'
+        ]
+    }
