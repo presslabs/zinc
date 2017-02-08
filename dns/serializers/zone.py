@@ -26,19 +26,8 @@ class ZoneListSerializer(HyperlinkedModelSerializer):
                                    **validated_data)
 
 
-class RecordsDictField(DictField):
-    child = RecordSerializer(partial=True)
-
-    def to_representation(self, records):
-        filtered_records = {
-            key: record for key, record in records.items()
-            if not record['name'].startswith(RECORD_PREFIX)
-        }
-        return super(RecordsDictField, self).to_representation(filtered_records)
-
-
 class ZoneDetailSerializer(HyperlinkedModelSerializer):
-    records = RecordsDictField()
+    records = DictField(child=RecordSerializer(partial=True))
 
     class Meta:
         model = Zone
@@ -62,3 +51,6 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
         instance.records = validated_records
         instance.save()
         return instance
+
+    def to_representation(self, values):
+        return super(ZoneDetailSerializer, self).to_representation(values)

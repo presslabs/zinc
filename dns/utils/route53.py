@@ -214,8 +214,7 @@ class RecordHandler:
 
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
-            'type': ('POLICY_ROUTED' if alias_record(record) and
-                     policy_record(record) else record['Type']),
+            'type': record['Type'],
             'managed': (
                 (record.get('SetIdentifier', False) and True) or
                 root_ns_soa(record, root) or (alias_record(record))

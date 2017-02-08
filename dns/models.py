@@ -117,6 +117,9 @@ class Zone(models.Model):
     def add_record(self, record):
         self.route53_zone.add_record_changes(record, key=hashids.encode_record(record))
 
+    def get_policies(self):
+        return self.policy_records.all()
+
     @property
     def route53_zone(self):
         if not self._route53_instance:
@@ -126,10 +129,37 @@ class Zone(models.Model):
 
     @property
     def records(self):
-        return self.route53_zone.records()
+        records = self.route53_zone.records()
+        filtered_records = {}
+
+        # Hide all records that starts with the RECORD_PREFIX.
+        # Translate policy records.
+        for record_hash, record in records.items():
+            if record['name'].startswith(RECORD_PREFIX):
+                continue
+            if ('ALIAS' in record['values'][0] and
+                self.policy_records.filter(name=record['name']).exists()):
+                record['type'] = 'POLICY_ROUTED'
+                record['values'] = [str(self.policy_records.filter(name=record['name']).first().policy.id)]
+            filtered_records.update({record_hash: record})
+
+        return filtered_records
 
     @records.setter
     def records(self, records):
+        excluded_hashes = []
+        for record_hash, record in records.items():
+            if record['type'] == 'POLICY_ROUTED':
+                policy = Policy.objects.get(id=record['values'][0])
+                policy_record = PolicyRecord(name=record['name'], policy=policy,
+                                             zone=self)
+                policy_record.save()
+                policy_record.apply_record()
+                excluded_hashes.append(record_hash)
+
+        for h in excluded_hashes:
+            del records[h]
+
         self.route53_zone.add_records(records)
 
     def __str__(self):
@@ -145,10 +175,13 @@ def aws_delete(instance, **kwargs):
 
 class PolicyRecord(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     policy = models.ForeignKey(Policy)
     dirty = models.BooleanField(default=True, editable=False)
     zone = models.ForeignKey(Zone, related_name='policy_records')
+
+    class Meta:
+        unique_together = ('name', 'zone')
 
     def __str__(self):
         return '{} {} {}'.format(self.name, self.policy, self.zone)
