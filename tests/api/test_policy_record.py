@@ -26,11 +26,8 @@ regions = get_local_aws_regions()
 def test_policy_record_get(api_client, zone):
     zone, _ = zone
     policy = G(m.Policy)
-
     G(m.PolicyMember, policy=policy, region=regions[0])
-
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-
     policy_record.apply_record()
 
     response = api_client.get(
@@ -46,22 +43,17 @@ def test_policy_record_get(api_client, zone):
         },
         '0vl125rRM4wzJ': {
             'name': '@',
-            'type': 'POLICY_ROUTED'
+            'type': 'POLICY_ROUTED',
+            'values': [str(policy.id)]
         },
     }
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail
-def test_policy_record_post(api_client, zone):
+def test_policy_record_create(api_client, zone):
     zone, _ = zone
     policy = G(m.Policy)
-
     G(m.PolicyMember, policy=policy, region=regions[0])
-
-    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-
-    policy_record.apply_record()
 
     response = api_client.patch(
         '/zones/%s/' % zone.id,
@@ -70,7 +62,8 @@ def test_policy_record_post(api_client, zone):
                 'new': {
                     'name': '@',
                     'type': 'POLICY_ROUTED',
-                    'values': str(policy.id)  # TODO: implement this.
+                    'values': [str(policy.id)],
+                    'ttl': 300,
                 }
             }
         }),
@@ -87,6 +80,6 @@ def test_policy_record_post(api_client, zone):
         '0vl125rRM4wzJ': {
             'name': '@',
             'type': 'POLICY_ROUTED',
-            'values': policy.id
+            'values': [str(policy.id)]
         },
     }
