@@ -5,6 +5,8 @@ from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import SuspiciousOperation
 
 from dns.tasks import aws_delete_zone
 from dns.utils import route53
@@ -117,8 +119,21 @@ class Zone(models.Model):
     def add_record(self, record):
         self.route53_zone.add_record_changes(record, key=hashids.encode_record(record))
 
-    def get_policies(self):
-        return self.policy_records.all()
+    def get_policy_records(self):
+        records = {}
+        for policy_record in self.policy_records.all():
+            record = {
+                'name': policy_record.name,
+                'type': 'POLICY_ROUTED',
+                'values': [str(policy_record.policy.id)],
+                'set_id': str(policy_record.id),
+                'dirty': policy_record.dirty,
+            }
+            if policy_record.deleted:
+                record.update({'delete': True})
+            records.update({str(policy_record.id): record})
+
+        return records
 
     @property
     def route53_zone(self):
@@ -137,10 +152,12 @@ class Zone(models.Model):
         for record_hash, record in records.items():
             if record['name'].startswith(RECORD_PREFIX):
                 continue
-            if ('ALIAS' in record['values'][0] and
-                self.policy_records.filter(name=record['name']).exists()):
-                record['type'] = 'POLICY_ROUTED'
-                record['values'] = [str(self.policy_records.filter(name=record['name']).first().policy.id)]
+            if ('ALIAS' in record['values'][0] and self.policy_records.filter(
+                    name=record['name']).exists()):
+                continue
+            filtered_records.update({record_hash: record})
+
+        for record_hash, record in self.get_policy_records().items():
             filtered_records.update({record_hash: record})
 
         return filtered_records
@@ -150,11 +167,23 @@ class Zone(models.Model):
         excluded_hashes = []
         for record_hash, record in records.items():
             if record['type'] == 'POLICY_ROUTED':
-                policy = Policy.objects.get(id=record['values'][0])
-                policy_record = PolicyRecord(name=record['name'], policy=policy,
-                                             zone=self)
+                try:
+                    policy = Policy.objects.get(id=record['values'][0])
+                except Policy.DoesNotExist:
+                    # Return 400
+                    raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
+                        record['values'][0]))
+                try:
+                    policy_record = self.policy_records.get(name=record['name'])
+                    if record.get('delete', False):
+                        policy_record.deleted = True
+                    else:
+                        policy_record.policy = policy
+                    policy_record.dirty = True
+                except PolicyRecord.DoesNotExist:
+                    policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
+
                 policy_record.save()
-                policy_record.apply_record()
                 excluded_hashes.append(record_hash)
 
         for h in excluded_hashes:
@@ -179,6 +208,7 @@ class PolicyRecord(models.Model):
     policy = models.ForeignKey(Policy)
     dirty = models.BooleanField(default=True, editable=False)
     zone = models.ForeignKey(Zone, related_name='policy_records')
+    deleted = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('name', 'zone')
@@ -188,6 +218,9 @@ class PolicyRecord(models.Model):
 
     @transaction.atomic
     def apply_record(self):
+        if self.deleted:
+            return
+
         if self.policy.apply_policy(self.zone):
             self.zone.add_record({
                 'name': self.name,
@@ -196,9 +229,13 @@ class PolicyRecord(models.Model):
                     'HostedZoneId': self.zone.route53_zone.id,
                     'DNSName': '{}_{}'.format(RECORD_PREFIX, self.policy.name),
                     'EvaluateTargetHealth': False
-                }
+                },
             })
 
         self.zone.save()
         self.dirty = False
         self.save()
+
+    def delete_record(self):
+        # TODO: implement record deletion
+        pass

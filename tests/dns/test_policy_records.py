@@ -59,7 +59,7 @@ def policy_members_to_list(policy_members, policy_record):
                     'HostedZoneId': zone.route53_zone.id,
                     'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
                     'EvaluateTargetHealth': False
-                }
+                },
             }
         ] if len(regions) >= 1 else []
 
@@ -103,7 +103,7 @@ def test_policy_member_to_list_helper():
                 'HostedZoneId': 'Fake'
             },
             'Name': '%s.%s' % (policy_record.name, zone.root),
-            'Type': 'A'
+            'Type': 'A',
         }
     ]
 
@@ -248,7 +248,7 @@ def test_policy_record_tree_with_two_trees(zone):
                'HostedZoneId': zone.route53_zone.id,
                'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
                'EvaluateTargetHealth': False
-           }
+           },
        }  # also we need to have the cdn policy_record ALIAS to the same policy.
     ]
 
