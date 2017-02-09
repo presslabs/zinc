@@ -237,3 +237,83 @@ class RecordHandler:
         decoded_record['set_id'] = set_id
 
         return decoded_record
+
+
+class HealthCheck:
+    def __init__(self, ip):
+        self.ip = ip
+        self._aws_data = None
+
+    @property
+    def id(self):
+        self._load()
+        return self._aws_data.get('Id')
+
+    @property
+    def caller_reference(self):
+        self._load()
+        return self._aws_data.get('CallerReference')
+
+    def _load(self):
+        if self._aws_data is not None:
+            return
+        if self.ip.healthcheck_id is not None:
+            try:
+                self._aws_data = client.get_health_check(HealthCheckId=self.ip.healthcheck_id)\
+                                 .get('HealthCheck')
+            except ClientError as exception:
+                if exception.response['Error']['Code'] != 'NoSuchHealthCheck':
+                    raise  # re-raise any error, we only handle non-existant health checks
+
+    @property
+    def desired_config(self):
+        return {
+            'IPAddress': self.ip.ip,
+            'Port': 80,
+            'Type': 'HTTP',
+            'ResourcePath': '/status',
+            'FullyQualifiedDomainName': 'node.presslabs.net.',
+        }
+
+    @property
+    def config(self):
+        self._load()
+        return self._aws_data.get('HealthCheckConfig')
+
+    def create(self):
+        if self.ip.healthcheck_caller_reference is None:
+            self.ip.healthcheck_caller_reference = uuid.uuid4()
+            self.ip.save()
+        resp = client.create_health_check(
+            CallerReference=str(self.ip.healthcheck_caller_reference),
+            HealthCheckConfig=self.desired_config
+        )
+        self.ip.healthcheck_id = resp['HealthCheck']['Id']
+        self.ip.save()
+
+    def delete(self):
+        client.delete_health_check(HealthCheckId=self.id)
+        self.ip.healthcheck_id = None
+        self.ip.healthcheck_caller_reference = None
+        self.ip.save()
+
+    @property
+    def exists(self):
+        self._load()
+        return self._aws_data is not None
+
+    def reconcile(self):
+        if self.exists:
+            # if the desired config is not a subset of the current config
+            if not self.desired_config.items() <= self.config.items():
+                self.delete()
+                self.create()
+        else:
+            self.ip.healthcheck_caller_reference = None
+            self.create()
+
+    @classmethod
+    def reconcile_for_ips(cls, ips):
+        checks = [cls(ip) for ip in ips]
+        for check in checks:
+            check.reconcile()

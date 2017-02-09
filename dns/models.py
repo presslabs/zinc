@@ -26,12 +26,17 @@ class IP(models.Model):
     )
     hostname = models.CharField(max_length=64, validators=[validate_hostname])
     friendly_name = models.TextField(blank=True)
-
     enabled = models.BooleanField(default=True)
+    healthcheck_id = models.CharField(max_length=200, blank=True, null=True)
+    healthcheck_caller_reference = models.UUIDField(null=True)
+
+    def save(self, *a, **kwa):
+        if self.friendly_name == "":
+            self.friendly_name = self.hostname.split(".", 1)[0]
+        super().save(*a, **kwa)
 
     def __str__(self):
         value = self.friendly_name or self.hostname
-
         return '{} {}'.format(self.ip, value)
 
 

@@ -4,7 +4,7 @@ import string
 from copy import deepcopy
 from datetime import datetime
 
-import botocore
+import botocore.exceptions
 import pytest
 from mock import patch
 
@@ -20,10 +20,11 @@ def random_ascii(length):
 
 
 class CleanupClient:
-    """Wraps real boto3 client and tracks zone creation, so it can clean up at the end"""
+    """Wraps real boto client and tracks zone and healthcheck creation, so it can clean up at the end"""
     def __init__(self, client):
         self._client = client
         self._zones = {}
+        self._health_checks = {}
 
     def __getattr__(self, attr_name):
         return getattr(self._client, attr_name)
@@ -35,6 +36,22 @@ class CleanupClient:
         resp = self._client.create_hosted_zone(**kwa)
         zone_id = resp['HostedZone']['Id']
         self._zones[zone_id] = resp['HostedZone']['Name']
+        return resp
+
+    def delete_hosted_zone(self, Id, **kwa):
+        resp = self._client.delete_hosted_zone(Id=Id, **kwa)
+        self._zones.pop(Id)
+        return resp
+
+    def create_health_check(self, **kwa):
+        resp = self._client.create_health_check(**kwa)
+        check_id = resp['HealthCheck']['Id']
+        self._health_checks[check_id] = resp['HealthCheck']
+        return resp
+
+    def delete_health_check(self, HealthCheckId, **kwa):
+        resp = self._client.delete_health_check(HealthCheckId=HealthCheckId, **kwa)
+        self._health_checks.pop(HealthCheckId)
         return resp
 
     def _cleanup_hosted_zones(self):
@@ -65,6 +82,17 @@ class CleanupClient:
                 print("Failed to delete", zone_id, excp.response['Error'])
             del self._zones[zone_id]
 
+    def _cleanup_health_checks(self):
+        for healthcheck_id in self._health_checks.keys():
+            try:
+                self._client.delete_health_check(HealthCheckId=healthcheck_id)
+            except botocore.exceptions.ClientError as excp:
+                print("Failed to delete healthcheck", excp.response['Error'])
+
+    def cleanup(self):
+        self._cleanup_hosted_zones()
+        self._cleanup_health_checks()
+
 
 @pytest.fixture
 def api_client():
@@ -76,6 +104,7 @@ class Moto:
 
     def __init__(self):
         self._zones = {}
+        self._health_checks = {}
 
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
         # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
@@ -87,11 +116,32 @@ class Moto:
             }
         }
 
-    def _cleanup_hosted_zones(self):
+    def create_health_check(self, CallerReference, HealthCheckConfig):
+        check_id = random_ascii(8)
+        check = {
+            'HealthCheck': {
+                'Id': check_id,
+                'HealthCheckConfig': HealthCheckConfig,
+            }
+        }
+        self._health_checks[check_id] = check
+        return check
+
+    def get_health_check(self, HealthCheckId):
+        try:
+            return self._health_checks[HealthCheckId]
+        except KeyError:
+            raise botocore.exceptions.ClientError()
+
+    def cleanup(self):
         self._zones = {}
+        self._health_checks = {}
 
     def delete_hosted_zone(self, Id):
         self._zones.pop(Id)
+
+    def delete_health_check(self, HealthCheckId):
+        self._health_checks.pop(HealthCheckId)
 
     @staticmethod
     def _remove_record(records, record):
@@ -141,7 +191,7 @@ def boto_client(request):
 
     def cleanup():
         patcher.stop()
-        client._cleanup_hosted_zones()
+        client.cleanup()
     request.addfinalizer(cleanup)
     return client
 
