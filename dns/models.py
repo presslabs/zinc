@@ -30,12 +30,13 @@ class IP(models.Model):
     healthcheck_id = models.CharField(max_length=200, blank=True, null=True)
     healthcheck_caller_reference = models.UUIDField(null=True)
 
-    def save(self, update_r53=True, *a, **kwa):
+    def save(self, *a, **kwa):
         if self.friendly_name == "":
             self.friendly_name = self.hostname.split(".", 1)[0]
         super().save(*a, **kwa)
-        if update_r53:
-            healthcheck = HealthCheck(self).reconcile()
+
+    def reconcile_healthcheck(self):
+        healthcheck = HealthCheck(self).reconcile()
 
     def __str__(self):
         value = self.friendly_name or self.hostname

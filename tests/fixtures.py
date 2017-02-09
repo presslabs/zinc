@@ -133,7 +133,17 @@ class Moto:
         try:
             return self._health_checks[HealthCheckId]
         except KeyError:
-            raise botocore.exceptions.ClientError()
+            raise botocore.exceptions.ClientError(
+                error_response={
+                    'Error': {
+                        'Code': 'NoSuchHealthCheck',
+                        'Message': ('A health check with id 9d7e44c2-72b9-42f2-b771-9216deb26ca1 '
+                                    'does not exist.'),
+                        'Type': 'Sender'
+                    },
+                },
+                operation_name='get_health_check',
+            )
 
     def cleanup(self):
         self._zones = {}
