@@ -20,7 +20,9 @@ def random_ascii(length):
 
 
 class CleanupClient:
-    """Wraps real boto client and tracks zone and healthcheck creation, so it can clean up at the end"""
+    """
+    Wraps real boto client and tracks zone and healthcheck creation, so it can clean up at the end
+    """
     def __init__(self, client):
         self._client = client
         self._zones = {}
