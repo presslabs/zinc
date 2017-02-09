@@ -283,19 +283,19 @@ class HealthCheck:
     def create(self):
         if self.ip.healthcheck_caller_reference is None:
             self.ip.healthcheck_caller_reference = uuid.uuid4()
-            self.ip.save()
+            self.ip.save(update_r53=False)
         resp = client.create_health_check(
             CallerReference=str(self.ip.healthcheck_caller_reference),
             HealthCheckConfig=self.desired_config
         )
         self.ip.healthcheck_id = resp['HealthCheck']['Id']
-        self.ip.save()
+        self.ip.save(update_r53=False)
 
     def delete(self):
         client.delete_health_check(HealthCheckId=self.id)
         self.ip.healthcheck_id = None
         self.ip.healthcheck_caller_reference = None
-        self.ip.save()
+        self.ip.save(update_r53=False)
 
     @property
     def exists(self):

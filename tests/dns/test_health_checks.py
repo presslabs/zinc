@@ -15,7 +15,6 @@ def test_health_check_create(boto_client):
         ip='1.2.3.4',
         hostname='fe01-mordor.presslabs.net.',
     )
-    route53.HealthCheck.reconcile_for_ips(m.IP.objects.all())
     ip = R(ip)
     expected_config = {
         'IPAddress': ip.ip,
@@ -38,7 +37,6 @@ def test_health_check_change(boto_client):
         ip='1.2.3.4',
         hostname='fe01-mordor.presslabs.net.',
     )
-    route53.HealthCheck.reconcile_for_ips(m.IP.objects.all())
     ip = R(ip)
     expected_config = {
         'IPAddress': ip.ip,
@@ -51,7 +49,6 @@ def test_health_check_change(boto_client):
     assert resp['HealthCheckConfig'].items() >= expected_config.items()
     ip.ip = '1.1.1.1'
     ip.save()
-    route53.HealthCheck.reconcile_for_ips(m.IP.objects.all())
     ip = R(ip)
     assert ip.healthcheck_id is not None
     expected_config['IPAddress'] = ip.ip
