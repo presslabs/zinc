@@ -9,6 +9,7 @@ from dns.utils import route53
 from tests.fixtures import boto_client, zone
 from tests.helpers import re_fetch as R
 
+
 @pytest.mark.django_db
 def test_health_check_create(boto_client):
     ip = m.IP.objects.create(
@@ -47,7 +48,7 @@ def test_health_check_change(boto_client):
     }
     resp = boto_client.get_health_check(HealthCheckId=ip.healthcheck_id)['HealthCheck']
     assert resp['HealthCheckConfig'].items() >= expected_config.items()
-    
+
     ip.ip = '1.1.1.1'  # change the ip
     ip.save()
     ip = R(ip)
