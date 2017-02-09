@@ -278,7 +278,9 @@ def test_add_record_without_ttl(api_client, zone):
         }),
         content_type='application/merge-patch+json'
     )
-    assert response.data['records'] == {'ttl': ['This field is required.']}
+    assert response.data['records'] == {
+        'non_field_errors': ["Field 'ttl' is required. If record type is not POLICY_REOCRD."]
+    }
 
 
 @pytest.mark.django_db

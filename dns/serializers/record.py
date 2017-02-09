@@ -19,7 +19,7 @@ class RecordSerializer(Serializer):
 
     name = CharField(max_length=255)
     type = ChoiceField(choices=[(type, type) for type in RECORD_TYPES])
-    ttl = IntegerField(allow_null=True, min_value=300, required=True)
+    ttl = IntegerField(allow_null=True, min_value=300, required=False)
     values = ListField(child=CharField(), required=True)
     set_id = CharField(min_length=HASHIDS_MIN_LENGTH, required=False)
     managed = BooleanField(default=False, read_only=True)
@@ -49,21 +49,29 @@ class RecordSerializer(Serializer):
 
     def to_internal_value(self, data):
         if data.get('delete', False):
-            data = OrderedDict({
-                'delete': data['delete'],
-                'name': data['name'],
-                'set_id': data['set_id'],
-                'type': data['type'],
-                'values': data['values'],
-                'ttl': data['ttl']
-            })
+            data = OrderedDict(data)
         else:
             data = super(RecordSerializer, self).to_internal_value(data)
 
         return data
 
     def to_representation(self, value):
+        visible_fields = self.visible_fields
+        if value['type'] == 'POLICY_ROUTED':
+            visible_fields += ['dirty', 'delete']
         return {
             key: val for key, val in value.items()
-            if key in self.visible_fields
+            if key in visible_fields
         }
+
+    def validate(self, data):
+        if data['type'] != 'POLICY_ROUTED':
+            if not data.get('ttl', False):
+                raise ValidationError('Field \'ttl\' is required. '
+                                      'If record type is not POLICY_REOCRD.')
+
+        else:
+            if not len(data['values']) == 1:
+                raise ValidationError('For POLICY_ROUTED record values list '
+                                      'should contain just one element.')
+        return data
