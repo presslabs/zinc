@@ -10,7 +10,7 @@ from django.core.exceptions import SuspiciousOperation
 
 from dns.tasks import aws_delete_zone
 from dns.utils import route53
-from dns.utils.route53 import get_local_aws_regions
+from dns.utils.route53 import get_local_aws_regions, HealthCheck
 from dns.validators import validate_domain, validate_hostname
 from zinc.vendors import hashids
 
@@ -30,10 +30,12 @@ class IP(models.Model):
     healthcheck_id = models.CharField(max_length=200, blank=True, null=True)
     healthcheck_caller_reference = models.UUIDField(null=True)
 
-    def save(self, *a, **kwa):
+    def save(self, update_r53=True, *a, **kwa):
         if self.friendly_name == "":
             self.friendly_name = self.hostname.split(".", 1)[0]
         super().save(*a, **kwa)
+        if update_r53:
+            healthcheck = HealthCheck(self).reconcile()
 
     def __str__(self):
         value = self.friendly_name or self.hostname
