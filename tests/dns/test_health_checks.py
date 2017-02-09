@@ -47,11 +47,11 @@ def test_health_check_change(boto_client):
     }
     resp = boto_client.get_health_check(HealthCheckId=ip.healthcheck_id)['HealthCheck']
     assert resp['HealthCheckConfig'].items() >= expected_config.items()
-    ip.ip = '1.1.1.1'
+    
+    ip.ip = '1.1.1.1'  # change the ip
     ip.save()
     ip = R(ip)
-    assert ip.healthcheck_id is not None
+
     expected_config['IPAddress'] = ip.ip
     resp = boto_client.get_health_check(HealthCheckId=ip.healthcheck_id)['HealthCheck']
-
     assert resp['HealthCheckConfig'].items() >= expected_config.items()
