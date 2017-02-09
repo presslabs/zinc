@@ -16,6 +16,7 @@ def test_health_check_create(boto_client):
         ip='1.2.3.4',
         hostname='fe01-mordor.presslabs.net.',
     )
+    ip.reconcile_healthcheck()
     ip = R(ip)
     expected_config = {
         'IPAddress': ip.ip,
@@ -33,11 +34,11 @@ def test_health_check_create(boto_client):
 
 @pytest.mark.django_db
 def test_health_check_change(boto_client):
-    caller_reference = uuid.uuid4()
     ip = m.IP.objects.create(
         ip='1.2.3.4',
         hostname='fe01-mordor.presslabs.net.',
     )
+    ip.reconcile_healthcheck()
     ip = R(ip)
     expected_config = {
         'IPAddress': ip.ip,
@@ -51,6 +52,7 @@ def test_health_check_change(boto_client):
 
     ip.ip = '1.1.1.1'  # change the ip
     ip.save()
+    ip.reconcile_healthcheck()
     ip = R(ip)
 
     expected_config['IPAddress'] = ip.ip
