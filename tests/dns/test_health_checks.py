@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 from django_dynamic_fixture import G
+import botocore.exceptions
 
 from dns import models as m
 from dns.utils import route53
@@ -40,6 +41,7 @@ def test_health_check_change(boto_client):
     )
     ip.reconcile_healthcheck()
     ip = R(ip)
+    original_check_id = ip.healthcheck_id
     expected_config = {
         'IPAddress': ip.ip,
         'Port': 80,
@@ -58,3 +60,7 @@ def test_health_check_change(boto_client):
     expected_config['IPAddress'] = ip.ip
     resp = boto_client.get_health_check(HealthCheckId=ip.healthcheck_id)['HealthCheck']
     assert resp['HealthCheckConfig'].items() >= expected_config.items()
+    # ensure the old healthcheck got deleted
+    with pytest.raises(botocore.exceptions.ClientError) as excp_info:
+        boto_client.get_health_check(HealthCheckId=original_check_id)
+    assert excp_info.value.response['Error']['Code'] == 'NoSuchHealthCheck'
