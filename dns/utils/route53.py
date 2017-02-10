@@ -1,5 +1,6 @@
 import datetime
 import uuid
+import logging
 
 import boto3
 from boto3.session import Session
@@ -17,6 +18,8 @@ client = boto3.client(
     aws_access_key_id=AWS_KEY,
     aws_secret_access_key=AWS_SECRET
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _get_aws_regions():
@@ -316,4 +319,7 @@ class HealthCheck:
     def reconcile_for_ips(cls, ips):
         checks = [cls(ip) for ip in ips]
         for check in checks:
-            check.reconcile()
+            try:
+                check.reconcile()
+            except ClientError:
+                logger.exception("Error while handling {}".format(check.ip.friendly_name))
