@@ -6,9 +6,6 @@ from dns.models import IP
 from dns.utils.route53 import HealthCheck
 
 
-logger = logging.getLogger(__name__)
-
-
 class Command(BaseCommand):
     help = 'Reconcile all ip healthchecks'
 

@@ -1,14 +1,9 @@
 # pylint: disable=no-member,protected-access,redefined-outer-name
-import uuid
-
 import pytest
-from django_dynamic_fixture import G
 import botocore.exceptions
 
 from dns import models as m
-from dns.utils import route53
-from tests.fixtures import boto_client, zone
-from tests.helpers import re_fetch as R
+from tests.fixtures import boto_client  # pylint: disable=unused-import
 
 
 @pytest.mark.django_db
@@ -18,7 +13,7 @@ def test_health_check_create(boto_client):
         hostname='fe01-mordor.presslabs.net.',
     )
     ip.reconcile_healthcheck()
-    ip = R(ip)
+    ip.refresh_from_db()
     expected_config = {
         'IPAddress': ip.ip,
         'Port': 80,
@@ -40,7 +35,7 @@ def test_health_check_change(boto_client):
         hostname='fe01-mordor.presslabs.net.',
     )
     ip.reconcile_healthcheck()
-    ip = R(ip)
+    ip.refresh_from_db()
     original_check_id = ip.healthcheck_id
     expected_config = {
         'IPAddress': ip.ip,
@@ -55,7 +50,7 @@ def test_health_check_change(boto_client):
     ip.ip = '1.1.1.1'  # change the ip
     ip.save()
     ip.reconcile_healthcheck()
-    ip = R(ip)
+    ip.refresh_from_db()
 
     expected_config['IPAddress'] = ip.ip
     resp = boto_client.get_health_check(HealthCheckId=ip.healthcheck_id)['HealthCheck']
