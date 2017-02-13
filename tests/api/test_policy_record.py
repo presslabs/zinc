@@ -6,17 +6,9 @@ from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
 
 from tests.fixtures import api_client, boto_client, zone
+from tests.utils import strip_ns_and_soa
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
-
-
-def strip_ns_and_soa(records):
-    """The NS and SOA records are managed by AWS, so we won't care about them in tests"""
-    return {
-        record_id: record
-        for record_id, record in records.items()
-        if not (record['type'] in ('NS', 'SOA') and record['name'] == '@')
-    }
 
 
 regions = get_local_aws_regions()
@@ -35,7 +27,7 @@ def test_policy_record_get(api_client, zone):
     )
 
     assert strip_ns_and_soa(response.data['records']) == {
-        '7Q45ew5E0vOMq': {
+        'GW5Xxvn9kYvmd': {
             'name': 'test',
             'type': 'A',
             'ttl': 300,
@@ -72,7 +64,7 @@ def test_policy_record_create(api_client, zone):
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
     assert strip_ns_and_soa(response.data['records']) == {
-        '7Q45ew5E0vOMq': {
+        'GW5Xxvn9kYvmd': {
             'name': 'test',
             'type': 'A',
             'ttl': 300,
@@ -115,7 +107,7 @@ def test_policy_record_update_policy(api_client, zone):
     assert pr.dirty is True
     assert pr.id == policy_record.id
     assert strip_ns_and_soa(response.data['records']) == {
-        '7Q45ew5E0vOMq': {
+        'GW5Xxvn9kYvmd': {
             'name': 'test',
             'type': 'A',
             'ttl': 300,
@@ -154,7 +146,7 @@ def test_policy_record_delete(api_client, zone):
     assert pr.deleted is True
     assert pr.id == policy_record.id
     assert strip_ns_and_soa(response.data['records']) == {
-        '7Q45ew5E0vOMq': {
+        'GW5Xxvn9kYvmd': {
             'name': 'test',
             'type': 'A',
             'ttl': 300,
@@ -186,7 +178,7 @@ def test_policy_record_get_more_than_one(api_client, zone):
     )
 
     assert strip_ns_and_soa(response.data['records']) == {
-        '7Q45ew5E0vOMq': {
+        'GW5Xxvn9kYvmd': {
             'name': 'test',
             'type': 'A',
             'ttl': 300,
@@ -236,7 +228,7 @@ def test_policy_record_create_more_than_one(api_client, zone):
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
     pr_2 = m.PolicyRecord.objects.get(name='test', zone=zone)
     assert strip_ns_and_soa(response.data['records']) == {
-        '7Q45ew5E0vOMq': {
+        'GW5Xxvn9kYvmd': {
             'name': 'test',
             'type': 'A',
             'ttl': 300,
