@@ -210,8 +210,6 @@ class RecordHandler:
             ),
         }
 
-        set_id = hashids.encode_record(record)
-        decoded_record['set_id'] = set_id
         if 'TTL' in record:
             decoded_record['ttl'] = record['TTL']
 
@@ -221,5 +219,7 @@ class RecordHandler:
             decoded_record['values'] = [value['Value'] for value in
                                         record.get('ResourceRecords', [])]
 
+        set_id = record.get('SetIdentifier', False) or hashids.encode_record(decoded_record)
+        decoded_record['set_id'] = set_id
 
         return decoded_record
