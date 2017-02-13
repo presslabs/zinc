@@ -62,6 +62,7 @@ def test_detail_zone(api_client, zone):
             'values': ['1.1.1.1'],
             'name': 'test',
             'ttl': 300,
+            'dirty': False,
             'type': 'A',
         }
     }
@@ -89,6 +90,7 @@ def test_zone_patch_with_records(api_client, zone):
         'ttl': 300,
         'type': 'A',
         'name': 'test',
+        'dirty': False,
         'values': ['2.2.2.2']
     }
 
@@ -101,12 +103,14 @@ def test_update_bunch_of_records(api_client, zone):
         'values': ['2.2.2.2'],
         'type': 'A',
         'ttl': 300,
+        'dirty': False,
         'name': 'test'
     }
     record2 = {
         'name': 'detest',
         'ttl': 400,
         'type': 'NS',
+        'dirty': False,
         'values': ['ns.test.com', 'ns2.test.com']
     }
     response = api_client.patch(
@@ -133,6 +137,7 @@ def test_delete_bunch_of_records(api_client, zone):
         'values': ['2.2.2.2'],
         'type': 'A',
         'ttl': 300,
+        'dirty': False,
         'name': 'test'
     }
     record2_hash = '50Y6bP8D1V4B3'
@@ -175,6 +180,7 @@ def test_delete_nonexistent_records(api_client, zone):
         'values': ['2.2.2.2'],
         'type': 'A',
         'ttl': 300,
+        'dirty': False,
         'name': 'test'
     }
     record2_hash = '50Y6bP8D1V4B3'
@@ -285,6 +291,7 @@ def test_add_record_ttl_invalid(api_client, zone):
         'name': 'something',
         'type': 'A',
         'values': ['1.2.3.4'],
+        'dirty': False,
         'ttl': 0
     }
     response = api_client.post(
@@ -309,6 +316,7 @@ def test_change_name_of_record(api_client, zone):
         'name': 'altceva',
         'type': 'A',
         'values': ['1.1.1.1'],
+        'dirty': False,
         'ttl': 300
     }
     response = api_client.patch(
@@ -332,6 +340,7 @@ def test_change_ttl_of_record(api_client, zone):
         'name': 'test',
         'type': 'A',
         'values': ['1.1.1.1'],
+        'dirty': False,
         'ttl': 550
     }
     response = api_client.patch(
@@ -355,6 +364,7 @@ def test_change_type_of_record(api_client, zone):
         'name': 'altceva',
         'type': 'CNAME',
         'values': ['new.presslabs.net'],
+        'dirty': False,
         'ttl': 300
     }
     response = api_client.patch(
@@ -388,6 +398,7 @@ def test_hidden_records(api_client, zone):
             'values': ['1.1.1.1'],
             'name': 'test',
             'ttl': 300,
+            'dirty': False,
             'type': 'A',
         }
     }
@@ -414,11 +425,13 @@ def test_alias_records(api_client, zone):
             'values': ['1.1.1.1'],
             'name': 'test',
             'ttl': 300,
+            'dirty': False,
             'type': 'A',
         },
         'l6Y0jdPqbnRg': {
             'name': 'ceva',
             'type': 'A',
+            'dirty': False,
             'values': ['ALIAS test.test-zinc.net.']
         }
     }
@@ -443,7 +456,7 @@ def test_validation_prefix(api_client, zone):
     )
 
     assert response.data == {
-        'records': [
-            'Record _zn_something can\'t start with _zn. It\'s a reserved prefix.'
-        ]
+        'records': {
+                'name': ['Record _zn_something can\'t start with _zn. It\'s a reserved prefix.']
+            }
     }

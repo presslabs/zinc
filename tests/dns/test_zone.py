@@ -21,7 +21,6 @@ def test_add_zone_record(zone):
     zone.add_record(record)
     zone.save()
 
-    print(zone.records)
     assert 'D7ldejBgkXJwR' in zone.records
 
 

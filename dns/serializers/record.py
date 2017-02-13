@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from django.conf import settings
-from rest_framework.fields import (BooleanField, CharField, ChoiceField,
-                                   IntegerField, ListField)
+from rest_framework.fields import (CharField, ChoiceField,
+                                   IntegerField, ListField, SerializerMethodField)
 from rest_framework.serializers import Serializer
 from rest_framework.exceptions import ValidationError
 
@@ -21,14 +21,10 @@ class RecordSerializer(Serializer):
     type = ChoiceField(choices=[(type, type) for type in RECORD_TYPES])
     ttl = IntegerField(allow_null=True, min_value=300, required=False)
     values = ListField(child=CharField(), required=True)
-    set_id = CharField(min_length=HASHIDS_MIN_LENGTH, required=False)
-    managed = BooleanField(default=False, read_only=True)
-    dirty = BooleanField(default=False, read_only=True)
-    delete = BooleanField(default=False, read_only=True, required=False)
+    dirty = SerializerMethodField()
 
-    def __init__(self, *args, **kwargs):
-        self.visible_fields = ['name', 'type', 'values', 'ttl']
-        super(RecordSerializer, self).__init__(*args, **kwargs)
+    def get_dirty(self, obj):
+        return obj.get('dirty', False)
 
     def create(self, validated_data):
         raise NotImplementedError('Records can`t be created individually')
@@ -36,16 +32,13 @@ class RecordSerializer(Serializer):
     def update(self, **validated_data):
         raise NotImplementedError('Records can`t be saved individually')
 
-    def run_validation(self, data):
-        if data.get('managed', False):
-            raise UnprocessableEntity('Record {key} is managed.'.format(key=data['set_id']))
-
-        if data.get('name', '').startswith(RECORD_PREFIX):
+    def validate_name(self, value):
+        if value.startswith(RECORD_PREFIX):
             raise ValidationError(
                 ('Record {} can\'t start with {}. '
-                 'It\'s a reserved prefix.').format(data['name'], RECORD_PREFIX)
+                 'It\'s a reserved prefix.').format(value, RECORD_PREFIX)
             )
-        return super(RecordSerializer, self).run_validation(data)
+        return value
 
     def to_internal_value(self, data):
         if data.get('delete', False):
@@ -54,15 +47,6 @@ class RecordSerializer(Serializer):
             data = super(RecordSerializer, self).to_internal_value(data)
 
         return data
-
-    def to_representation(self, value):
-        visible_fields = self.visible_fields
-        if value['type'] == 'POLICY_ROUTED':
-            visible_fields += ['dirty', 'delete']
-        return {
-            key: val for key, val in value.items()
-            if key in visible_fields
-        }
 
     def validate(self, data):
         if data['type'] != 'POLICY_ROUTED':
