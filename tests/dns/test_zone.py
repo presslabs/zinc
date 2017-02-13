@@ -46,5 +46,3 @@ def test_delete_zone_record_by_hash(zone):
     zone.save()
 
     assert record_hash not in zone.records
-
-

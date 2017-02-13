@@ -200,7 +200,6 @@ class RecordHandler:
         def root_ns_soa(record, root):
             return record['Name'] == root and record['Type'] in ['NS', 'SOA']
 
-
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
             'type': record['Type'],
