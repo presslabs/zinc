@@ -270,13 +270,11 @@ class HealthCheck:
 
     @property
     def desired_config(self):
-        return {
+        config = {
             'IPAddress': self.ip.ip,
-            'Port': 80,
-            'Type': 'HTTP',
-            'ResourcePath': '/status',
-            'FullyQualifiedDomainName': 'node.presslabs.net.',
         }
+        config.update(settings.HEALTH_CHECK_CONFIG)
+        return config
 
     @property
     def config(self):
