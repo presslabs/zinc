@@ -31,6 +31,7 @@ def test_policy_record_get(api_client, zone):
             'name': 'test',
             'type': 'A',
             'ttl': 300,
+            'dirty': False,
             'values': ['1.1.1.1']
         },
         str(policy_record.id): {
@@ -68,6 +69,7 @@ def test_policy_record_create(api_client, zone):
             'name': 'test',
             'type': 'A',
             'ttl': 300,
+            'dirty': False,
             'values': ['1.1.1.1']
         },
         str(pr.id): {
@@ -111,6 +113,7 @@ def test_policy_record_update_policy(api_client, zone):
             'name': 'test',
             'type': 'A',
             'ttl': 300,
+            'dirty': False,
             'values': ['1.1.1.1']
         },
         str(pr.id): {
@@ -150,6 +153,7 @@ def test_policy_record_delete(api_client, zone):
             'name': 'test',
             'type': 'A',
             'ttl': 300,
+            'dirty': False,
             'values': ['1.1.1.1']
         },
         str(pr.id): {
@@ -157,7 +161,6 @@ def test_policy_record_delete(api_client, zone):
             'type': 'POLICY_ROUTED',
             'values': [str(policy.id)],
             'dirty': True,
-            'delete': True
         },
     }
 
@@ -182,6 +185,7 @@ def test_policy_record_get_more_than_one(api_client, zone):
             'name': 'test',
             'type': 'A',
             'ttl': 300,
+            'dirty': False,
             'values': ['1.1.1.1']
         },
         str(policy_record.id): {
@@ -232,6 +236,7 @@ def test_policy_record_create_more_than_one(api_client, zone):
             'name': 'test',
             'type': 'A',
             'ttl': 300,
+            'dirty': False,
             'values': ['1.1.1.1']
         },
         str(pr.id): {

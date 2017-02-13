@@ -311,12 +311,12 @@ def test_policy_record_tree_deletion_with_two_trees(zone):
     ]
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    policy_record2 = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
+    policy_record_to_delete = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
 
     policy_record.apply_record()
-    policy_record2.apply_record()
+    policy_record_to_delete.apply_record()
 
-    policy_record2.delete_record()
+    policy_record_to_delete.delete_record()
     expected = [
         {
             'Name': 'test.test-zinc.net.',
