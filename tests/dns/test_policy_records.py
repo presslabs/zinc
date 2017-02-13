@@ -257,9 +257,7 @@ def test_policy_record_tree_with_two_trees(zone):
     ) == sorted(expected, key=sort_key)
 
 
-
 @pytest.mark.django_db
-@pytest.mark.xfail
 def test_policy_record_deletion(zone):
     zone, client = zone
     policy = G(m.Policy)
@@ -285,18 +283,50 @@ def test_policy_record_deletion(zone):
         client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
-    from pprint import pprint
-    print('Before:')
-    pprint(client.list_resource_record_sets(HostedZoneId=zone.route53_id))
     policy_record.delete_record()
-    print('After:')
-    pprint(client.list_resource_record_sets(HostedZoneId=zone.route53_id))
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root) == {
-        'Name': 'test.test-zinc.net.',
-        'ResourceRecords': [{'Value': '1.1.1.1'}],
-        'TTL': 300,
-        'Type': 'A'
-    }
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root) == [
+            {
+                'Name': 'test.test-zinc.net.',
+                'ResourceRecords': [{'Value': '1.1.1.1'}],
+                'TTL': 300,
+                'Type': 'A'
+            }
+        ]
 
+
+@pytest.mark.django_db
+def test_policy_record_tree_deletion_with_two_trees(zone):
+    zone, client = zone
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0]),
+        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0]),
+        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0]),
+        G(m.PolicyMember, policy=policy, region=regions[1]),
+    ]
+
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    policy_record2 = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
+
+    policy_record.apply_record()
+    policy_record2.apply_record()
+
+    policy_record2.delete_record()
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },  # this is a ordinary record. should be not modified.
+        # we expect to have the policy tree created just once.
+    ] + policy_members_to_list(policy_members, policy_record)
+
+    assert strip_ns_and_soa(
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    ) == sorted(expected, key=sort_key)

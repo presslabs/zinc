@@ -89,7 +89,6 @@ class Policy(models.Model):
                 zone.delete_record_by_hash(record_hash)
 
 
-
 class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
 
@@ -134,10 +133,8 @@ class Zone(models.Model):
 
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
-        if not record_hash in records:
-            print('REcord HASH: ', record_hash)
-            from pprint import pprint
-            pprint(records)
+        if record_hash not in records:
+            # trying to delete a nonexistent record
             return
         to_delete_record = records[record_hash]
         to_delete_record['delete'] = True
