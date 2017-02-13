@@ -164,6 +164,13 @@ REST_FRAMEWORK = {
     )
 }
 
+HEALTH_CHECK_CONFIG = {
+    'Port': 80,
+    'Type': 'HTTP',
+    'ResourcePath': '/status',
+    'FullyQualifiedDomainName': 'node.presslabs.net.',
+}
+
 # =================
 # END OF CONFIG
 
