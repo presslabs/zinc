@@ -422,7 +422,7 @@ def test_alias_records(api_client, zone):
             'ttl': 300,
             'type': 'A',
         },
-        '1PmO1g16yxgGJ': {
+        '7VJVGlXjX3q66': {
             'name': 'ceva',
             'type': 'A',
             'values': ['ALIAS test.test-zinc.net.']

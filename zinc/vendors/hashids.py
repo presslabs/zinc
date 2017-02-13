@@ -8,16 +8,23 @@ HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)
 hashids = Hashids(salt=HASHIDS_SALT, min_length=HASHIDS_MIN_LENGTH)
 
 
-def _encode(*args):
-    _set_id = ':'.join([str(arg) for arg in args])
+def _encode(rname, rtype):
+    _set_id = ':'.join([str(arg) for arg in (rname, rtype, None)])
     _set_id = int(hashlib.sha256(_set_id.encode('utf-8')).hexdigest()[:16], base=16)
 
     return hashids.encode(_set_id)
 
 
 def encode_record(record):
-    set_id = record.get('SetIdentifier', None)
+    type_key = 'Type'
+    name_key = 'Name'
+    set_id = record.get('SetIdentifier', None) or record.get('set_id', None)
     if 'name' in record:
-        return set_id or _encode(record['name'], record['type'], set_id)
+        type_key = 'type'
+        name_key = 'name'
 
-    return set_id or _encode(record['Name'], record['Type'], set_id)
+    record_type = record[type_key]
+    if 'AliasTarget' in record or 'ALIAS' in record[name_key]:
+        record_type = record[type_key] + 'ALIAS'
+
+    return set_id or _encode(record[name_key], record_type)
