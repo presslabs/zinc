@@ -76,6 +76,19 @@ class Policy(models.Model):
         zone.save()
         return regions
 
+    def delete_policy(self, zone):
+        records = zone.route53_zone.records()
+
+        # If the policy is in used by another record then don't delete it.
+        policy_records = zone.policy_records.filter(policy=self)
+        if len(policy_records) > 1:
+            return
+
+        for record_hash, record in records.items():
+            if record['name'].startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
+                zone.delete_record_by_hash(record_hash)
+
+
 
 class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
@@ -119,6 +132,20 @@ class Zone(models.Model):
     def add_record(self, record):
         self.route53_zone.add_record_changes(record, key=hashids.encode_record(record))
 
+    def delete_record_by_hash(self, record_hash):
+        records = self.route53_zone.records()
+        if not record_hash in records:
+            print('REcord HASH: ', record_hash)
+            from pprint import pprint
+            pprint(records)
+            return
+        to_delete_record = records[record_hash]
+        to_delete_record['delete'] = True
+        self.route53_zone.add_record_changes(to_delete_record, key=record_hash)
+
+    def delete_record(self, record):
+        self.delete_record_by_hash(hashids.encode_record(record))
+
     def get_policy_records(self):
         records = {}
         for policy_record in self.policy_records.all():
@@ -152,9 +179,11 @@ class Zone(models.Model):
         for record_hash, record in records.items():
             if record['name'].startswith(RECORD_PREFIX):
                 continue
-            if ('ALIAS' in record['values'][0] and self.policy_records.filter(
-                    name=record['name']).exists()):
-                continue
+            if ('AliasTarget' in record):
+                if self.policy_records.filter(name=record['name']).exists():
+                    continue
+                # if the record is ALIAS then translate it to ALIAS type known by API
+                record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
             filtered_records.update({record_hash: record})
 
         for record_hash, record in self.get_policy_records().items():
@@ -237,5 +266,10 @@ class PolicyRecord(models.Model):
         self.save()
 
     def delete_record(self):
-        # TODO: implement record deletion
-        pass
+        self.zone.delete_record({
+            'name': self.name,
+            'type': 'A',
+            'AliasTarget': {},
+        })
+        self.policy.delete_policy(self.zone)
+        self.zone.save()

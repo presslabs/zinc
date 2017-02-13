@@ -195,22 +195,11 @@ class RecordHandler:
             return 'AliasTarget' in record.keys()
 
         """
-        Determine if a R53 DNS record is actually a policy record
-        """
-        def policy_record(record):
-            PolicyRecord = apps.get_model(app_label='dns', model_name='PolicyRecord')
-            return PolicyRecord.objects.filter(
-                name=cls._strip_root(record['Name'], root),
-                zone__route53_id=route53_id
-            ).exists()
-
-        """
         Determine if a record is the NS or SOA record of the root domain
         """
         def root_ns_soa(record, root):
             return record['Name'] == root and record['Type'] in ['NS', 'SOA']
 
-        set_id = hashids.encode_record(record)
 
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
@@ -219,17 +208,18 @@ class RecordHandler:
                 (record.get('SetIdentifier', False) and True) or
                 root_ns_soa(record, root) or (alias_record(record))
             ),
-            'set_id': set_id
         }
 
+        set_id = hashids.encode_record(record)
+        decoded_record['set_id'] = set_id
         if 'TTL' in record:
             decoded_record['ttl'] = record['TTL']
 
-        if decoded_record['type'] != 'POLICY_ROUTED':
-            if alias_record(record):
-                decoded_record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
-            else:
-                decoded_record['values'] = [value['Value'] for value in
-                                            record.get('ResourceRecords', [])]
+        if alias_record(record):
+            decoded_record['AliasTarget'] = record['AliasTarget']
+        else:
+            decoded_record['values'] = [value['Value'] for value in
+                                        record.get('ResourceRecords', [])]
+
 
         return decoded_record

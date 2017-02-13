@@ -255,3 +255,48 @@ def test_policy_record_tree_with_two_trees(zone):
     assert strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
+
+
+
+@pytest.mark.django_db
+@pytest.mark.xfail
+def test_policy_record_deletion(zone):
+    zone, client = zone
+    policy = G(m.Policy)
+    region = get_local_aws_regions()[0]
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=region),
+        G(m.PolicyMember, policy=policy, region=region),
+    ]
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
+
+    policy_record.apply_record()
+
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },
+    ] + policy_members_to_list(policy_members, policy_record)
+
+    assert strip_ns_and_soa(
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    ) == sorted(expected, key=sort_key)
+
+    from pprint import pprint
+    print('Before:')
+    pprint(client.list_resource_record_sets(HostedZoneId=zone.route53_id))
+    policy_record.delete_record()
+    print('After:')
+    pprint(client.list_resource_record_sets(HostedZoneId=zone.route53_id))
+
+    assert strip_ns_and_soa(
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root) == {
+        'Name': 'test.test-zinc.net.',
+        'ResourceRecords': [{'Value': '1.1.1.1'}],
+        'TTL': 300,
+        'Type': 'A'
+    }
+

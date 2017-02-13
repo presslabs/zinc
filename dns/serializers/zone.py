@@ -51,6 +51,3 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
         instance.records = validated_records
         instance.save()
         return instance
-
-    def to_representation(self, values):
-        return super(ZoneDetailSerializer, self).to_representation(values)
