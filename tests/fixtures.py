@@ -42,7 +42,7 @@ class CleanupClient:
 
     def delete_hosted_zone(self, Id, **kwa):
         resp = self._client.delete_hosted_zone(Id=Id, **kwa)
-        self._zones.pop(Id)
+        self._zones.pop(Id, None)
         return resp
 
     def create_health_check(self, **kwa):
@@ -53,7 +53,7 @@ class CleanupClient:
 
     def delete_health_check(self, HealthCheckId, **kwa):
         resp = self._client.delete_health_check(HealthCheckId=HealthCheckId, **kwa)
-        self._health_checks.pop(HealthCheckId)
+        self._health_checks.pop(HealthCheckId, None)
         return resp
 
     def _cleanup_hosted_zones(self):
@@ -139,6 +139,21 @@ class Moto:
                         'Code': 'NoSuchHealthCheck',
                         'Message': ('A health check with id 9d7e44c2-72b9-42f2-b771-9216deb26ca1 '
                                     'does not exist.'),
+                        'Type': 'Sender'
+                    },
+                },
+                operation_name='get_health_check',
+            )
+
+    def get_hosted_zone(self, Id):
+        try:
+            return self._zones[Id]
+        except KeyError:
+            raise botocore.exceptions.ClientError(
+                error_response={
+                    'Error': {
+                        'Code': 'NoSuchHostedZone',
+                        'Message': ('No hosted zone found with id {}.'.format(Id)),
                         'Type': 'Sender'
                     },
                 },
