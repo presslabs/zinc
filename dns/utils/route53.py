@@ -50,6 +50,7 @@ class Zone(object):
             self.add_record_changes(record, key=record_hash)
 
     def add_record_changes(self, record, key=None):
+        rrs = RecordHandler.encode(record, self.root)
         if not key or key not in self.records():
             action = 'CREATE'
         else:
@@ -57,7 +58,7 @@ class Zone(object):
 
         self._change_batch.append({
             'Action': action,
-            'ResourceRecordSet': RecordHandler.encode(record, self.root)
+            'ResourceRecordSet': rrs
         })
 
     def _reset_change_batch(self):
@@ -76,8 +77,9 @@ class Zone(object):
             self._reset_change_batch()
             self._aws_records = []
         except ClientError as error:
-            print('Error on commit({}): {}, changes: {}'.format(
-                self.root, error, self._change_batch))
+            import json
+            print('Error on commit({}): {}, changes:\n {}'.format(
+                self.root, error, json.dumps(self._change_batch, indent=4) ))
             raise
 
     def records(self, rfilter=None):
@@ -213,10 +215,21 @@ class RecordHandler:
             decoded_record['ttl'] = record['TTL']
 
         if alias_record(record):
-            decoded_record['AliasTarget'] = record['AliasTarget']
+            decoded_record['AliasTarget'] = {
+                'DNSName': cls._strip_root(record['AliasTarget']['DNSName'], root),
+                'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
+                'HostedZoneId': record['AliasTarget']['HostedZoneId']
+            }
         else:
             decoded_record['values'] = [value['Value'] for value in
                                         record.get('ResourceRecords', [])]
+
+        for extra in ['Weight', 'Region', 'SetIdentifier',
+                      'HealthCheckId', 'TrafficPolicyInstanceId']:
+            if extra in record:
+                decoded_record[extra] = record[extra]
+
+
 
         set_id = record.get('SetIdentifier', False) or hashids.encode_record(decoded_record)
         decoded_record['set_id'] = set_id

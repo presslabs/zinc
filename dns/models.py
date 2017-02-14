@@ -84,9 +84,25 @@ class Policy(models.Model):
         if len(policy_records) > 1:
             return
 
-        for record_hash, record in records.items():
-            if record['name'].startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
-                zone.delete_record_by_hash(record_hash)
+        regions = set([pm.region for pm in self.members.all()])
+        for region in regions:
+            zone.delete_record({
+                'name': '{}_{}'.format(RECORD_PREFIX, self.name),
+                'type': 'A',
+                'AliasTarget': {},  # Not need to be specified.
+                'SetIdentifier': region,
+            })
+
+        for policy_member in self.members.all():
+            zone.delete_record({
+                'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
+                'type': 'A',
+                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
+            })
+
+        #for record_hash, record in records.items():
+        #    if record['name'].startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
+        #        zone.delete_record_by_hash(record_hash)
 
 
 class PolicyMember(models.Model):
@@ -129,7 +145,9 @@ class Zone(models.Model):
         return super(Zone, self).save(*args, **kwargs)
 
     def add_record(self, record):
-        self.route53_zone.add_record_changes(record, key=hashids.encode_record(record))
+        record_hash = hashids.encode_record(record)
+        self.route53_zone.add_record_changes(record, key=record_hash)
+        return record_hash
 
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
@@ -180,7 +198,8 @@ class Zone(models.Model):
                 if self.policy_records.filter(name=record['name']).exists():
                     continue
                 # if the record is ALIAS then translate it to ALIAS type known by API
-                record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
+                record['values'] = ['ALIAS {}.{}'.format(record['AliasTarget']['DNSName'],
+                                                         self.root)]
             filtered_records.update({record_hash: record})
 
         for record_hash, record in self.get_policy_records().items():
