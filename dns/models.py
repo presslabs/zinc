@@ -100,10 +100,6 @@ class Policy(models.Model):
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
             })
 
-        #for record_hash, record in records.items():
-        #    if record['name'].startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
-        #        zone.delete_record_by_hash(record_hash)
-
 
 class PolicyMember(models.Model):
     AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
