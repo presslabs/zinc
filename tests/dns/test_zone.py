@@ -88,4 +88,3 @@ def test_delete_zone_alias_record_with_set_id(zone):
     zone.save()
 
     assert record_hash not in zone.records
-

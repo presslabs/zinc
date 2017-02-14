@@ -79,7 +79,7 @@ class Zone(object):
         except ClientError as error:
             import json
             print('Error on commit({}): {}, changes:\n {}'.format(
-                self.root, error, json.dumps(self._change_batch, indent=4) ))
+                self.root, error, json.dumps(self._change_batch, indent=4)))
             raise
 
     def records(self, rfilter=None):
@@ -228,8 +228,6 @@ class RecordHandler:
                       'HealthCheckId', 'TrafficPolicyInstanceId']:
             if extra in record:
                 decoded_record[extra] = record[extra]
-
-
 
         set_id = record.get('SetIdentifier', False) or hashids.encode_record(decoded_record)
         decoded_record['set_id'] = set_id
