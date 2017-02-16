@@ -8,11 +8,14 @@ logger = get_task_logger(__name__)
 
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
-def aws_delete_zone(self, zone_id, root):
-    aws_zone = route53.Zone(id=zone_id, root=root)
+def aws_delete_zone(self, pk):
+    assert False
+    zone = models.Zone.objects.get(pk=pk)
+    aws_zone = route53.Zone(id=zone.route53_id, root=zone.root)
 
     try:
         aws_zone.delete()
+        zone.delete()
     except Exception as e:
         logger.exception(e)
         try:

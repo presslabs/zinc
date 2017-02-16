@@ -1,8 +1,12 @@
+from django.shortcuts import get_object_or_404
 from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
                                      RetrieveAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework import viewsets
+from rest_framework import status
+from rest_framework.response import Response
 
 from dns import models
+from dns import tasks
 from dns.parsers import JSONMergePatchParser
 from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
                              ZoneDetailSerializer, ZoneListSerializer)
@@ -15,7 +19,7 @@ class ZoneList(ListCreateAPIView):
 
 class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
     parser_classes = (JSONMergePatchParser,)
-    queryset = models.Zone.objects.all()
+    queryset = models.Zone.objects.filter(deleted=False)
     serializer_class = ZoneDetailSerializer
 
     @property
@@ -29,6 +33,13 @@ class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
 
     def patch(self, request, *args, **kwargs):
         return super(ZoneDetail, self).patch(request, *args, **kwargs)
+
+    def delete(self, request, pk, *args, **kwargs):
+        zone = get_object_or_404(models.Zone.objects, pk=pk)
+        zone.deleted = True
+        zone.save()
+        tasks.aws_delete_zone.delay(zone.pk)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class Policy(viewsets.ModelViewSet):

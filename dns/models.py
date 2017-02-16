@@ -8,7 +8,6 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import SuspiciousOperation
 
-from dns.tasks import aws_delete_zone
 from dns.utils import route53
 from dns.utils.route53 import get_local_aws_regions, HealthCheck
 from dns.validators import validate_domain, validate_hostname
@@ -128,6 +127,7 @@ class Zone(models.Model):
     route53_id = models.CharField(max_length=32, unique=True, editable=False)
     caller_reference = models.CharField(max_length=32, editable=False,
                                         unique=True)
+    deleted = models.BooleanField(default=False, editable=False)
 
     def __init__(self, *args, **kwargs):
         self._route53_instance = None
@@ -242,13 +242,6 @@ class Zone(models.Model):
 
     def __str__(self):
         return '{} {}'.format(self.pk, self.root)
-
-
-@receiver(post_delete, sender=Zone)
-def aws_delete(instance, **kwargs):
-    if 'raw' in kwargs and kwargs['raw']:
-        return
-    aws_delete_zone.delay(instance.route53_id, instance.root)
 
 
 class PolicyRecord(models.Model):

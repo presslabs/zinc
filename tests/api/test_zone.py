@@ -4,6 +4,7 @@ import json
 
 from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
+from django.test import override_settings
 
 from tests.fixtures import api_client, boto_client, zone
 from tests.utils import strip_ns_and_soa
@@ -228,13 +229,13 @@ def test_zone_delete_record(api_client, zone):
 @pytest.mark.django_db
 def test_delete_a_zone(api_client, zone, settings):
     zone, client = zone
-    settings.CELERY_ALWAYS_EAGER = True
+    settings.CELERY_ALWAYS_EAGER = True  # This doesn't work, see the assertion in the task
     response = api_client.delete(
         '/zones/%s/' % zone.id
     )
 
-    with pytest.raises(ObjectDoesNotExist) as _:
-        m.Zone.objects.get(pk=zone.id)
+    zone.refresh_from_db()
+    assert zone.deleted is True
 
     assert not response.data
 
