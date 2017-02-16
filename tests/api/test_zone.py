@@ -8,8 +8,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.test import override_settings
 
 from tests.fixtures import api_client, boto_client, zone
-from tests.utils import strip_ns_and_soa
+from tests.utils import strip_ns_and_soa, hash_test_record
 from dns import models as m
+from zinc.vendors.hashids import encode_record
 
 
 @pytest.mark.django_db
@@ -60,7 +61,7 @@ def test_detail_zone(api_client, zone):
         '/zones/%s/' % zone.id,
     )
     assert strip_ns_and_soa(response.data['records']) == {
-        'GW5Xxvn9kYvmd': {
+        hash_test_record(zone): {
             'values': ['1.1.1.1'],
             'name': 'test',
             'ttl': 300,
@@ -73,7 +74,7 @@ def test_detail_zone(api_client, zone):
 @pytest.mark.django_db
 def test_zone_patch_with_records(api_client, zone):
     zone, client = zone
-    record_hash = 'GW5Xxvn9kYvmd'
+    record_hash = hash_test_record(zone)
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
@@ -100,7 +101,7 @@ def test_zone_patch_with_records(api_client, zone):
 @pytest.mark.django_db
 def test_update_bunch_of_records(api_client, zone):
     zone, client = zone
-    record1_hash = 'GW5Xxvn9kYvmd'
+    record1_hash = hash_test_record(zone)
     record1 = {
         'values': ['2.2.2.2'],
         'type': 'A',
@@ -127,14 +128,14 @@ def test_update_bunch_of_records(api_client, zone):
     )
     assert strip_ns_and_soa(response.data['records']) == {
         record1_hash: record1,
-        'PAM3E7jPYxbJW': record2
+        encode_record(record2, zone.route53_zone.id): record2
     }
 
 
 @pytest.mark.django_db
 def test_delete_bunch_of_records(api_client, zone):
     zone, client = zone
-    record1_hash = 'GW5Xxvn9kYvmd'
+    record1_hash = hash_test_record(zone)
     record1 = {
         'values': ['2.2.2.2'],
         'type': 'A',
@@ -142,14 +143,12 @@ def test_delete_bunch_of_records(api_client, zone):
         'dirty': False,
         'name': 'test'
     }
-    record2_hash = '50Y6bP8D1V4B3'
     record2 = {
         'name': 'detest',
         'ttl': 400,
         'type': 'NS',
         'values': ['ns.test.com', 'ns2.test.com']
     }
-    record3_hash = 'ELGbwLwmXjwWm'
     record3 = {
         'name': 'cdn',
         'ttl': 400,
@@ -163,21 +162,21 @@ def test_delete_bunch_of_records(api_client, zone):
         data=json.dumps({
             'records': {
                 record1_hash: record1,
-                record2_hash: None,
-                record3_hash: None
+                encode_record(record2, zone.route53_zone.id): None,
+                encode_record(record3, zone.route53_zone.id): None
             }
         }),
         content_type='application/merge-patch+json'
     )
     assert response.data['records'][record1_hash] == record1
-    assert record2_hash not in response.data['records']
-    assert record3_hash not in response.data['records']
+    assert encode_record(record2, zone.route53_zone.id) not in response.data['records']
+    assert encode_record(record3, zone.route53_zone.id) not in response.data['records']
 
 
 @pytest.mark.django_db
 def test_delete_nonexistent_records(api_client, zone):
     zone, client = zone
-    record1_hash = 'GW5Xxvn9kYvmd'
+    record1_hash = hash_test_record(zone)
     record1 = {
         'values': ['2.2.2.2'],
         'type': 'A',
@@ -185,7 +184,6 @@ def test_delete_nonexistent_records(api_client, zone):
         'dirty': False,
         'name': 'test'
     }
-    record2_hash = '50Y6bP8D1V4B3'
     record2 = {
         'name': 'detest',
         'ttl': 400,
@@ -200,21 +198,21 @@ def test_delete_nonexistent_records(api_client, zone):
         data=json.dumps({
             'records': {
                 record1_hash: record1,
-                record2_hash: None,
+                encode_record(record2, zone.route53_zone.id): None,
                 record3_hash: None
             }
         }),
         content_type='application/merge-patch+json'
     )
     assert response.data['records'][record1_hash] == record1
-    assert record2_hash not in response.data['records']
+    assert encode_record(record2, zone.route53_zone.id) not in response.data['records']
     assert record3_hash not in response.data['records']
 
 
 @pytest.mark.django_db
 def test_zone_delete_record(api_client, zone):
     zone, client = zone
-    record_hash = 'GW5Xxvn9kYvmd'
+    record_hash = hash_test_record(zone)
     response = api_client.patch(
         '/zones/%s/' % zone.id,
         data=json.dumps({
@@ -314,7 +312,7 @@ def test_add_record_ttl_invalid(api_client, zone):
 @pytest.mark.django_db
 def test_change_name_of_record(api_client, zone):
     zone, client = zone
-    record2_hash = 'GW5Xxvn9kYvmd'
+    record_init_hash = hash_test_record(zone)
     record2 = {
         'name': 'altceva',
         'type': 'A',
@@ -326,19 +324,19 @@ def test_change_name_of_record(api_client, zone):
         '/zones/%s/' % zone.id,
         data=json.dumps({
             'records': {
-                record2_hash: record2
+                record_init_hash: record2
             }
         }),
         content_type='application/merge-patch+json'
     )
-    assert response.data['records']['pxgBWMa6gD7Bk'] == record2
-    assert record2_hash not in response.data['records']
+    assert response.data['records'][encode_record(record2, zone.route53_zone.id)] == record2
+    assert record_init_hash not in response.data['records']
 
 
 @pytest.mark.django_db
 def test_change_ttl_of_record(api_client, zone):
     zone, client = zone
-    record2_hash = 'GW5Xxvn9kYvmd'
+    record2_hash = hash_test_record(zone)
     record2 = {
         'name': 'test',
         'type': 'A',
@@ -355,14 +353,13 @@ def test_change_ttl_of_record(api_client, zone):
         }),
         content_type='application/merge-patch+json'
     )
-    assert response.data['records']['GW5Xxvn9kYvmd'] == record2
-    # assert record2 in client.list_resource_record_sets(zone.route53_id)['ResourceRecordSets']
+    assert response.data['records'][hash_test_record(zone)] == record2
 
 
 @pytest.mark.django_db
 def test_change_type_of_record(api_client, zone):
     zone, client = zone
-    record2_hash = 'GW5Xxvn9kYvmd'
+    record2_hash = hash_test_record(zone)
     record2 = {
         'name': 'altceva',
         'type': 'CNAME',
@@ -379,7 +376,7 @@ def test_change_type_of_record(api_client, zone):
         }),
         content_type='application/merge-patch+json'
     )
-    assert response.data['records']['Oraybk8X6LpX8'] == record2
+    assert response.data['records'][encode_record(record2, zone.route53_zone.id)] == record2
     assert record2_hash not in response.data['records']
 
 
@@ -397,7 +394,7 @@ def test_hidden_records(api_client, zone):
         '/zones/%s/' % zone.id,
     )
     assert strip_ns_and_soa(response.data['records']) == {
-        'GW5Xxvn9kYvmd': {
+        hash_test_record(zone): {
             'values': ['1.1.1.1'],
             'name': 'test',
             'ttl': 300,
@@ -410,7 +407,7 @@ def test_hidden_records(api_client, zone):
 @pytest.mark.django_db
 def test_alias_records(api_client, zone):
     zone, client = zone
-    zone.add_record({
+    alias_record = {
         'name': 'ceva',
         'type': 'A',
         'AliasTarget': {
@@ -418,20 +415,21 @@ def test_alias_records(api_client, zone):
             'DNSName': 'test',
             'EvaluateTargetHealth': False
         },
-    })
+    }
+    zone.add_record(alias_record)
     zone.save()
     response = api_client.get(
         '/zones/%s/' % zone.id,
     )
     assert strip_ns_and_soa(response.data['records']) == {
-        'GW5Xxvn9kYvmd': {
+        hash_test_record(zone): {
             'values': ['1.1.1.1'],
             'name': 'test',
             'ttl': 300,
             'dirty': False,
             'type': 'A',
         },
-        'l6Y0jdPqbnRg': {
+        encode_record(alias_record, zone.route53_zone.id): {
             'name': 'ceva',
             'type': 'A',
             'dirty': False,

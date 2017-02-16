@@ -3,9 +3,10 @@ import botocore.exceptions
 import pytest
 from django_dynamic_fixture import G
 
-from dns import models
-from dns.utils import route53
-from tests.fixtures import boto_client, zone  # pylint: disable=unused-import
+from tests.fixtures import boto_client, zone
+from dns.utils.route53 import get_local_aws_regions
+from tests.utils import hash_test_record
+from zinc.vendors.hashids import encode_record
 
 regions = route53.get_local_aws_regions()
 
@@ -23,13 +24,13 @@ def test_add_zone_record(zone):
     zone.add_record(record)
     zone.save()
 
-    assert 'D7ldejBgkXJwR' in zone.records
+    assert encode_record(record, zone.route53_zone.id) in zone.records
 
 
 @pytest.mark.django_db
 def test_delete_zone_record(zone):
     zone, _ = zone
-    record_hash = 'GW5Xxvn9kYvmd'
+    record_hash = hash_test_record(zone)
     record = zone.records[record_hash]
 
     zone.delete_record(record)
@@ -41,7 +42,7 @@ def test_delete_zone_record(zone):
 @pytest.mark.django_db
 def test_delete_zone_record_by_hash(zone):
     zone, _ = zone
-    record_hash = 'GW5Xxvn9kYvmd'
+    record_hash = hash_test_record(zone)
 
     zone.delete_record_by_hash(record_hash)
     zone.save()

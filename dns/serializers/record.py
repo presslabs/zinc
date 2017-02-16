@@ -7,21 +7,23 @@ from rest_framework.exceptions import ValidationError
 
 from dns.exceptions import UnprocessableEntity
 from dns.models import RECORD_PREFIX
+from zinc import ZINC_RECORD_TYPES
 
 HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)
 
 
 class RecordSerializer(Serializer):
-    RECORD_TYPES = [
-        'A', 'AAAA', 'CNAME', 'MX', 'TXT',
-        'SPF', 'SRV', 'NS', 'SOA', 'POLICY_ROUTED'
-    ]
 
     name = CharField(max_length=255)
-    type = ChoiceField(choices=[(type, type) for type in RECORD_TYPES])
+    type = ChoiceField(choices=ZINC_RECORD_TYPES)
     ttl = IntegerField(allow_null=True, min_value=300, required=False)
     values = ListField(child=CharField(), required=True)
     dirty = SerializerMethodField()
+    # TODO: add managed field
+    # managed = SerializerMethodField()
+
+    def get_managed(self, obj):
+        return obj.get('managed', False)
 
     def get_dirty(self, obj):
         return obj.get('dirty', False)
@@ -40,6 +42,7 @@ class RecordSerializer(Serializer):
             )
         return value
 
+    # TODO: delete it, should work without it..
     def to_internal_value(self, data):
         if data.get('delete', False):
             data = OrderedDict(data)

@@ -142,7 +142,7 @@ class Zone(models.Model):
         return super(Zone, self).save(*args, **kwargs)
 
     def add_record(self, record):
-        record_hash = hashids.encode_record(record)
+        record_hash = hashids.encode_record(record, self.route53_zone.id)
         self.route53_zone.add_record_changes(record, key=record_hash)
         return record_hash
 
@@ -156,7 +156,7 @@ class Zone(models.Model):
         self.route53_zone.add_record_changes(to_delete_record, key=record_hash)
 
     def delete_record(self, record):
-        self.delete_record_by_hash(hashids.encode_record(record))
+        self.delete_record_by_hash(hashids.encode_record(record, self.route53_zone.id))
 
     def get_policy_records(self):
         records = {}
