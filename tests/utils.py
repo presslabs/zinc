@@ -1,3 +1,4 @@
+from zinc.vendors import hashids
 
 
 def strip_ns_and_soa(records):
@@ -7,3 +8,10 @@ def strip_ns_and_soa(records):
         for record_hash, record in records.items()
         if not (record['type'] in ('NS', 'SOA') and record['name'] == '@')
     }
+
+
+def hash_test_record(zone):
+    return hashids.encode_record({
+        'name': 'test',
+        'type': 'A'
+    }, zone.route53_zone.id)

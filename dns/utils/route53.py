@@ -98,6 +98,7 @@ class Zone(object):
     def records(self, rfilter=None):
         return self._records(rfilter)
 
+    # TODO: merge those two
     def _records(self, rfilter):
         self._cache_aws_records()
         entries = {}
@@ -109,7 +110,7 @@ class Zone(object):
                 if rfilter and not rfilter(record):
                     continue
                 else:
-                    entries[record['set_id']] = record
+                    entries[record['id']] = record
 
         return entries
 
@@ -238,7 +239,6 @@ class RecordHandler:
         def root_ns_soa(record, root):
             return record['Name'] == root and record['Type'] in ['NS', 'SOA']
 
-        set_id = hashids.encode_record(record)
         decoded_record = {
             'name': cls._strip_root(record['Name'], root),
             'type': record['Type'],
@@ -266,8 +266,8 @@ class RecordHandler:
             if extra in record:
                 decoded_record[extra] = record[extra]
 
-        set_id = record.get('SetIdentifier', False) or hashids.encode_record(decoded_record)
-        decoded_record['set_id'] = set_id
+        set_id = hashids.encode_record(decoded_record, route53_id)
+        decoded_record['id'] = set_id
 
         return decoded_record
 
