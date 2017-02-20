@@ -12,6 +12,7 @@ from dns.utils import route53
 from dns.utils.route53 import get_local_aws_regions, HealthCheck
 from dns.validators import validate_domain, validate_hostname
 from zinc.vendors import hashids
+from dns import tasks
 
 
 RECORD_PREFIX = '_zn'
@@ -124,10 +125,10 @@ class PolicyMember(models.Model):
 
 class Zone(models.Model):
     root = models.CharField(max_length=255, validators=[validate_domain])
-    route53_id = models.CharField(max_length=32, unique=True, editable=False)
-    caller_reference = models.CharField(max_length=32, editable=False,
-                                        unique=True)
-    deleted = models.BooleanField(default=False, editable=False)
+    route53_id = models.CharField(max_length=32, unique=True, editable=False,
+                                  null=True, default=None)
+    caller_reference = models.UUIDField(default=uuid.uuid4)
+    deleted = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         self._route53_instance = None
@@ -135,17 +136,9 @@ class Zone(models.Model):
 
     def save(self, *args, **kwargs):
         if self.route53_id is not None:
+            if self.route53_id.startswith('/hostedzone/'):
+                self.route53_id = self.route53_id[len('/hostedzone/'):]
             self.route53_zone.commit()
-            return super(Zone, self).save(*args, **kwargs)
-
-        try:
-            zone = route53.Zone.create(self.root)
-        except route53.ClientError as e:
-            raise ValidationError(str(e), 400)
-
-        self.route53_id = zone.id
-        self.caller_reference = zone.caller_reference
-
         return super(Zone, self).save(*args, **kwargs)
 
     def add_record(self, record):
@@ -178,15 +171,18 @@ class Zone(models.Model):
             if policy_record.deleted:
                 record.update({'delete': True})
             records.update({str(policy_record.id): record})
-
         return records
 
     @property
     def route53_zone(self):
         if not self._route53_instance:
-            self._route53_instance = route53.Zone(id=self.route53_id, root=self.root)
-
+            self._route53_instance = route53.Zone(self)
         return self._route53_instance
+
+    def soft_delete(self):
+        self.deleted = True
+        self.save(update_fields=['deleted'])
+        tasks.aws_delete_zone.delay(self.pk)
 
     @property
     def records(self):
