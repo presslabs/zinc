@@ -6,7 +6,7 @@ from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
 
 from tests.fixtures import api_client, boto_client, zone
-from tests.utils import strip_ns_and_soa, hash_test_record
+from tests.utils import strip_ns_and_soa, hash_test_record, hash_policy_record
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
 
@@ -34,7 +34,7 @@ def test_policy_record_get(api_client, zone):
             'dirty': False,
             'values': ['1.1.1.1']
         },
-        str(policy_record.id): {
+        hash_policy_record(policy_record): {
             'name': '@',
             'type': 'POLICY_ROUTED',
             'values': [str(policy.id)],
@@ -72,7 +72,7 @@ def test_policy_record_create(api_client, zone):
             'dirty': False,
             'values': ['1.1.1.1']
         },
-        str(pr.id): {
+        hash_policy_record(pr): {
             'name': '@',
             'type': 'POLICY_ROUTED',
             'dirty': True,
@@ -95,7 +95,7 @@ def test_policy_record_update_policy(api_client, zone):
         '/zones/%s/' % zone.id,
         data=json.dumps({
             'records': {
-                str(policy_record.id): {
+                hash_policy_record(policy_record): {
                     'name': '@',
                     'type': 'POLICY_ROUTED',
                     'values': [str(new_policy.id)],
@@ -116,7 +116,7 @@ def test_policy_record_update_policy(api_client, zone):
             'dirty': False,
             'values': ['1.1.1.1']
         },
-        str(pr.id): {
+        hash_policy_record(pr): {
             'name': '@',
             'type': 'POLICY_ROUTED',
             'dirty': True,
@@ -137,7 +137,7 @@ def test_policy_record_delete(api_client, zone):
         '/zones/%s/' % zone.id,
         data=json.dumps({
             'records': {
-                str(policy_record.id): None
+                hash_policy_record(policy_record): None
             }
         }),
         content_type='application/merge-patch+json'
@@ -156,7 +156,7 @@ def test_policy_record_delete(api_client, zone):
             'dirty': False,
             'values': ['1.1.1.1']
         },
-        str(pr.id): {
+        hash_policy_record(pr): {
             'name': '@',
             'type': 'POLICY_ROUTED',
             'values': [str(policy.id)],
@@ -188,13 +188,13 @@ def test_policy_record_get_more_than_one(api_client, zone):
             'dirty': False,
             'values': ['1.1.1.1']
         },
-        str(policy_record.id): {
+        hash_policy_record(policy_record): {
             'name': '@',
             'type': 'POLICY_ROUTED',
             'values': [str(policy.id)],
             'dirty': False
         },
-        str(policy_record_2.id): {
+        hash_policy_record(policy_record_2): {
             'name': 'test',
             'type': 'POLICY_ROUTED',
             'values': [str(policy_record_2.policy.id)],
@@ -239,13 +239,13 @@ def test_policy_record_create_more_than_one(api_client, zone):
             'dirty': False,
             'values': ['1.1.1.1']
         },
-        str(pr.id): {
+        hash_policy_record(pr): {
             'name': '@',
             'type': 'POLICY_ROUTED',
             'dirty': True,
             'values': [str(policy.id)]
         },
-        str(pr_2.id): {
+        hash_policy_record(pr_2): {
             'name': 'test',
             'type': 'POLICY_ROUTED',
             'dirty': True,
