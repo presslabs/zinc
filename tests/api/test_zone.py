@@ -50,8 +50,9 @@ def test_list_zones(api_client, boto_client):
 
     assert [result['url'] for result in response.data['results']] == [
         "http://testserver/zones/{}".format(zone.id) for zone in zones]
-    assert (list(m.Zone.objects.all().values_list('id', 'root')) ==
-            [(zone['id'], zone['root']) for zone in response.data['results']])
+    assert ([(zone.id, zone.root, zone.dirty, zone.route53_zone.id) for zone in zones] ==
+            [(zone['id'], zone['root'], zone['dirty'], zone['route53_id'])
+             for zone in response.data['results']])
 
 
 @pytest.mark.django_db
@@ -69,6 +70,8 @@ def test_detail_zone(api_client, zone):
             'type': 'A',
         }
     }
+    assert response.data['route53_id'] == zone.route53_zone.id
+    assert response.data['dirty'] is False
 
 
 @pytest.mark.django_db

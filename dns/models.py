@@ -135,6 +135,14 @@ class Zone(models.Model):
         self._route53_instance = None
         super(Zone, self).__init__(*args, **kwargs)
 
+    @property
+    def dirty(self):
+        dirty = False
+        for policy_record in self.policy_records.all():
+            dirty |= policy_record.dirty
+
+        return dirty
+
     def save(self, *args, **kwargs):
         if self.route53_id is not None:
             if self.route53_id.startswith('/hostedzone/'):
