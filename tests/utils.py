@@ -1,4 +1,5 @@
 from zinc.vendors import hashids
+from zinc import POLICY_ROUTED
 
 
 def strip_ns_and_soa(records):
@@ -15,3 +16,10 @@ def hash_test_record(zone):
         'name': 'test',
         'type': 'A'
     }, zone.route53_zone.id)
+
+
+def hash_policy_record(policy_record):
+    return hashids.encode_record({
+        'name': policy_record.name,
+        'type': POLICY_ROUTED,
+    }, policy_record.zone.route53_zone.id)

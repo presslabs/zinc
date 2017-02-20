@@ -13,6 +13,7 @@ from dns.utils.route53 import get_local_aws_regions, HealthCheck
 from dns.validators import validate_domain, validate_hostname
 from zinc.vendors import hashids
 from dns import tasks
+from zinc import POLICY_ROUTED
 
 
 RECORD_PREFIX = '_zn'
@@ -163,14 +164,18 @@ class Zone(models.Model):
         for policy_record in self.policy_records.all():
             record = {
                 'name': policy_record.name,
-                'type': 'POLICY_ROUTED',
+                'type': POLICY_ROUTED,
                 'values': [str(policy_record.policy.id)],
                 'set_id': str(policy_record.id),
                 'dirty': policy_record.dirty,
             }
             if policy_record.deleted:
                 record.update({'delete': True})
-            records.update({str(policy_record.id): record})
+            records.update({hashids.encode_record({
+                'name': policy_record.name,
+                'type': POLICY_ROUTED
+            }, self.route53_zone.id): record})
+
         return records
 
     @property
@@ -211,7 +216,7 @@ class Zone(models.Model):
     def records(self, records):
         excluded_hashes = []
         for record_hash, record in records.items():
-            if record['type'] == 'POLICY_ROUTED':
+            if record['type'] == POLICY_ROUTED:
                 try:
                     policy = Policy.objects.get(id=record['values'][0])
                 except Policy.DoesNotExist:
