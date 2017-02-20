@@ -10,7 +10,8 @@ from dns.utils import route53
 class ZoneListSerializer(HyperlinkedModelSerializer):
     class Meta:
         model = Zone
-        fields = ['root', 'url', 'id']
+        fields = ['root', 'url', 'id', 'route53_id', 'dirty']
+        read_only_fields = ['route53_id', 'dirty']
 
     @transaction.atomic
     def create(self, validated_data):
@@ -31,8 +32,8 @@ class ZoneDetailSerializer(HyperlinkedModelSerializer):
 
     class Meta:
         model = Zone
-        fields = ['root', 'url', 'records']
-        read_only_fields = ['root', 'url']
+        fields = ['root', 'url', 'records', 'route53_id', 'dirty']
+        read_only_fields = ['root', 'url', 'route53_id', 'dirty']
 
     def __init__(self, *args, **kwargs):
         super(ZoneDetailSerializer, self).__init__(*args, **kwargs)
