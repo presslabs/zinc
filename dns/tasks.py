@@ -24,3 +24,8 @@ def aws_delete_zone(self, pk):
             self.retry()
         except MaxRetriesExceededError:
             logger.error('Failed to remove zone {}'.format(zone_id))
+
+
+@shared_task(bind=True)
+def reconcile_loop(self):
+    pass
