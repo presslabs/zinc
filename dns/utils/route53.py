@@ -159,6 +159,22 @@ class Zone(object):
         self.zone_record.route53_id = zone['HostedZone']['Id']
         self.zone_record.save()
 
+    def reconcile(self):
+        if self.zone_record.deleted:
+            self.delete()
+        elif self.zone_record.route53_id is None:
+            self.create()
+
+    @classmethod
+    def reconcile_multiple(cls, zones):
+        for zone_record in zones:
+            zone = cls(zone_record)
+            try:
+                zone.reconcile()
+            except ClientError:
+                logger.exception("Error while handling {}".format(zone_record.name))
+
+
 
 class RecordHandler:
     @classmethod
