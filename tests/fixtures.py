@@ -1,4 +1,5 @@
 # pylint: disable=no-member,unused-argument,protected-access,redefined-outer-name
+import uuid
 import random
 import string
 from copy import deepcopy
@@ -227,7 +228,7 @@ def boto_client(request):
 def zone(request, boto_client):
     client = boto_client
 
-    caller_ref = 'zinc ref-fixture {}'.format(datetime.now())
+    caller_ref = str(uuid.uuid4())
     zone_name = 'test-zinc.net.'
 
     zone = client.create_hosted_zone(

@@ -39,14 +39,23 @@ def generate_caller_ref():
 
 
 class Zone(object):
-    def __init__(self, id=None, root='', caller_reference=None):
-        if id.startswith('/hostedzone/'):
-            id = id[len('/hostedzone/'):]
-        self.id = id
-        self.root = (root)
-        self.caller_reference = caller_reference
+
+    def __init__(self, zone_record):
+        self.zone_record = zone_record
         self._aws_records = []
         self._change_batch = []
+
+    @property
+    def id(self):
+        return self.zone_record.route53_id
+
+    @property
+    def caller_reference(self):
+        return self.zone_record.caller_reference
+
+    @property
+    def root(self):
+        return self.zone_record.root
 
     def add_records(self, records):
         for record_hash, record in records.items():
@@ -139,20 +148,16 @@ class Zone(object):
                     'Changes': to_delete
                 })
 
-    @classmethod
-    def create(cls, root):
-        ref = uuid.uuid4()
+    def create(self):
         zone = client.create_hosted_zone(
-            Name=root,
-            CallerReference='zinc {} {}'.format(ref, datetime.datetime.now()),
+            Name=self.root,
+            CallerReference=str(self.caller_reference),
             HostedZoneConfig={
                 'Comment': 'zinc'
             }
         )
-
-        id = zone['HostedZone']['Id']
-
-        return cls(id, root, ref)
+        self.zone_record.route53_id = zone['HostedZone']['Id']
+        self.zone_record.save()
 
 
 class RecordHandler:

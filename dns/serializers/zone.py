@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework.serializers import (HyperlinkedModelSerializer, ValidationError)
 from rest_framework.fields import DictField
 
@@ -11,19 +12,18 @@ class ZoneListSerializer(HyperlinkedModelSerializer):
         model = Zone
         fields = ['root', 'url', 'id']
 
+    @transaction.atomic
     def create(self, validated_data):
         root = validated_data['root']
         if not root.endswith('.'):
             validated_data['root'] += '.'
 
+        zone = Zone.objects.create(**validated_data)
         try:
-            zone = route53.Zone.create(validated_data['root'])
+            zone.route53_zone.create()
         except route53.ClientError as e:
             raise ValidationError(detail=str(e))
-
-        return Zone.objects.create(route53_id=zone.id,
-                                   caller_reference=zone.caller_reference,
-                                   **validated_data)
+        return zone
 
 
 class ZoneDetailSerializer(HyperlinkedModelSerializer):

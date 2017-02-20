@@ -1,6 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
-                                     RetrieveAPIView, RetrieveUpdateDestroyAPIView)
+                                     RetrieveAPIView, RetrieveUpdateDestroyAPIView,
+                                     ListAPIView)
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,7 +14,7 @@ from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
 
 
 class ZoneList(ListCreateAPIView):
-    queryset = models.Zone.objects.all()
+    queryset = models.Zone.objects.filter(deleted=False)
     serializer_class = ZoneListSerializer
 
 
@@ -36,9 +37,7 @@ class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
 
     def delete(self, request, pk, *args, **kwargs):
         zone = get_object_or_404(models.Zone.objects, pk=pk)
-        zone.deleted = True
-        zone.save()
-        tasks.aws_delete_zone.delay(zone.pk)
+        zone.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

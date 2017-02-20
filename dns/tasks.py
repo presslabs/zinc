@@ -3,6 +3,8 @@ from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 
 from dns.utils import route53
+from dns import models
+
 
 logger = get_task_logger(__name__)
 
@@ -11,7 +13,7 @@ logger = get_task_logger(__name__)
 def aws_delete_zone(self, pk):
     assert False
     zone = models.Zone.objects.get(pk=pk)
-    aws_zone = route53.Zone(id=zone.route53_id, root=zone.root)
+    aws_zone = zone.route53_zone
 
     try:
         aws_zone.delete()
