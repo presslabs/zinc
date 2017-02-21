@@ -234,9 +234,7 @@ def test_delete_a_zone(api_client, zone, settings):
         '/zones/%s/' % zone.id
     )
 
-    zone.refresh_from_db()
-    assert zone.deleted is True
-
+    assert m.Zone.objects.filter(pk=zone.pk).count() == 0
     assert not response.data
 
 
