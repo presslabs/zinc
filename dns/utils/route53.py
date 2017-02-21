@@ -42,7 +42,8 @@ class Zone(object):
 
     def __init__(self, zone_record):
         self.zone_record = zone_record
-        self._aws_records = []
+        self._aws_records = None
+        self._exists = None
         self._change_batch = []
 
     @property
@@ -87,7 +88,7 @@ class Zone(object):
             )
             # clear cache
             self._reset_change_batch()
-            self._aws_records = []
+            self._clear_cache()
         except ClientError as error:
             import json
             print('Error on commit({}): {}, changes:\n {}'.format(
@@ -113,19 +114,36 @@ class Zone(object):
         return entries
 
     @property
+    def exists(self):
+        self._cache_aws_records()
+        return self._exists
+
+    @property
     def ns(self):
         return self._records(lambda record: (record['type'] == 'NS' and record['name'] == '@'))
 
     def _cache_aws_records(self):
-        if self._aws_records:
+        if self._aws_records is not None:
             return
+        try:
+            response = client.list_resource_record_sets(HostedZoneId=self.id)
+        except ClientError as excp:
+            if excp.response['Error']['Code'] == 'NoSuchHostedZone':
+                self._aws_records = []
+                self._exists = False
+        else:
+            self._aws_records = response['ResourceRecordSets']
+            self._exists = True
 
-        response = client.list_resource_record_sets(HostedZoneId=self.id)
-        self._aws_records = response['ResourceRecordSets']
+    def _clear_cache(self):
+        self._aws_records = None
+        self._exists = None
 
     def delete(self):
-        self._delete_records()
-        client.delete_hosted_zone(Id=self.id)
+        if self.exists:
+            self._delete_records()
+            client.delete_hosted_zone(Id=self.id)
+        self.zone_record.delete()
 
     def _delete_records(self):
         self._cache_aws_records()
@@ -173,7 +191,6 @@ class Zone(object):
                 zone.reconcile()
             except ClientError:
                 logger.exception("Error while handling {}".format(zone_record.name))
-
 
 
 class RecordHandler:

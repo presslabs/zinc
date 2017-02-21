@@ -3,11 +3,11 @@ import botocore.exceptions
 import pytest
 from django_dynamic_fixture import G
 
-from dns import models as m
-from dns.utils.route53 import get_local_aws_regions
+from dns import models
+from dns.utils import route53
 from tests.fixtures import boto_client, zone  # pylint: disable=unused-import
 
-regions = get_local_aws_regions()
+regions = route53.get_local_aws_regions()
 
 
 @pytest.mark.django_db
@@ -96,6 +96,8 @@ def test_zone_delete(zone):
     zone, client = zone
     zone_id = zone.route53_zone.id
     zone_name = 'test-zinc.net.'
+    # make sure we have extra records in addition to the NS and SOA
+    # to ensure zone.delete handles those as well
     client.change_resource_record_sets(
         HostedZoneId=zone_id,
         ChangeBatch={
@@ -134,3 +136,26 @@ def test_zone_delete(zone):
     with pytest.raises(botocore.exceptions.ClientError) as excp:
         client.get_hosted_zone(Id=zone_id)
     assert excp.value.response['Error']['Code'] == 'NoSuchHostedZone'
+
+
+def test_zone_exists_false(boto_client):
+    zone_record = models.Zone(route53_id='Does/Not/Exist')
+    zone = route53.Zone(zone_record)
+    assert not zone.exists
+
+
+@pytest.mark.django_db
+def test_zone_exists_true(zone):
+    zone_record, client = zone
+    assert route53.Zone(zone_record).exists
+
+
+@pytest.mark.django_db
+def test_delete_missing_zone(boto_client):
+    """Test zone delete is idempotent
+    If we have a zone marked deleted in the db, calling delete should be safe and
+    remove the db record for good.
+    """
+    zone_record = G(models.Zone, route53_id='Does/Not/Exist', deleted=True)
+    route53.Zone(zone_record).delete()
+    assert models.Zone.objects.filter(pk=zone_record.pk).count() == 0
