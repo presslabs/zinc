@@ -158,7 +158,7 @@ class Moto:
                         'Type': 'Sender'
                     },
                 },
-                operation_name='get_health_check',
+                operation_name='get_hosted_zone',
             )
 
     def cleanup(self):
@@ -198,7 +198,19 @@ class Moto:
                 raise AssertionError(change['Action'])
 
     def list_resource_record_sets(self, HostedZoneId=None):
-        return self.response[HostedZoneId]
+        try:
+            return self.response[HostedZoneId]
+        except KeyError:
+            raise botocore.exceptions.ClientError(
+                error_response={
+                    'Error': {
+                        'Code': 'NoSuchHostedZone',
+                        'Message': ('No hosted zone found with id {}.'.format(HostedZoneId)),
+                        'Type': 'Sender'
+                    },
+                },
+                operation_name='list_resource_record_sets',
+            )
 
     @property
     def response(self):
