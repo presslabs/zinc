@@ -2,6 +2,7 @@
 import pytest
 import json
 
+from botocore.exceptions import ClientError
 from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
 from django.test import override_settings
@@ -234,6 +235,9 @@ def test_delete_a_zone(api_client, zone, settings):
         '/zones/%s/' % zone.id
     )
 
+    with pytest.raises(ClientError) as excp_info:
+        client.get_hosted_zone(Id=zone.route53_id)
+    assert excp_info.value.response['Error']['Code'] == 'NoSuchHostedZone'
     assert m.Zone.objects.filter(pk=zone.pk).count() == 0
     assert not response.data
 
