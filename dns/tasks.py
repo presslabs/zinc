@@ -11,7 +11,6 @@ logger = get_task_logger(__name__)
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def aws_delete_zone(self, pk):
-    assert False
     zone = models.Zone.objects.get(pk=pk)
     aws_zone = zone.route53_zone
 
