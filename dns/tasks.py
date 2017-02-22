@@ -12,11 +12,11 @@ logger = get_task_logger(__name__)
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def aws_delete_zone(self, pk):
     zone = models.Zone.objects.get(pk=pk)
+    assert zone.deleted
     aws_zone = zone.route53_zone
 
     try:
         aws_zone.delete()
-        zone.delete()
     except Exception as e:
         logger.exception(e)
         try:
@@ -25,6 +25,18 @@ def aws_delete_zone(self, pk):
             logger.error('Failed to remove zone {}'.format(zone_id))
 
 
-@shared_task(bind=True)
-def reconcile_loop(self):
-    pass
+@shared_task(bind=True, ignore_result=True, default_retry_delay=60)
+def cleanup_deleted_zones(self):
+    """Periodic task to delete zones that are soft deleted but still exist in the db"""
+    route53.Zone.reconcile_multiple(models.Zone.objects.filter(deleted=True))
+
+
+@shared_task(bind=True, ignore_result=True, default_retry_delay=60)
+def reconcile_policy_records(bind=True):
+    """Periodic task to reconcile dirty policy records"""
+    for policy in models.PolicyRecord.objects.filter(dirty=True):
+        try:
+            policy.apply_record()
+        except:
+            logging.exception(
+                "apply_record failed for PolicyRecord {}.{}".format(policy.name, policy.zone.root))
