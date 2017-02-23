@@ -24,19 +24,21 @@ def test_add_zone_record(zone):
     zone.add_record(record)
     zone.save()
 
-    assert encode_record(record, zone.route53_zone.id) in zone.records
+    assert encode_record(record, zone.route53_zone.id) in [r['id'] for r in zone.records]
 
 
 @pytest.mark.django_db
 def test_delete_zone_record(zone):
     zone, _ = zone
     record_hash = hash_test_record(zone)
-    record = zone.records[record_hash]
+    for r in zone.records:
+        if r['id'] == record_hash:
+            record = r
 
     zone.delete_record(record)
     zone.save()
 
-    assert record_hash not in zone.records
+    assert record_hash not in [r['id'] for r in zone.records]
 
 
 @pytest.mark.django_db

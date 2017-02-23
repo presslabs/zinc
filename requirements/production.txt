@@ -8,5 +8,4 @@ redis==2.10.5
 hashids==1.1.0
 django-hashid-field==0.1.6
 json-merge-patch==0.1
-django-modeladmin-reorder==0.2
 django-rest-swagger==2.1.0

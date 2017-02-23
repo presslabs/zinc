@@ -6,12 +6,25 @@ from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
 
 from tests.fixtures import api_client, boto_client, zone
-from tests.utils import strip_ns_and_soa, hash_test_record, hash_policy_record
+from tests.utils import strip_ns_and_soa, hash_test_record, hash_policy_record, get_test_record
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
 
 
 regions = get_local_aws_regions()
+
+
+def get_policy_record(policy_record, dirty=False, managed=False):
+    return {
+        'id': hash_policy_record(policy_record),
+        'name': policy_record.name,
+        'type': 'POLICY_ROUTED',
+        'values': [str(policy_record.policy.id)],
+        'dirty': dirty,
+        'managed': managed,
+        'url': '/zones/{}/records/{}/'.format(policy_record.zone.id,
+                                              hash_policy_record(policy_record))
+    }
 
 
 @pytest.mark.django_db
@@ -26,21 +39,10 @@ def test_policy_record_get(api_client, zone):
         '/zones/%s/' % zone.id
     )
 
-    assert strip_ns_and_soa(response.data['records']) == {
-        hash_test_record(zone): {
-            'name': 'test',
-            'type': 'A',
-            'ttl': 300,
-            'dirty': False,
-            'values': ['1.1.1.1']
-        },
-        hash_policy_record(policy_record): {
-            'name': '@',
-            'type': 'POLICY_ROUTED',
-            'values': [str(policy.id)],
-            'dirty': False
-        },
-    }
+    assert strip_ns_and_soa(response.data['records']) == [
+        get_test_record(zone),
+        get_policy_record(policy_record),
+    ]
 
 
 @pytest.mark.django_db
@@ -49,36 +51,17 @@ def test_policy_record_create(api_client, zone):
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
-    response = api_client.patch(
-        '/zones/%s/' % zone.id,
-        data=json.dumps({
-            'records': {
-                'new': {
-                    'name': '@',
-                    'type': 'POLICY_ROUTED',
-                    'values': [str(policy.id)],
-                }
-            }
-        }),
-        content_type='application/merge-patch+json'
+    response = api_client.post(
+        '/zones/%s/records/' % zone.id,
+        data={
+            'name': '@',
+            'type': 'POLICY_ROUTED',
+            'values': [str(policy.id)],
+        }
     )
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
-    assert strip_ns_and_soa(response.data['records']) == {
-        hash_test_record(zone): {
-            'name': 'test',
-            'type': 'A',
-            'ttl': 300,
-            'dirty': False,
-            'values': ['1.1.1.1']
-        },
-        hash_policy_record(pr): {
-            'name': '@',
-            'type': 'POLICY_ROUTED',
-            'dirty': True,
-            'values': [str(policy.id)]
-        },
-    }
+    assert response.data == get_policy_record(pr, dirty=True)
 
 
 @pytest.mark.django_db
@@ -92,37 +75,15 @@ def test_policy_record_update_policy(api_client, zone):
     policy_record = G(m.PolicyRecord, zone=zone, name='@', policy=policy)
 
     response = api_client.patch(
-        '/zones/%s/' % zone.id,
-        data=json.dumps({
-            'records': {
-                hash_policy_record(policy_record): {
-                    'name': '@',
-                    'type': 'POLICY_ROUTED',
-                    'values': [str(new_policy.id)],
-                }
-            }
-        }),
-        content_type='application/merge-patch+json'
+        '/zones/%s/records/%s/' % (zone.id, get_policy_record(policy_record)['id']),
+        data={
+            'values': [str(new_policy.id)],
+        }
     )
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
-    assert pr.dirty is True
     assert pr.id == policy_record.id
-    assert strip_ns_and_soa(response.data['records']) == {
-        hash_test_record(zone): {
-            'name': 'test',
-            'type': 'A',
-            'ttl': 300,
-            'dirty': False,
-            'values': ['1.1.1.1']
-        },
-        hash_policy_record(pr): {
-            'name': '@',
-            'type': 'POLICY_ROUTED',
-            'dirty': True,
-            'values': [str(new_policy.id)]
-        },
-    }
+    assert response.data == get_policy_record(pr, dirty=True)
 
 
 @pytest.mark.django_db
@@ -133,14 +94,8 @@ def test_policy_record_delete(api_client, zone):
 
     policy_record = G(m.PolicyRecord, zone=zone, name='@', policy=policy)
 
-    response = api_client.patch(
-        '/zones/%s/' % zone.id,
-        data=json.dumps({
-            'records': {
-                hash_policy_record(policy_record): None
-            }
-        }),
-        content_type='application/merge-patch+json'
+    response = api_client.delete(
+        '/zones/%s/records/%s/' % (zone.id, get_policy_record(policy_record)['id']),
     )
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
@@ -148,21 +103,6 @@ def test_policy_record_delete(api_client, zone):
     assert pr.dirty is True
     assert pr.deleted is True
     assert pr.id == policy_record.id
-    assert strip_ns_and_soa(response.data['records']) == {
-        hash_test_record(zone): {
-            'name': 'test',
-            'type': 'A',
-            'ttl': 300,
-            'dirty': False,
-            'values': ['1.1.1.1']
-        },
-        hash_policy_record(pr): {
-            'name': '@',
-            'type': 'POLICY_ROUTED',
-            'values': [str(policy.id)],
-            'dirty': True,
-        },
-    }
 
 
 @pytest.mark.django_db
@@ -180,27 +120,11 @@ def test_policy_record_get_more_than_one(api_client, zone):
         '/zones/%s/' % zone.id
     )
 
-    assert strip_ns_and_soa(response.data['records']) == {
-        hash_test_record(zone): {
-            'name': 'test',
-            'type': 'A',
-            'ttl': 300,
-            'dirty': False,
-            'values': ['1.1.1.1']
-        },
-        hash_policy_record(policy_record): {
-            'name': '@',
-            'type': 'POLICY_ROUTED',
-            'values': [str(policy.id)],
-            'dirty': False
-        },
-        hash_policy_record(policy_record_2): {
-            'name': 'test',
-            'type': 'POLICY_ROUTED',
-            'values': [str(policy_record_2.policy.id)],
-            'dirty': False
-        },
-    }
+    assert strip_ns_and_soa(response.data['records']) == [
+        get_test_record(zone),
+        get_policy_record(policy_record),
+        get_policy_record(policy_record_2),
+    ]
 
 
 @pytest.mark.django_db
@@ -210,48 +134,25 @@ def test_policy_record_create_more_than_one(api_client, zone):
     G(m.PolicyMember, policy=policy, region=regions[0])
     G(m.PolicyMember, policy=policy, region=regions[0])
 
-    response = api_client.patch(
-        '/zones/%s/' % zone.id,
-        data=json.dumps({
-            'records': {
-                'new': {
-                    'name': '@',
-                    'type': 'POLICY_ROUTED',
-                    'values': [str(policy.id)],
-                },
-                'new2': {
-                    'name': 'test',
-                    'type': 'POLICY_ROUTED',
-                    'values': [str(policy.id)]
-                }
-            }
-        }),
-        content_type='application/merge-patch+json'
-    )
+    response = api_client.post(
+        '/zones/%s/records/' % zone.id,
+        data={
+            'name': '@',
+            'type': 'POLICY_ROUTED',
+            'values': [str(policy.id)],
+        })
+    response_2 = api_client.post(
+        '/zones/%s/records/' % zone.id,
+        data={
+            'name': 'test',
+            'type': 'POLICY_ROUTED',
+            'values': [str(policy.id)]
+        })
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
     pr_2 = m.PolicyRecord.objects.get(name='test', zone=zone)
-    assert strip_ns_and_soa(response.data['records']) == {
-        hash_test_record(zone): {
-            'name': 'test',
-            'type': 'A',
-            'ttl': 300,
-            'dirty': False,
-            'values': ['1.1.1.1']
-        },
-        hash_policy_record(pr): {
-            'name': '@',
-            'type': 'POLICY_ROUTED',
-            'dirty': True,
-            'values': [str(policy.id)]
-        },
-        hash_policy_record(pr_2): {
-            'name': 'test',
-            'type': 'POLICY_ROUTED',
-            'dirty': True,
-            'values': [str(policy.id)]
-        },
-    }
+    assert response.data == get_policy_record(pr, dirty=True)
+    assert response_2.data == get_policy_record(pr_2, dirty=True)
 
 
 @pytest.mark.django_db
@@ -260,20 +161,14 @@ def test_policy_record_create_no_policy(api_client, zone):
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
-    response = api_client.patch(
-        '/zones/%s/' % zone.id,
-        data=json.dumps({
-            'records': {
-                'new': {
-                    'name': '@',
-                    'type': 'POLICY_ROUTED',
-                    'values': ['10412ecd-f4ac-4025-94c8-e4750750b940'],
-                }
-            }
-        }),
-        content_type='application/merge-patch+json'
+    response = api_client.post(
+        '/zones/%s/records/' % zone.id,
+        data={
+            'name': '@',
+            'type': 'POLICY_ROUTED',
+            'values': ['10412ecd-f4ac-4025-94c8-e4750750b940'],
+        }
     )
-
     assert response.status_code == 400
 
 
@@ -283,25 +178,17 @@ def test_policy_record_create_more_values(api_client, zone):
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
-    response = api_client.patch(
-        '/zones/%s/' % zone.id,
-        data=json.dumps({
-            'records': {
-                'new': {
-                    'name': '@',
-                    'type': 'POLICY_ROUTED',
-                    'values': ['10412ecd-f4ac-4025-94c8-e4750750b940', '2346321345'],
-                }
-            }
-        }),
-        content_type='application/merge-patch+json'
+    response = api_client.post(
+        '/zones/%s/records/' % zone.id,
+        data={
+            'name': '@',
+            'type': 'POLICY_ROUTED',
+            'values': ['10412ecd-f4ac-4025-94c8-e4750750b940', '2346321345'],
+        }
     )
-
     assert response.status_code == 400
     assert response.data == {
-        'records': {
-            'non_field_errors': [
-                'For POLICY_ROUTED record values list should contain just one element.'
-            ]
-        }
+        'values': [
+            'For POLICY_ROUTED record values list should contain just one element.'
+        ]
     }

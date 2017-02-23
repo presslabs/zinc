@@ -1,16 +1,15 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
-                                     RetrieveAPIView, RetrieveUpdateDestroyAPIView,
-                                     ListAPIView)
-from rest_framework import viewsets
-from rest_framework import status
+                                     RetrieveAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.generics import get_object_or_404
+from rest_framework.exceptions import NotFound
 
-from dns import models
-from dns import tasks
-from dns.parsers import JSONMergePatchParser
 from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
-                             ZoneDetailSerializer, ZoneListSerializer)
+                             ZoneDetailSerializer, ZoneListSerializer, RecordSerializer)
+from dns.serializers import RecordListSerializer
+from dns import models
 
 
 class ZoneList(ListCreateAPIView):
@@ -19,8 +18,7 @@ class ZoneList(ListCreateAPIView):
 
 
 class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
-    parser_classes = (JSONMergePatchParser,)
-    queryset = models.Zone.objects.filter(deleted=False)
+    queryset = models.Zone.objects.all()
     serializer_class = ZoneDetailSerializer
 
     @property
@@ -39,6 +37,48 @@ class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
         zone = get_object_or_404(models.Zone.objects, pk=pk)
         zone.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RecordDetail(RetrieveUpdateDestroyAPIView):
+    queryset = models.Zone.objects.all()
+    serializer_class = RecordSerializer
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        zone = get_object_or_404(queryset, id=self.kwargs['zone_id'])
+
+        for record in zone.records:
+            if record['id'] == self.kwargs['record_id']:
+                return record
+        raise NotFound(detail='Record not found.')
+
+    def get_zone(self):
+        return get_object_or_404(models.Zone, id=self.kwargs['zone_id'])
+
+    def get_serializer_context(self):
+        zone = self.get_zone()
+        context = super(RecordDetail, self).get_serializer_context()
+        context['zone'] = zone
+        context['record_id'] = self.kwargs['record_id']
+        return context
+
+    def perform_destroy(self, instance):
+        serializer = self.get_serializer(instance, data={}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+
+class RecordCreate(CreateAPIView):
+    serializer_class = RecordSerializer
+
+    def get_object(self):
+        return get_object_or_404(models.Zone, id=self.kwargs['zone_id'])
+
+    def get_serializer_context(self):
+        zone = self.get_object()
+        context = super(RecordCreate, self).get_serializer_context()
+        context['zone'] = zone
+        return context
 
 
 class Policy(viewsets.ModelViewSet):
