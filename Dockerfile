@@ -3,13 +3,9 @@ FROM python:3.5-alpine
 RUN mkdir /app
 WORKDIR /app
 
-RUN pip install --upgrade boto3==1.4.0 Django==1.10 "djangorestframework<3.5" requests==2.10.0 \
-        redis==2.10.5 zipa==0.3.0 celery==3.1.23 celery_once==0.1.4 \
-        json-merge-patch==0.1 django-modeladmin-reorder==0.2
-
-RUN set -ex \
-    && apk add --no-cache \
-        openssl
+RUN set -ex && apk add --no-cache openssl
+RUN cat /etc/group
+RUN addgroup -g 998 zinc && adduser -SD -u 998 -G zinc zinc
 
 ENV DOCKERIZE_VERSION v0.2.0
 RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
@@ -21,6 +17,5 @@ COPY . /app
 RUN pip install -r requirements.txt
 
 ENV PYTHONUNBUFFERED 1
-RUN ./manage.py migrate
-
+USER zinc
 CMD [ "python", "./manage.py", "runserver", "0.0.0.0:8000" ]
