@@ -151,9 +151,32 @@ class Zone(models.Model):
         return super(Zone, self).save(*args, **kwargs)
 
     def add_record(self, record):
-        record_hash = hashids.encode_record(record, self.route53_zone.id)
-        self.route53_zone.add_record_changes(record, key=record_hash)
-        return record_hash
+        # Add record if is POLICY_ROUTED then create one and add it.
+        # else add to aws zone.
+        # Return record hash or policy record id.
+        if record['type'] == POLICY_ROUTED:
+            try:
+                policy = Policy.objects.get(id=record['values'][0])
+            except Policy.DoesNotExist:
+                # Return 400
+                raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
+                    record['values'][0]))
+            try:
+                policy_record = self.policy_records.get(name=record['name'])
+                if record.get('delete', False):
+                    policy_record.deleted = True
+                else:
+                    policy_record.policy = policy
+                policy_record.dirty = True
+            except PolicyRecord.DoesNotExist:
+                policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
+
+            policy_record.save()
+            return policy_record.serialize(zone=self)
+        else:
+            record_hash = hashids.encode_record(record, self.route53_zone.id)
+            self.route53_zone.add_record_changes(record, key=record_hash)
+            return record
 
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
@@ -168,21 +191,9 @@ class Zone(models.Model):
         self.delete_record_by_hash(hashids.encode_record(record, self.route53_zone.id))
 
     def get_policy_records(self):
-        records = {}
+        records = []
         for policy_record in self.policy_records.all():
-            record = {
-                'name': policy_record.name,
-                'type': POLICY_ROUTED,
-                'values': [str(policy_record.policy.id)],
-                'set_id': str(policy_record.id),
-                'dirty': policy_record.dirty,
-            }
-            if policy_record.deleted:
-                record.update({'delete': True})
-            records.update({hashids.encode_record({
-                'name': policy_record.name,
-                'type': POLICY_ROUTED
-            }, self.route53_zone.id): record})
+            records.append(policy_record.serialize(zone=self))
 
         return records
 
@@ -200,11 +211,13 @@ class Zone(models.Model):
     @property
     def records(self):
         records = self.route53_zone.records()
-        filtered_records = {}
+        filtered_records = []
 
         # Hide all records that starts with the RECORD_PREFIX.
         # Translate policy records.
         for record_hash, record in records.items():
+            record['id'] = record_hash
+            record['zone_id'] = self.id
             if record['name'].startswith(RECORD_PREFIX):
                 continue
             if ('AliasTarget' in record):
@@ -213,41 +226,18 @@ class Zone(models.Model):
                 # if the record is ALIAS then translate it to ALIAS type known by API
                 record['values'] = ['ALIAS {}.{}'.format(record['AliasTarget']['DNSName'],
                                                          self.root)]
-            filtered_records.update({record_hash: record})
+            filtered_records.append(record)
 
-        for record_hash, record in self.get_policy_records().items():
-            filtered_records.update({record_hash: record})
+        for record in self.get_policy_records():
+            record['zone_id'] = self.id
+            filtered_records.append(record)
 
         return filtered_records
 
     @records.setter
     def records(self, records):
-        excluded_hashes = []
-        for record_hash, record in records.items():
-            if record['type'] == POLICY_ROUTED:
-                try:
-                    policy = Policy.objects.get(id=record['values'][0])
-                except Policy.DoesNotExist:
-                    # Return 400
-                    raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
-                        record['values'][0]))
-                try:
-                    policy_record = self.policy_records.get(name=record['name'])
-                    if record.get('delete', False):
-                        policy_record.deleted = True
-                    else:
-                        policy_record.policy = policy
-                    policy_record.dirty = True
-                except PolicyRecord.DoesNotExist:
-                    policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
-
-                policy_record.save()
-                excluded_hashes.append(record_hash)
-
-        for h in excluded_hashes:
-            del records[h]
-
-        self.route53_zone.add_records(records)
+        for record in records:
+            self.add_record(record)
 
     def __str__(self):
         return '{} {}'.format(self.pk, self.root)
@@ -266,6 +256,20 @@ class PolicyRecord(models.Model):
 
     def __str__(self):
         return '{} {} {}'.format(self.name, self.policy, self.zone)
+
+    def serialize(self, zone):
+        return {
+            'name': self.name,
+            'type': POLICY_ROUTED,
+            'values': [str(self.policy.id)],
+            'dirty': self.dirty,
+            'manage': False,
+            'deleted': self.deleted,
+            'id': hashids.encode_record({
+                'name': self.name,
+                'type': POLICY_ROUTED
+            }, zone.route53_zone.id)
+        }
 
     @transaction.atomic
     def apply_record(self):
