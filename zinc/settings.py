@@ -174,6 +174,9 @@ HEALTH_CHECK_CONFIG = {
     'ResourcePath': '/status',
     'FullyQualifiedDomainName': 'node.presslabs.net.',
 }
+LATTICE_URL = os.getenv('LATTICE_URL', 'https://lattice.presslabs.net/')
+LATTICE_USER = os.getenv('LATTICE_USER')
+LATTICE_PASSWORD = os.getenv('LATTICE_PASSWORD')
 
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
