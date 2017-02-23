@@ -5,7 +5,7 @@ import responses
 
 from dns.models import IP
 from factories.dns.ip_factory import IPFactory
-from dns.management.commands.ips_from_lattice import Command
+from lattice_sync.management.commands.ips_from_lattice import Command
 
 
 def test_command_arguments():
@@ -18,7 +18,6 @@ def test_command_arguments():
         call('--url', default=''),
         call('--user', default=''),
         call('--password', default=''),
-        call('--roles', nargs='*')
     ], any_order=True)
 
 
@@ -54,7 +53,6 @@ def test_adds_only_ips_from_servers_in_specified_roles():
         'url': 'http://lattice',
         'user': 'user',
         'password': 'password',
-        'roles': ['frontend-node', 'cdn-node']
     }
     call_command('ips_from_lattice', *[], **opts)
 
@@ -72,17 +70,16 @@ def test_fields_on_written_ip():
         'url': 'http://lattice',
         'user': 'user',
         'password': 'password',
-        'roles': ['random-node']
     }
     call_command('ips_from_lattice', *args, **opts)
 
-    ip = IP.objects.get(ip='123.123.123.125')
+    ip = IP.objects.get(ip='123.123.123.123')
 
     expected_fields = {
-        'ip': '123.123.123.125',
-        'friendly_name': 'b AMS2 Amsterdam, NL',
+        'ip': '123.123.123.123',
+        'friendly_name': 'a AMS1 Amsterdam, NL',
         'enabled': True,
-        'hostname': 'b'
+        'hostname': 'a'
     }
     attributes = {
         field: getattr(ip, field)
