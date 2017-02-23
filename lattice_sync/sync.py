@@ -25,8 +25,8 @@ def lattice_factory(url, user, password):
 def sync(lattice_client):
     roles = set(settings.LATTICE_ROLES)
     servers = [server for server in lattice.servers()
-               if (set(server['roles']).intersection(roles)
-                   and server['state'] not in ('unconfigured', 'decommissioned'))]
+               if (set(server['roles']).intersection(roles) and
+                   server['state'] not in ('unconfigured', 'decommissioned'))]
     locations = {d['id']: d['location'] for d in lattice.datacenters()}
 
     lattice_ip_pks = set()
