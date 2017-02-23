@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_swagger',
     'dns',
+    'lattice_sync',
 ]
 
 MIDDLEWARE_CLASSES = [
@@ -176,3 +177,5 @@ HEALTH_CHECK_CONFIG = {
 
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
+
+LATTICE_ROLES = ['frontend-node', 'cdn-node']
