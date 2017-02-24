@@ -1,11 +1,7 @@
 import uuid
 
-from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.core.exceptions import SuspiciousOperation
 
 from dns.utils import route53
@@ -37,7 +33,7 @@ class IP(models.Model):
         super().save(*a, **kwa)
 
     def reconcile_healthcheck(self):
-        healthcheck = HealthCheck(self).reconcile()
+        HealthCheck(self).reconcile()
 
     def __str__(self):
         value = self.friendly_name or self.hostname
@@ -64,7 +60,7 @@ class Policy(models.Model):
                 'values': [policy_member.ip.ip],
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
-                # 'HealthCheckId': str(policy_member.healthcheck_id),
+                'HealthCheckId': str(policy_member.healthcheck_id),
             })
 
         # TODO: check for rigon for all ips down
@@ -86,8 +82,6 @@ class Policy(models.Model):
         return regions
 
     def delete_policy(self, zone):
-        records = zone.route53_zone.records()
-
         # If the policy is in used by another record then don't delete it.
         policy_records = zone.policy_records.filter(policy=self)
         if len(policy_records) > 1:
