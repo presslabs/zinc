@@ -22,7 +22,7 @@ def aws_delete_zone(self, pk):
         try:
             self.retry()
         except MaxRetriesExceededError:
-            logger.error('Failed to remove zone {}'.format(zone_id))
+            logger.error('Failed to remove zone %s', zone.id)
 
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
@@ -38,5 +38,6 @@ def reconcile_policy_records(bind=True):
         try:
             policy.apply_record()
         except:
-            logging.exception(
-                "apply_record failed for PolicyRecord {}.{}".format(policy.name, policy.zone.root))
+            logger.exception(
+                "apply_record failed for PolicyRecord %s.%s", policy.name, policy.zone.root
+            )

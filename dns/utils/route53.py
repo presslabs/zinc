@@ -1,11 +1,9 @@
-import datetime
 import uuid
 import logging
 
 import boto3
 from boto3.session import Session
 from botocore.exceptions import ClientError
-from django.apps import apps
 from django.conf import settings
 
 from zinc.vendors import hashids
@@ -96,10 +94,6 @@ class Zone(object):
             raise
 
     def records(self, rfilter=None):
-        return self._records(rfilter)
-
-    # TODO: merge those two
-    def _records(self, rfilter):
         self._cache_aws_records()
         entries = {}
 
@@ -121,7 +115,7 @@ class Zone(object):
 
     @property
     def ns(self):
-        return self._records(lambda record: (record['type'] == 'NS' and record['name'] == '@'))
+        return self.records(lambda record: (record['type'] == 'NS' and record['name'] == '@'))
 
     def _cache_aws_records(self):
         if self._aws_records is not None:
@@ -191,7 +185,7 @@ class Zone(object):
             try:
                 zone.reconcile()
             except ClientError:
-                logger.exception("Error while handling {}".format(zone_record.name))
+                logger.exception("Error while handling %s", zone_record.name)
 
 
 class RecordHandler:
@@ -350,4 +344,4 @@ class HealthCheck:
             try:
                 check.reconcile()
             except ClientError:
-                logger.exception("Error while handling {}".format(check.ip.friendly_name))
+                logger.exception("Error while handling %s", check.ip.friendly_name)
