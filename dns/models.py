@@ -25,7 +25,7 @@ class IP(models.Model):
     friendly_name = models.TextField(blank=True)
     enabled = models.BooleanField(default=True)
     healthcheck_id = models.CharField(max_length=200, blank=True, null=True)
-    healthcheck_caller_reference = models.UUIDField(null=True)
+    healthcheck_caller_reference = models.UUIDField(null=True, blank=True)
 
     def save(self, *a, **kwa):
         if self.friendly_name == "":
@@ -60,7 +60,7 @@ class Policy(models.Model):
                 'values': [policy_member.ip.ip],
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
-                'HealthCheckId': str(policy_member.healthcheck_id),
+                'HealthCheckId': str(policy_member.ip.healthcheck_id),
             })
 
         # TODO: check for rigon for all ips down
@@ -111,7 +111,6 @@ class PolicyMember(models.Model):
     region = models.CharField(choices=AWS_REGIONS, max_length=20)
     ip = models.ForeignKey(IP, on_delete=models.CASCADE)
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
-    healthcheck_id = models.IntegerField(editable=False, null=True)
     weight = models.PositiveIntegerField(default=10)
 
     def __str__(self):

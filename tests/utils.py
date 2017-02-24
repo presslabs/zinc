@@ -1,5 +1,6 @@
 from zinc.vendors import hashids
 from zinc import POLICY_ROUTED
+from dns import models as m
 
 
 def strip_ns_and_soa(records):
@@ -63,3 +64,13 @@ def record_to_aws(record, zone_root):
     if record.get('SetIdentifier', None):
         rrs['SetIdentifier'] = record['SetIdentifier']
     return rrs
+
+
+def create_ip_with_healthcheck(ip='1.2.3.4'):
+    ip = m.IP.objects.create(
+        ip=ip,
+        hostname='fe01-mordor.presslabs.net.',
+    )
+    ip.reconcile_healthcheck()
+    ip.refresh_from_db()
+    return ip

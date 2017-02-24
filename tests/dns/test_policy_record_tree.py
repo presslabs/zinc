@@ -3,6 +3,7 @@ import pytest
 from django_dynamic_fixture import G
 
 from tests.fixtures import boto_client, zone
+from tests.utils import create_ip_with_healthcheck
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
 
@@ -48,7 +49,7 @@ def policy_members_to_list(policy_members, policy_record):
             'TTL': 30,
             'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
             'Weight': policy_member.weight,
-            # 'HealthCheckId': str(policy_member.healthcheck_id),
+            'HealthCheckId': str(policy_member.ip.healthcheck_id),
         } for policy_member in policy_members]
     the_policy_record = [
             {
@@ -94,7 +95,8 @@ def test_policy_member_to_list_helper():
             'SetIdentifier': '%s-%s' % (policy_members[0].id, region),
             'TTL': 30,
             'Type': 'A',
-            'Weight': 10
+            'Weight': 10,
+            'HealthCheckId': str(policy_members[0].ip.healthcheck_id),
         },
         {
             'AliasTarget': {
@@ -113,9 +115,10 @@ def test_policy_record_tree_builder(zone):
     zone, client = zone
     policy = G(m.Policy)
     region = get_local_aws_regions()[0]
+    ip = create_ip_with_healthcheck()
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=region),
-        G(m.PolicyMember, policy=policy, region=region),
+        G(m.PolicyMember, policy=policy, region=region, ip=ip),
+        G(m.PolicyMember, policy=policy, region=region, ip=ip),
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
@@ -126,7 +129,7 @@ def test_policy_record_tree_builder(zone):
             'Name': 'test.test-zinc.net.',
             'ResourceRecords': [{'Value': '1.1.1.1'}],
             'TTL': 300,
-            'Type': 'A'
+            'Type': 'A',
         },
     ] + policy_members_to_list(policy_members, policy_record)
 
@@ -140,9 +143,10 @@ def test_policy_record_tree_with_multiple_regions(zone):
     zone, client = zone
     policy = G(m.Policy)
     regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
@@ -166,13 +170,14 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone):
     zone, client = zone
     policy = G(m.Policy)
     regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
@@ -217,13 +222,15 @@ def test_policy_record_tree_with_two_trees(zone):
     zone, client = zone
     policy = G(m.Policy)
     regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
     ]
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
@@ -262,9 +269,10 @@ def test_policy_record_deletion(zone):
     zone, client = zone
     policy = G(m.Policy)
     region = get_local_aws_regions()[0]
+    ip = create_ip_with_healthcheck()
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=region),
-        G(m.PolicyMember, policy=policy, region=region),
+        G(m.PolicyMember, policy=policy, region=region, ip=ip),
+        G(m.PolicyMember, policy=policy, region=region, ip=ip),
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
@@ -301,13 +309,15 @@ def test_policy_record_tree_deletion_with_two_trees(zone):
     zone, client = zone
     policy = G(m.Policy)
     regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
-        G(m.PolicyMember, policy=policy, region=regions[0]),
-        G(m.PolicyMember, policy=policy, region=regions[1]),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
     ]
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')

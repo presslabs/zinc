@@ -10,7 +10,7 @@ router.register('policies', views.Policy, 'policy')
 urlpatterns = [
     url(r'^', include(router.urls)),
     url(r'^zones/$', views.ZoneList.as_view(), name='zone-list'),
-    url(r'^zones/(?P<pk>[0-9]+)/?$',
+    url(r'^zones/(?P<pk>[0-9]+)/$',
         views.ZoneDetail.as_view(), name='zone-detail'),
     url(r'^zones/(?P<zone_id>[0-9]+)/records/(?P<record_id>\w+)/$',
         views.RecordDetail.as_view(), name='record-detail'),

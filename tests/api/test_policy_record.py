@@ -6,7 +6,8 @@ from django_dynamic_fixture import G
 from django.core.exceptions import ObjectDoesNotExist
 
 from tests.fixtures import api_client, boto_client, zone
-from tests.utils import strip_ns_and_soa, hash_test_record, hash_policy_record, get_test_record
+from tests.utils import (strip_ns_and_soa, hash_test_record, hash_policy_record,
+                         get_test_record, create_ip_with_healthcheck)
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
 
@@ -31,7 +32,8 @@ def get_policy_record(policy_record, dirty=False, managed=False):
 def test_policy_record_get(api_client, zone):
     zone, _ = zone
     policy = G(m.Policy)
-    G(m.PolicyMember, policy=policy, region=regions[0])
+    ip = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record.apply_record()
 
@@ -109,7 +111,8 @@ def test_policy_record_delete(api_client, zone):
 def test_policy_record_get_more_than_one(api_client, zone):
     zone, _ = zone
     policy = G(m.Policy)
-    G(m.PolicyMember, policy=policy, region=regions[0])
+    ip = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record.apply_record()
 
@@ -131,8 +134,10 @@ def test_policy_record_get_more_than_one(api_client, zone):
 def test_policy_record_create_more_than_one(api_client, zone):
     zone, _ = zone
     policy = G(m.Policy)
-    G(m.PolicyMember, policy=policy, region=regions[0])
-    G(m.PolicyMember, policy=policy, region=regions[0])
+    ip1 = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2)
 
     response = api_client.post(
         '/zones/%s/records/' % zone.id,
