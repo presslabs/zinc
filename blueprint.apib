@@ -35,7 +35,7 @@ Authentication will be required for any and every zinc API request. Authenticati
 # Group Zones
 The zones created/updated/deleted through the zinc API are further handled on AWS Route53.
 
-## Zone List [/zones]
+## Zone List [/zones/]
 
 ### Retrieve Route53 hosted DNS zones [GET]
 + Response 200 (application/json)
@@ -54,27 +54,13 @@ The zones created/updated/deleted through the zinc API are further handled on AW
     + Attributes (AuthenticationRequired)
 
 
-## Zone Resource [/zones/{id}]
+## Zone Resource [/zones/{id}/]
 + Parameters
     + id: `1` (number, required) - zinc zone ID
 
 ### Retrieve hosted DNS zone details [GET]
 + Response 200 (application/json)
     + Attributes (ZoneDetailGet)
-+ Response 401 (application/json)
-    + Attributes (AuthenticationRequired)
-+ Response 404 (application/json)
-    + Attributes (ResourceNotFound)
-
-### Update hosted DNS zone attribute/s [PATCH]
-A zone can be partially updated by specifying one or more of its attributes in the request body. In case of an invalid attribute, a `Bad Request` response is returned.
-+ Request (application/json)
-    + Attributes
-        + root: `site2.com.` (string)
-+ Response 200 (application/json)
-    + Attributes (ZoneDetailPatch)
-+ Response 400 (application/json)
-    + Attributes (InvalidAttribute)
 + Response 401 (application/json)
     + Attributes (AuthenticationRequired)
 + Response 404 (application/json)
@@ -90,27 +76,34 @@ A zone can be partially updated by specifying one or more of its attributes in t
 
 # Group Records
 
-## Record List [/zones/{id}/records]
+## Record List [/zones/{id}/records/]
 + Parameters
     + id: `1` (number, required) - zinc zone ID
 
-### Retrieve hosted DNS zone records [GET]
-+ Response 200 (application/json)
-    + Attributes (array[ARecord])
-+ Response 401 (application/json)
-    + Attributes (AuthenticationRequired)
-+ Response 404 (application/json)
-    + Attributes (ResourceNotFound)
-
-### Update records resource [PUT]
+### Create records resource [POST]
 + Request (application/json)
-    + Attributes (array[ARecordPut])
-+ Response 200
-    + Attributes (array[ARecordPut])
+    + Attributes (ARecordPost)
++ Response 202
+    + Attributes (ARecord)
 + Response 401 (application/json)
     + Attributes (AuthenticationRequired)
 + Response 404 (application/json)
     + Attributes (ResourceNotFound)
+    
+## Record Details [/zones/{id}/records/{record_id}/]
++ Parameters
+    + id: `1` (number, required) - zinc zone ID
+    + record_id: `Z3kBY37xQO1AX3Z1ZL72pb4wJ1zRXO` - zone record id
+
+### Update record resource [PATCH]
++ Request (application/json)
+    + Attributes(ARecordUpdate)
++ Response 200
+    + Attributes (ARecordUpdateResult)
+    
+### Delete record resource [DELETE]
++ Request (application/json)
++ Response 204
 
 
 # Group Policies
@@ -170,12 +163,19 @@ A policy can be partially updated by specifying one or more of its attributes in
 ## ARecord (object)
 - ttl: `300` (number) - Record TTL
 - type: `A` (string) - Record type
-- name: `site.com.` (string) - Record name
+- name: 'cdn' (string) - Record name
 - values: `127.0.0.1` (array[string]) - A list of values held by the record
 
-## ARecordPut (object)
+## ARecordPost (object)
 - Include ARecord
 - ttl: `3600` (number) - Record TTL
+
+## ARecordUpdate (object)
+- values: `1.2.3.4` (array[string]) - Fields that will be updated
+
+## ARecordUpdateResult (object)
+- Include ARecord
+- values: `1.2.3.4` (array[string]) - Fields that will be updated
 
 ## NSRecord (object)
 - ttl: `300` (number) - Record TTL
