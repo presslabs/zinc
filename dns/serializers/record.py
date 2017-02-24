@@ -1,15 +1,10 @@
-from collections import OrderedDict
-from django.conf import settings
 from rest_framework import fields
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from dns.exceptions import UnprocessableEntity
 from dns.models import RECORD_PREFIX
 from zinc import ZINC_RECORD_TYPES, POLICY_ROUTED
 from zinc.vendors import hashids
-
-HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)
 
 
 class RecordListSerializer(serializers.ListSerializer):
@@ -20,6 +15,9 @@ class RecordListSerializer(serializers.ListSerializer):
             record['zone'] = zone
 
         return super(RecordListSerializer, self).to_representation(records)
+
+    def update(self, instnace, validated_data):
+        raise NotImplementedError('Can not update records this way. Use records/ endpoint.')
 
 
 class RecordSerializer(serializers.Serializer):
