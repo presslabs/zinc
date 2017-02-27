@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
+from rest_framework.generics import (CreateAPIView, ListCreateAPIView, RetrieveDestroyAPIView,
                                      RetrieveAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework import viewsets, status
 from rest_framework.response import Response
@@ -17,21 +17,9 @@ class ZoneList(ListCreateAPIView):
     serializer_class = ZoneListSerializer
 
 
-class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
+class ZoneDetail(RetrieveDestroyAPIView):
     queryset = models.Zone.objects.filter(deleted=False)
     serializer_class = ZoneDetailSerializer
-
-    @property
-    def allowed_methods(self):
-        _allowed_methods = self._allowed_methods()
-        _allowed_methods.pop(_allowed_methods.index('PUT'))
-        return _allowed_methods
-
-    def post(self, request, *args, **kwargs):
-        return self.patch(request, *args, **kwargs)
-
-    def patch(self, request, *args, **kwargs):
-        return super(ZoneDetail, self).patch(request, *args, **kwargs)
 
     def delete(self, request, pk, *args, **kwargs):
         zone = get_object_or_404(models.Zone.objects, pk=pk)

@@ -18,7 +18,7 @@ from zinc.vendors.hashids import encode_record
 def test_create_zone(api_client, boto_client):
     root = 'example.com.presslabs.com.'
     resp = api_client.post(
-        '/zones/',
+        '/zones',
         data={
             'root': root,
         }
@@ -32,7 +32,7 @@ def test_create_zone(api_client, boto_client):
 @pytest.mark.django_db
 def test_create_zone_passing_wrong_params(api_client, boto_client):
     resp = api_client.post(
-        '/zones/',
+        '/zones',
         data={
             'id': 'asd',
             'root': 'asdasd'
@@ -47,10 +47,10 @@ def test_list_zones(api_client, boto_client):
     zones = [G(m.Zone, root='1.test-zinc.com.', route53_id=None),
              G(m.Zone, root='2.test-zinc.com.', route53_id=None)]
 
-    response = api_client.get('/zones/')
+    response = api_client.get('/zones')
 
     assert [result['url'] for result in response.data['results']] == [
-        "http://testserver/zones/{}/".format(zone.id) for zone in zones]
+        "http://testserver/zones/{}".format(zone.id) for zone in zones]
     assert ([(zone.id, zone.root, zone.dirty, zone.route53_zone.id) for zone in zones] ==
             [(zone['id'], zone['root'], zone['dirty'], zone['route53_id'])
              for zone in response.data['results']])
@@ -60,7 +60,7 @@ def test_list_zones(api_client, boto_client):
 def test_detail_zone(api_client, zone):
     zone, _ = zone
     response = api_client.get(
-        '/zones/%s/' % zone.id,
+        '/zones/%s' % zone.id,
     )
     assert strip_ns_and_soa(response.data['records']) == [
         get_test_record(zone)
@@ -73,7 +73,7 @@ def test_detail_zone(api_client, zone):
 def test_delete_a_zone(api_client, zone):
     zone, client = zone
     response = api_client.delete(
-        '/zones/%s/' % zone.id
+        '/zones/%s' % zone.id
     )
 
     with pytest.raises(ClientError) as excp_info:
