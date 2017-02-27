@@ -27,5 +27,10 @@ publish:
     email: ping@presslabs.com
     repo: presslabs/zinc
     tag: $${BRANCH/master/latest}
+    storage_path: /drone/docker
     when:
       event: push
+
+cache:
+  mount:
+    - /drone/docker

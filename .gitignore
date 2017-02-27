@@ -99,3 +99,6 @@ secrets.yml
 
 # pylint
 .pylintrc
+
+# plaintext drone secrets
+.drone.sec.yml
