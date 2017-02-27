@@ -47,7 +47,7 @@ class RecordSerializer(serializers.Serializer):
         # compute the url for record
         zone = self.context['zone']
         request = self.context['request']
-        record_id = hashids.encode_record(obj, zone.route53_zone.id)
+        record_id = self.get_id(obj)
         return request.build_absolute_uri('/zones/%s/records/%s/' % (zone.id, record_id))
 
     def get_managed(self, obj):
@@ -87,7 +87,7 @@ class RecordSerializer(serializers.Serializer):
         # for PATCH type and name field can't be modified.
         if self.context['request'].method == 'PATCH':
             if 'type' in data or 'name' in data:
-                raise ValidationError('Can\'t update \'name\' and \'type\' fields. ')
+                raise ValidationError("Can't update 'name' and 'type' fields. ")
             return data
 
         # for POLICY_ROUTED the values should contain just one value
@@ -97,7 +97,7 @@ class RecordSerializer(serializers.Serializer):
                                                   'should contain just one element.')})
             return data
 
-        # for normal records ttl and values feilds are required.
+        # for normal records ttl and values fields are required.
         if not data.get('ttl', False):
             raise ValidationError({'ttl': ('This field is required. '
                                            'If record type is not POLICY_RECORD.')})
