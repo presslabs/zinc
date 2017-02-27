@@ -27,7 +27,7 @@ def policy_members_to_list(policy_members, policy_record):
     zone = policy_record.zone
     policy = policy_record.policy
     policy_members = [pm for pm in policy_members if pm.policy == policy]
-    regions = set([pm.region for pm in policy_members])
+    regions = set([pm.region for pm in policy_members if pm.weight > 0])
     records_for_regions = [
         {
             'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
@@ -50,7 +50,7 @@ def policy_members_to_list(policy_members, policy_record):
             'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
             'Weight': policy_member.weight,
             'HealthCheckId': str(policy_member.ip.healthcheck_id),
-        } for policy_member in policy_members]
+        } for policy_member in policy_members if policy_member.weight > 0]
     the_policy_record = [
             {
                 'Name': ('{}.{}'.format(policy_record.name, zone.root)
@@ -336,6 +336,61 @@ def test_policy_record_tree_deletion_with_two_trees(zone):
         },  # this is a ordinary record. should be not modified.
         # we expect to have the policy tree created just once.
     ] + policy_members_to_list(policy_members, policy_record)
+
+    assert strip_ns_and_soa(
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    ) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_policy_record_with_ips_0_weight(zone):
+    zone, client = zone
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=10),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0),
+    ]
+
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    policy_record.apply_record()
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },  # this is a ordinary record. should be not modified.
+        # we expect to have the tree without the ip that has weight 0.
+    ] + policy_members_to_list(policy_members, policy_record)
+
+    assert strip_ns_and_soa(
+        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    ) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_policy_record_with_all_ips_0_weight(zone):
+    zone, client = zone
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0),
+    ]
+
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    policy_record.apply_record()
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },  # this is a ordinary record. should be not modified.
+    ]
 
     assert strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root

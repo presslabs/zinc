@@ -53,6 +53,10 @@ class Policy(models.Model):
     @transaction.atomic
     def apply_policy(self, zone):
         for policy_member in self.members.all():
+            # test to for weight to be grater than 0
+            if policy_member.weight == 0:
+                # the policy member should not be included in the tree
+                continue
             zone.add_record({
                 'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'ttl': 30,
@@ -63,8 +67,7 @@ class Policy(models.Model):
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
             })
 
-        # TODO: check for rigon for all ips down
-        regions = set([pm.region for pm in self.members.all()])
+        regions = set([pm.region for pm in self.members.all() if pm.weight > 0])
         for region in regions:
             zone.add_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
@@ -92,7 +95,6 @@ class Policy(models.Model):
             zone.delete_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
                 'type': 'A',
-                'AliasTarget': {},  # Not need to be specified.
                 'SetIdentifier': region,
             })
 
