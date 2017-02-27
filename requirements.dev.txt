@@ -1,0 +1,9 @@
+-r requirements.txt
+
+mock<2.1
+factory-boy<2.9
+django-dynamic-fixture<1.10
+responses<0.6
+pytest<3.1
+pytest-django<3.2
+pep8

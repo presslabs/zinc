@@ -13,14 +13,17 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
+WEBROOT_DIR = os.getenv('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT,
+                                                         'webroot/'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '%46&_o61oqar9u6uv2c%k#f%$i93z5fz-x)^@n)@p1=7$61w^0'
+SECRET_KEY = os.getenv('ZINC_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -73,17 +76,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'zinc.wsgi.application'
 
-
-# Database
-# https://docs.djangoproject.com/en/1.9/ref/settings/#databases
+DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': os.getenv('ZINC_DB_ENGINE',
+                            'django.db.backends.sqlite3'),
+        'NAME': os.getenv('ZINC_DB_NAME', os.path.join(DATA_DIR, 'db.sqlite3')),
+        'USER': os.getenv('ZINC_DB_USER', 'oxygen'),
+        'PASSWORD': os.getenv('ZINC_DB_PASSWORD', 'password'),
+        'HOST': os.getenv('ZINC_DB_HOST', ''),
+        'PORT': os.getenv('ZINC_DB_PORT', ''),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -169,11 +174,5 @@ HEALTH_CHECK_CONFIG = {
     'FullyQualifiedDomainName': 'node.presslabs.net.',
 }
 
-# =================
-# END OF CONFIG
-
-
-try:
-    from zinc.local_settings import *
-except ImportError:
-    pass
+AWS_KEY = os.getenv('ZINC_AWS_KEY')
+AWS_SECRET = os.getenv('ZINC_AWS_SECRET')

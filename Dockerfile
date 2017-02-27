@@ -1,21 +1,25 @@
 FROM python:3.5-alpine
 
-RUN mkdir /app
+ENV DOCKERIZE_VERSION=v0.3.0 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=zinc.settings
+
+COPY ./requirements.txt /requirements.txt
+RUN set -ex \
+    && apk add --no-cache openssl \
+        mariadb-client-libs \
+    && addgroup -g 998 zinc \
+    && adduser -SD -u 998 -G zinc -h /app zinc \
+    && wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && apk add --no-cache --virtual .build-deps \
+        build-base \
+        mariadb-dev \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del .build-deps
+
+COPY . /app
 WORKDIR /app
 
-RUN set -ex && apk add --no-cache openssl
-RUN cat /etc/group
-RUN addgroup -g 998 zinc && adduser -SD -u 998 -G zinc zinc
-
-ENV DOCKERIZE_VERSION v0.2.0
-RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-
-VOLUME /app
-COPY . /app
-
-RUN pip install -r requirements.txt
-
-ENV PYTHONUNBUFFERED 1
 USER zinc
-CMD [ "python", "./manage.py", "runserver", "0.0.0.0:8000" ]
+CMD ["gunicorn", "zinc.wsgi", "--bind", "0.0.0.0:8000"]
