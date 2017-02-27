@@ -50,7 +50,7 @@ def get_test_record(zone):
         'values': ['1.1.1.1'],
         'dirty': False,
         'managed': False,
-        'url': 'http://testserver/zones/%s/records/%s/' % (zone.id, hash_test_record(zone))
+        'url': 'http://testserver/zones/%s/records/%s' % (zone.id, hash_test_record(zone))
     }
 
 

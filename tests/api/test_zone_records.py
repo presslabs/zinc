@@ -18,7 +18,7 @@ def test_get_record(api_client, zone):
     G(m.Zone)
 
     response = api_client.get(
-        '/zones/{}/records/{}/'.format(zone.id, hash_test_record(zone))
+        '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone))
     )
 
     assert response.data == get_test_record(zone)
@@ -37,7 +37,7 @@ def test_create_record(api_client, zone):
     }
     record_hash = encode_record(record, zone.route53_zone.id)
     response = api_client.post(
-        '/zones/{}/records/'.format(zone.id),
+        '/zones/{}/records'.format(zone.id),
         data=record
     )
 
@@ -46,7 +46,7 @@ def test_create_record(api_client, zone):
         'id': record_hash,
         'dirty': False,
         'managed': False,
-        'url': 'http://testserver/zones/%s/records/%s/' % (zone.id, record_hash)
+        'url': 'http://testserver/zones/%s/records/%s' % (zone.id, record_hash)
     }
     assert aws_strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
@@ -65,7 +65,7 @@ def test_update_record_values(api_client, zone):
         'values': ['1.2.3.4']
     }
     response = api_client.patch(
-        '/zones/{}/records/{}/'.format(zone.id, hash_test_record(zone)),
+        '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
         data=record
     )
 
@@ -92,7 +92,7 @@ def test_update_record_ttl(api_client, zone):
         'ttl': 580
     }
     response = api_client.patch(
-        '/zones/{}/records/{}/'.format(zone.id, hash_test_record(zone)),
+        '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
         data=record
     )
 
@@ -119,7 +119,7 @@ def test_update_record_type(api_client, zone):
         'type': 'CNAME'
     }
     response = api_client.patch(
-        '/zones/{}/records/{}/'.format(zone.id, hash_test_record(zone)),
+        '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
         data=record
     )
     assert response.data == {
@@ -136,7 +136,7 @@ def test_update_record_name(api_client, zone):
         'name': 'CNAME'
     }
     response = api_client.patch(
-        '/zones/{}/records/{}/'.format(zone.id, hash_test_record(zone)),
+        '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
         data=record
     )
     assert response.data == {
@@ -149,7 +149,7 @@ def test_record_deletion(api_client, zone):
     zone, client = zone
     record_hash = hash_test_record(zone)
     response = api_client.delete(
-        '/zones/%s/records/%s/' % (zone.id, record_hash),
+        '/zones/%s/records/%s' % (zone.id, record_hash),
     )
     # assert response.code == 204
     assert strip_ns_and_soa(zone.records) == []
@@ -171,7 +171,7 @@ def test_delete_nonexistent_records(api_client, zone):
     zone.records = [record2]
     zone.save()
     response = api_client.delete(
-        '/zones/%s/records/%s/' % (zone.id, 'asldmpoqfqee')
+        '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
     # assert response.status_code == 204
     assert response.data == {'detail': 'Record not found.'}
@@ -181,7 +181,7 @@ def test_delete_nonexistent_records(api_client, zone):
 def test_patch_nonexistent_records(api_client, zone):
     zone, _ = zone
     response = api_client.patch(
-        '/zones/%s/records/%s/' % (zone.id, 'asldmpoqfqee')
+        '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
     # assert response.status_code == 204
     assert response.data == {'detail': 'Record not found.'}
@@ -196,7 +196,7 @@ def test_add_record_without_values(api_client, zone):
         'type': 'A',
     }
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data=record
     )
     assert response.data == {'values': ['This field is required.']}
@@ -211,7 +211,7 @@ def test_add_record_without_ttl(api_client, zone):
         'valuse': ['4.5.6.7']
     }
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data=record
     )
     assert response.data == {
@@ -229,7 +229,7 @@ def test_add_record_invalid_ttl(api_client, zone):
         'valuse': ['4.5.6.7'],
     }
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data=record
     )
     assert response.data == {
@@ -248,7 +248,7 @@ def test_hidden_records(api_client, zone):
     })
     zone.save()
     response = api_client.get(
-        '/zones/%s/' % zone.id,
+        '/zones/%s' % zone.id,
     )
     assert strip_ns_and_soa(response.data['records']) == [
         get_test_record(zone)
@@ -270,7 +270,7 @@ def test_alias_records(api_client, zone):
     zone.add_record(alias_record)
     zone.save()
     response = api_client.get(
-        '/zones/%s/' % zone.id,
+        '/zones/%s' % zone.id,
     )
 
     def sort_key(record):
@@ -280,7 +280,7 @@ def test_alias_records(api_client, zone):
         get_test_record(zone),
         {
             'id': hash_record(alias_record, zone),
-            'url': 'http://testserver/zones/{}/records/{}/'.format(
+            'url': 'http://testserver/zones/{}/records/{}'.format(
                 zone.id,
                 hash_record(alias_record, zone)),
             'name': 'ceva',
@@ -296,7 +296,7 @@ def test_alias_records(api_client, zone):
 def test_validation_prefix(api_client, zone):
     zone, _ = zone
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data={
             'name': '_zn_something',
             'ttl': 300,

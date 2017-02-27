@@ -48,7 +48,7 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         request = self.context['request']
         record_id = self.get_id(obj)
-        return request.build_absolute_uri('/zones/%s/records/%s/' % (zone.id, record_id))
+        return request.build_absolute_uri('/zones/%s/records/%s' % (zone.id, record_id))
 
     def get_managed(self, obj):
         return obj.get('managed', False)

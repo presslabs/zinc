@@ -7,7 +7,7 @@ from dns import models as m
 
 
 def policy_member_to_url(member):
-    return 'http://testserver/policy-members/{}/'.format(member.id)
+    return 'http://testserver/policy-members/{}'.format(member.id)
 
 
 def policy_to_dict(policy):
@@ -15,7 +15,7 @@ def policy_to_dict(policy):
         'id': str(policy.id),
         'name': policy.name,
         'members': [policy_member_to_url(member) for member in policy.members.all()],
-        'url': 'http://testserver/policies/{}/'.format(policy.id)
+        'url': 'http://testserver/policies/{}'.format(policy.id)
     }
 
 
@@ -23,7 +23,7 @@ def policy_to_dict(policy):
 def test_policy_list(api_client):
     pol = G(m.Policy)
     resp = api_client.get(
-        '/policies/',
+        '/policies',
         format='json',
     )
     assert resp.status_code == 200, resp
@@ -33,7 +33,7 @@ def test_policy_list(api_client):
 @pytest.mark.django_db
 def test_policy_create(api_client):
     resp = api_client.post(
-        '/policies/',
+        '/policies',
         data={
             'name': 'spam',
         }
@@ -47,7 +47,7 @@ def test_policy_create(api_client):
 def test_policy_details(api_client):
     policy = G(m.Policy)
     response = api_client.get(
-        '/policies/%s/' % policy.id,
+        '/policies/%s' % policy.id,
         format='json',
     )
     assert response.status_code == 200, response
@@ -60,7 +60,7 @@ def test_policy_with_records(api_client):
     G(m.PolicyMember, policy=policy)
     G(m.PolicyMember, policy=policy)
     response = api_client.get(
-        '/policies/%s/' % policy.id,
+        '/policies/%s' % policy.id,
         format='json',
     )
 
@@ -76,7 +76,7 @@ def test_policy_deletion_1(api_client):
     assert m.PolicyMember.objects.count() == 2
 
     response = api_client.delete(
-        '/policies/%s/' % policy.id,
+        '/policies/%s' % policy.id,
         format='json',
     )
 
@@ -95,7 +95,7 @@ def test_policy_deletion_2(api_client):
     assert m.PolicyMember.objects.count() == 3
 
     response = api_client.delete(
-        '/policies/%s/' % policy.id,
+        '/policies/%s' % policy.id,
         format='json',
     )
 
@@ -117,7 +117,7 @@ def record_to_dict(record):
 def test_policy_member_detail(api_client):
     member = G(m.PolicyMember)
     response = api_client.get(
-        '/policy-members/%s/' % member.id,
+        '/policy-members/%s' % member.id,
     )
 
     assert response.status_code == 200, response

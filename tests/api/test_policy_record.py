@@ -23,7 +23,7 @@ def get_policy_record(policy_record, dirty=False, managed=False):
         'values': [str(policy_record.policy.id)],
         'dirty': dirty,
         'managed': managed,
-        'url': 'http://testserver/zones/{}/records/{}/'.format(
+        'url': 'http://testserver/zones/{}/records/{}'.format(
             policy_record.zone.id,
             hash_policy_record(policy_record))
     }
@@ -39,7 +39,7 @@ def test_policy_record_get(api_client, zone):
     policy_record.apply_record()
 
     response = api_client.get(
-        '/zones/%s/' % zone.id
+        '/zones/%s' % zone.id
     )
 
     assert strip_ns_and_soa(response.data['records']) == [
@@ -55,7 +55,7 @@ def test_policy_record_create(api_client, zone):
     G(m.PolicyMember, policy=policy, region=regions[0])
 
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data={
             'name': '@',
             'type': 'POLICY_ROUTED',
@@ -78,13 +78,14 @@ def test_policy_record_update_policy(api_client, zone):
     policy_record = G(m.PolicyRecord, zone=zone, name='@', policy=policy)
 
     response = api_client.patch(
-        '/zones/%s/records/%s/' % (zone.id, get_policy_record(policy_record)['id']),
+        '/zones/%s/records/%s' % (zone.id, get_policy_record(policy_record)['id']),
         data={
             'values': [str(new_policy.id)],
         }
     )
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
+    assert pr.dirty is True
     assert pr.id == policy_record.id
     assert response.data == get_policy_record(pr, dirty=True)
 
@@ -98,7 +99,7 @@ def test_policy_record_delete(api_client, zone):
     policy_record = G(m.PolicyRecord, zone=zone, name='@', policy=policy)
 
     response = api_client.delete(
-        '/zones/%s/records/%s/' % (zone.id, get_policy_record(policy_record)['id']),
+        '/zones/%s/records/%s' % (zone.id, get_policy_record(policy_record)['id']),
     )
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
@@ -121,7 +122,7 @@ def test_policy_record_get_more_than_one(api_client, zone):
     policy_record_2.apply_record()
 
     response = api_client.get(
-        '/zones/%s/' % zone.id
+        '/zones/%s' % zone.id
     )
 
     assert strip_ns_and_soa(response.data['records']) == [
@@ -141,14 +142,14 @@ def test_policy_record_create_more_than_one(api_client, zone):
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2)
 
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data={
             'name': '@',
             'type': 'POLICY_ROUTED',
             'values': [str(policy.id)],
         })
     response_2 = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data={
             'name': 'test',
             'type': 'POLICY_ROUTED',
@@ -168,7 +169,7 @@ def test_policy_record_create_no_policy(api_client, zone):
     G(m.PolicyMember, policy=policy, region=regions[0])
 
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data={
             'name': '@',
             'type': 'POLICY_ROUTED',
@@ -185,7 +186,7 @@ def test_policy_record_create_more_values(api_client, zone):
     G(m.PolicyMember, policy=policy, region=regions[0])
 
     response = api_client.post(
-        '/zones/%s/records/' % zone.id,
+        '/zones/%s/records' % zone.id,
         data={
             'name': '@',
             'type': 'POLICY_ROUTED',

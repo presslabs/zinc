@@ -1,13 +1,13 @@
 from django.db import transaction
-from rest_framework.serializers import (HyperlinkedModelSerializer, ValidationError)
-from rest_framework.fields import ListField
+from rest_framework import serializers
 
 from dns.models import Zone
 from dns.serializers import RecordSerializer
 from dns.utils import route53
 
 
-class ZoneListSerializer(HyperlinkedModelSerializer):
+class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
+
     class Meta:
         model = Zone
         fields = ['root', 'url', 'id', 'route53_id', 'dirty']
@@ -23,11 +23,11 @@ class ZoneListSerializer(HyperlinkedModelSerializer):
         try:
             zone.route53_zone.create()
         except route53.ClientError as e:
-            raise ValidationError(detail=str(e))
+            raise serializers.ValidationError(detail=str(e))
         return zone
 
 
-class ZoneDetailSerializer(HyperlinkedModelSerializer):
+class ZoneDetailSerializer(serializers.HyperlinkedModelSerializer):
     records = RecordSerializer(many=True, source='*')
 
     class Meta:
