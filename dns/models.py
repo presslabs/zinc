@@ -53,11 +53,7 @@ class Policy(models.Model):
     @transaction.atomic
     def apply_policy(self, zone):
         # build the tree base for the provided zone
-        for policy_member in self.members.all():
-            # test to for weight to be grater than 0
-            if policy_member.weight == 0:
-                # the policy member should not be included in the tree
-                continue
+        for policy_member in self.members.exclude(weight=0):
             zone.add_record({
                 'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'ttl': 30,
@@ -68,7 +64,7 @@ class Policy(models.Model):
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
             })
 
-        regions = set([pm.region for pm in self.members.all() if pm.weight > 0])
+        regions = set([pm.region for pm in self.members.exclude(weight=0)])
         for region in regions:
             zone.add_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
@@ -92,7 +88,7 @@ class Policy(models.Model):
             return
 
         # Same as building the tree
-        regions = set([pm.region for pm in self.members.all() if pm.weight > 0])
+        regions = set([pm.region for pm in self.members.exclude(weight=0)])
         for region in regions:
             zone.delete_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
@@ -100,9 +96,7 @@ class Policy(models.Model):
                 'SetIdentifier': region,
             })
 
-        for policy_member in self.members.all():
-            if policy_member.weight == 0:
-                continue
+        for policy_member in self.members.exclude(weight=0):
             zone.delete_record({
                 'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'type': 'A',
@@ -172,6 +166,8 @@ class Zone(models.Model):
                 policy_record.dirty = True
             except PolicyRecord.DoesNotExist:
                 # Policy don't exists so create one.
+                if record.get('delete', False):
+                    return None  # trying to delete a nonexisting POLICY_RECORD.
                 policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
 
             policy_record.save()

@@ -18,7 +18,7 @@ class ZoneList(ListCreateAPIView):
 
 
 class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
-    queryset = models.Zone.objects.all()
+    queryset = models.Zone.objects.filter(deleted=False)
     serializer_class = ZoneDetailSerializer
 
     @property
@@ -40,8 +40,14 @@ class ZoneDetail(CreateAPIView, RetrieveUpdateDestroyAPIView):
 
 
 class RecordDetail(RetrieveUpdateDestroyAPIView):
-    queryset = models.Zone.objects.all()
+    queryset = models.Zone.objects.filter(deleted=False)
     serializer_class = RecordSerializer
+
+    @property
+    def allowed_methods(self):
+        _allowed_methods = self._allowed_methods()
+        _allowed_methods.pop(_allowed_methods.index('PUT'))
+        return _allowed_methods
 
     def get_object(self):
         queryset = self.get_queryset()
@@ -53,13 +59,14 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
         raise NotFound(detail='Record not found.')
 
     def get_zone(self):
-        return get_object_or_404(models.Zone, id=self.kwargs['zone_id'])
+        zone_id = self.kwargs.get('zone_id')
+        if zone_id is not None:
+            return get_object_or_404(models.Zone, id=zone_id)
 
     def get_serializer_context(self):
         zone = self.get_zone()
         context = super(RecordDetail, self).get_serializer_context()
         context['zone'] = zone
-        context['record_id'] = self.kwargs['record_id']
         return context
 
     def perform_destroy(self, instance):
@@ -72,7 +79,9 @@ class RecordCreate(CreateAPIView):
     serializer_class = RecordSerializer
 
     def get_object(self):
-        return get_object_or_404(models.Zone, id=self.kwargs['zone_id'])
+        zone_id = self.kwargs.get('zone_id')
+        if zone_id is not None:
+            return get_object_or_404(models.Zone, id=zone_id)
 
     def get_serializer_context(self):
         zone = self.get_object()
