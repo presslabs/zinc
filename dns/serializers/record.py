@@ -8,8 +8,14 @@ from zinc.vendors import hashids
 
 
 class RecordListSerializer(serializers.ListSerializer):
+    # This is ued for list the records in Zone serializer
+    # by using many=True and passing the entier zone as object
 
     def to_representation(self, zone):
+        # pass to RecordSerializer zone in the context.
+        self.context['zone'] = zone
+
+        # return all zone records
         records = zone.records
         for record in records:
             record['zone'] = zone
@@ -35,16 +41,14 @@ class RecordSerializer(serializers.Serializer):
         list_serializer_class = RecordListSerializer
 
     def get_id(self, obj):
-        return obj['id'] if 'id' in obj else hashids.encode_record(
-            obj,
-            self.context['zone'].route53_zone.id
-        )
+        return hashids.encode_record(obj, self.context['zone'].route53_zone.id)
 
     def get_url(self, obj):
-        zone = self.context.get('zone')
-        zone_id = zone.id if zone else obj['zone_id']
-        record_id = obj['id'] if 'id' in obj else hashids.encode_record(obj, zone.route53_zone.id)
-        return '/zones/{}/records/{}/'.format(zone_id, record_id)
+        # compute the url for record
+        zone = self.context['zone']
+        request = self.context['request']
+        record_id = hashids.encode_record(obj, zone.route53_zone.id)
+        return request.build_absolute_uri('/zones/%s/records/%s/' % (zone.id, record_id))
 
     def get_managed(self, obj):
         return obj.get('managed', False)
@@ -67,6 +71,7 @@ class RecordSerializer(serializers.Serializer):
         return record
 
     def validate_name(self, value):
+        # record name should not start with rezerved prefix.
         if value.startswith(RECORD_PREFIX):
             raise ValidationError(
                 ('Record {} can\'t start with {}. '
@@ -75,20 +80,24 @@ class RecordSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
+        # if is a delete then the data should be {'delete': True}
         if self.context['request'].method == 'DELETE':
             return {'delete': True}
 
+        # for PATCH type and name field can't be modified.
         if self.context['request'].method == 'PATCH':
             if 'type' in data or 'name' in data:
                 raise ValidationError('Can\'t update \'name\' and \'type\' fields. ')
             return data
 
+        # for POLICY_ROUTED the values should contain just one value
         if data['type'] == POLICY_ROUTED:
             if not len(data['values']) == 1:
                 raise ValidationError({'values': ('For POLICY_ROUTED record values list '
                                                   'should contain just one element.')})
             return data
 
+        # for normal records ttl and values feilds are required.
         if not data.get('ttl', False):
             raise ValidationError({'ttl': ('This field is required. '
                                            'If record type is not POLICY_RECORD.')})

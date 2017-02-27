@@ -52,6 +52,7 @@ class Policy(models.Model):
 
     @transaction.atomic
     def apply_policy(self, zone):
+        # build the tree base for the provided zone
         for policy_member in self.members.all():
             # test to for weight to be grater than 0
             if policy_member.weight == 0:
@@ -90,7 +91,8 @@ class Policy(models.Model):
         if len(policy_records) > 1:
             return
 
-        regions = set([pm.region for pm in self.members.all()])
+        # Same as building the tree
+        regions = set([pm.region for pm in self.members.all() if pm.weight > 0])
         for region in regions:
             zone.delete_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
@@ -99,6 +101,8 @@ class Policy(models.Model):
             })
 
         for policy_member in self.members.all():
+            if policy_member.weight == 0:
+                continue
             zone.delete_record({
                 'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'type': 'A',
@@ -153,22 +157,27 @@ class Zone(models.Model):
             try:
                 policy = Policy.objects.get(id=record['values'][0])
             except Policy.DoesNotExist:
-                # Return 400
+                # Policy don't exists. Return 400
                 raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
                     record['values'][0]))
             try:
+                # update the policy record. Or delete or update policy.
                 policy_record = self.policy_records.get(name=record['name'])
                 if record.get('delete', False):
+                    # The record will be deleted
                     policy_record.deleted = True
                 else:
+                    # Update policy for this record.
                     policy_record.policy = policy
                 policy_record.dirty = True
             except PolicyRecord.DoesNotExist:
+                # Policy don't exists so create one.
                 policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
 
             policy_record.save()
             return policy_record.serialize(zone=self)
         else:
+            # This is a normal record. Forward it to route53 utils.
             record_hash = hashids.encode_record(record, self.route53_zone.id)
             self.route53_zone.add_record_changes(record, key=record_hash)
             return record
@@ -176,7 +185,7 @@ class Zone(models.Model):
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
         if record_hash not in records:
-            # trying to delete a nonexistent record
+            # trying to delete a nonexistent record. skip
             return
         to_delete_record = records[record_hash]
         to_delete_record['delete'] = True
@@ -186,6 +195,7 @@ class Zone(models.Model):
         self.delete_record_by_hash(hashids.encode_record(record, self.route53_zone.id))
 
     def get_policy_records(self):
+        # return a list with Policy records
         records = []
         for policy_record in self.policy_records.all():
             records.append(policy_record.serialize(zone=self))
@@ -268,9 +278,12 @@ class PolicyRecord(models.Model):
 
     @transaction.atomic
     def apply_record(self):
+        # build the tree for this policy record.
         if self.deleted:
+            # if the zone is marked as deleted don't try to build the tree.
             return
 
+        # first build tree base if succeed then add the top record
         if self.policy.apply_policy(self.zone):
             self.zone.add_record({
                 'name': self.name,
@@ -282,11 +295,13 @@ class PolicyRecord(models.Model):
                 },
             })
 
+        # save the zone
         self.zone.save()
-        self.dirty = False
+        self.dirty = False  # mark as clean
         self.save()
 
     def delete_record(self):
+        # delete the tree.
         self.zone.delete_record({
             'name': self.name,
             'type': 'A',

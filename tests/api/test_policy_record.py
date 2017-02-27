@@ -23,8 +23,9 @@ def get_policy_record(policy_record, dirty=False, managed=False):
         'values': [str(policy_record.policy.id)],
         'dirty': dirty,
         'managed': managed,
-        'url': '/zones/{}/records/{}/'.format(policy_record.zone.id,
-                                              hash_policy_record(policy_record))
+        'url': 'http://testserver/zones/{}/records/{}/'.format(
+            policy_record.zone.id,
+            hash_policy_record(policy_record))
     }
 
 

@@ -46,7 +46,7 @@ def test_create_record(api_client, zone):
         'id': record_hash,
         'dirty': False,
         'managed': False,
-        'url': '/zones/%s/records/%s/' % (zone.id, record_hash)
+        'url': 'http://testserver/zones/%s/records/%s/' % (zone.id, record_hash)
     }
     assert aws_strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
@@ -280,7 +280,9 @@ def test_alias_records(api_client, zone):
         get_test_record(zone),
         {
             'id': hash_record(alias_record, zone),
-            'url': '/zones/{}/records/{}/'.format(zone.id, hash_record(alias_record, zone)),
+            'url': 'http://testserver/zones/{}/records/{}/'.format(
+                zone.id,
+                hash_record(alias_record, zone)),
             'name': 'ceva',
             'type': 'A',
             'dirty': False,
