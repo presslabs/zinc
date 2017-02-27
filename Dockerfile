@@ -21,5 +21,4 @@ RUN set -ex \
 COPY . /app
 WORKDIR /app
 
-USER zinc
 CMD ["gunicorn", "zinc.wsgi", "--bind", "0.0.0.0:8000"]
