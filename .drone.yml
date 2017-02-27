@@ -12,7 +12,7 @@ build:
       - ONCE_REDIS_URL=redis://redis:6379/2
       - DJANGO_SETTINGS_MODULE=zinc.test_settings
     commands:
-      - pip install -U -r requirements/test.txt
+      - pip install -U -r requirements.dev.txt
       - pep8 --max-line-length=100 --exclude=migrations .
       - py.test --capture=no --tb=native -k 'not with_aws'
 
