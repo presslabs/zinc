@@ -7,9 +7,6 @@ build:
       password: $$DOCKER_PASSWORD
       email: ping@presslabs.com
     environment:
-      - BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/1
-      - ONCE_REDIS_URL=redis://redis:6379/2
       - DJANGO_SETTINGS_MODULE=zinc.test_settings
       - ZINC_AWS_KEY=$$ZINC_AWS_KEY
       - ZINC_AWS_SECRET=$$ZINC_AWS_SECRET
@@ -17,10 +14,6 @@ build:
       - pip install -U -r requirements.dev.txt
       - pep8 --max-line-length=100 --exclude=migrations .
       - py.test --capture=no -v --tb=native
-
-compose:
-  redis:
-    image: redis
 
 publish:
   docker:

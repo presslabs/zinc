@@ -84,7 +84,7 @@ DATABASES = {
         'ENGINE': os.getenv('ZINC_DB_ENGINE',
                             'django.db.backends.sqlite3'),
         'NAME': os.getenv('ZINC_DB_NAME', os.path.join(DATA_DIR, 'db.sqlite3')),
-        'USER': os.getenv('ZINC_DB_USER', 'oxygen'),
+        'USER': os.getenv('ZINC_DB_USER', 'zinc'),
         'PASSWORD': os.getenv('ZINC_DB_PASSWORD', 'password'),
         'HOST': os.getenv('ZINC_DB_HOST', ''),
         'PORT': os.getenv('ZINC_DB_PORT', ''),
