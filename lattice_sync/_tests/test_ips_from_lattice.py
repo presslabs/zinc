@@ -32,7 +32,7 @@ def test_resets_existing_ips_on_run():
 
 @pytest.mark.django_db
 @responses.activate
-def test_adds_only_ips_from_servers_in_specified_roles():
+def test_adds_only_ips_from_servers_in_specified_roles(settings):
     _mock_lattice_responses()
 
     opts = {
@@ -82,7 +82,7 @@ def _mock_lattice_responses():
     "group": "",
     "environment": "production",
     "roles": [
-        "frontend-node"
+        "edge-node"
     ],
     "datacenter_name": "AMS1",
     "service_id": "",
