@@ -181,4 +181,3 @@ LATTICE_ROLES = ['edge-node']
 
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
-
