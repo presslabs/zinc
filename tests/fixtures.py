@@ -3,15 +3,16 @@ import uuid
 import random
 import string
 from copy import deepcopy
-from datetime import datetime
 
+from django.contrib.auth import get_user_model
 import botocore.exceptions
 import pytest
 from mock import patch
+from rest_framework.test import APIClient
+from django_dynamic_fixture import G
 
 from dns import models as m
 from dns.utils import route53
-from rest_framework.test import APIClient
 
 
 def random_ascii(length):
@@ -98,8 +99,12 @@ class CleanupClient:
 
 
 @pytest.fixture
+@pytest.mark.django_db
 def api_client():
-    return APIClient()
+    user = G(get_user_model())
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
 
 
 class Moto:
