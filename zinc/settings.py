@@ -26,10 +26,10 @@ WEBROOT_DIR = os.getenv('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT,
 SECRET_KEY = os.getenv('ZINC_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('ZINC_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = list(map(lambda x: x.strip(),
+                         os.getenv('ZINC_ALLOWED_HOSTS', '').split(',')))
 
 # Application definition
 
@@ -79,17 +79,24 @@ WSGI_APPLICATION = 'zinc.wsgi.application'
 
 DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
 
+
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('ZINC_DB_ENGINE',
                             'django.db.backends.sqlite3'),
-        'NAME': os.getenv('ZINC_DB_NAME', os.path.join(DATA_DIR, 'db.sqlite3')),
         'USER': os.getenv('ZINC_DB_USER', 'zinc'),
         'PASSWORD': os.getenv('ZINC_DB_PASSWORD', 'password'),
         'HOST': os.getenv('ZINC_DB_HOST', ''),
         'PORT': os.getenv('ZINC_DB_PORT', ''),
     }
 }
+
+if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    DATABASES['default']['NAME'] = os.getenv('ZINC_DB_NAME',
+                                             os.path.join(DATA_DIR, 'db.sqlite3'))
+else:
+    DATABASES['default']['NAME'] = os.getenv('ZINC_DB_NAME', 'zinc')
+
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -127,17 +134,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
-STATIC_URL = '/static/'
-
-ADMIN_REORDER = [
-    # Keep original label and models
-    'sites',
-    'auth',
-
-    {'app': 'dns', 'models': ('dns.Zone', 'dns.PolicyRecord')},
-    {'app': 'dns', 'label': 'Policy', 'models': ('dns.Policy', 'dns.IP')}
-]
-
+STATIC_URL = os.getenv('ZINC_STATIC_URL', '/static/')
+STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
 
@@ -147,6 +145,22 @@ CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:63
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        },
+    },
+}
 
 # HASHIDS
 
@@ -177,7 +191,8 @@ HEALTH_CHECK_CONFIG = {
 LATTICE_URL = os.getenv('LATTICE_URL', 'https://lattice.presslabs.net/')
 LATTICE_USER = os.getenv('LATTICE_USER')
 LATTICE_PASSWORD = os.getenv('LATTICE_PASSWORD')
-LATTICE_ROLES = ['edge-node']
+LATTICE_ROLES = list(map(lambda x: x.strip(),
+                         os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
 
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
