@@ -8,19 +8,6 @@ from factories.dns.ip_factory import IPFactory
 from lattice_sync.management.commands.ips_from_lattice import Command
 
 
-def test_command_arguments():
-    parser = MagicMock()
-    command = Command()
-
-    command.add_arguments(parser)
-
-    parser.add_argument.assert_has_calls([
-        call('--url', default=''),
-        call('--user', default=''),
-        call('--password', default=''),
-    ], any_order=True)
-
-
 @pytest.mark.django_db
 @responses.activate
 def test_resets_existing_ips_on_run():
@@ -38,7 +25,6 @@ def test_resets_existing_ips_on_run():
         'url': 'http://lattice',
         'user': 'user',
         'password': 'password',
-        'roles': ['frontend-node', 'cdn-node']
     }
     call_command('ips_from_lattice', *args, **opts)
     assert not IP.objects.exists()
