@@ -137,14 +137,29 @@ STATIC_URL = os.getenv('ZINC_STATIC_URL', '/static/')
 STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
-
 BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+CELERYBEAT_SCHEDULE = {
+    'reconcile_policy_records': {
+        'task': 'dns.tasks.reconcile_policy_records',
+        'schedule': 30
+    },
+    'cleanup_deleted_zones': {
+        'task': 'dns.tasks.cleanup_deleted_zones',
+        'schedule': 300
+    },
+    'lattice_sync': {
+        'task': 'lattice_sync.tasks.lattice_sync',
+        'schedule': 30
+    }
+}
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
+
+# logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
