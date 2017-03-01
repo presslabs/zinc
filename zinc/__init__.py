@@ -1,6 +1,5 @@
 from zinc.vendors.celery import app as celery_app
 
-
 POLICY_ROUTED = 'POLICY_ROUTED'
 
 RECORD_TYPES = [

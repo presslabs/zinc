@@ -227,3 +227,15 @@ if os.getenv('ZINC_SENTRY_DSN', None):
         # release based on the git info.
         'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
     }
+
+    # Sentry logging with celery is a real pain in the ass
+    # https://github.com/getsentry/sentry/issues/4565
+    CELERYD_HIJACK_ROOT_LOGGER = False
+    LOGGING['handlers']['sentry'] = {
+        'level': 'ERROR',
+        'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler'
+    }
+    LOGGING['loggers']['celery.task'] = {
+        'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        'handlers': ['console', 'sentry']
+    }

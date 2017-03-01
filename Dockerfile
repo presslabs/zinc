@@ -20,5 +20,5 @@ RUN set -ex \
 COPY . /app
 WORKDIR /app
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["web"]
