@@ -204,7 +204,10 @@ class RecordHandler:
             'Type': record['type'],
         }
         if 'values' in record:
-            encoded_record['ResourceRecords'] = [{'Value': v} for v in record['values']]
+            if record['type'] == 'SOA':
+                encoded_record['ResourceRecords'] = [{'Value': ' '.join(record['values'])}]
+            else:
+                encoded_record['ResourceRecords'] = [{'Value': v} for v in record['values']]
 
         if 'ttl' in record:
             encoded_record['TTL'] = record['ttl']
@@ -251,6 +254,8 @@ class RecordHandler:
                 'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
                 'HostedZoneId': record['AliasTarget']['HostedZoneId']
             }
+        elif record['Type'] == 'SOA':
+            decoded_record['values'] = record['ResourceRecords'][0]['Value'].split()
         else:
             decoded_record['values'] = [value['Value'] for value in
                                         record.get('ResourceRecords', [])]

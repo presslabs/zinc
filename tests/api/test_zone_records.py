@@ -7,7 +7,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from tests.fixtures import api_client, boto_client, zone
 from tests.utils import (strip_ns_and_soa, hash_test_record, aws_strip_ns_and_soa, aws_sort_key,
-                         get_test_record, record_to_aws, hash_record)
+                         get_test_record, record_to_aws, hash_record, get_record_from_base)
 from dns import models as m
 from zinc.vendors.hashids import encode_record
 
@@ -41,13 +41,7 @@ def test_create_record(api_client, zone):
         data=record
     )
 
-    assert response.data == {
-        **record,
-        'id': record_hash,
-        'dirty': False,
-        'managed': False,
-        'url': 'http://testserver/zones/%s/records/%s' % (zone.id, record_hash)
-    }
+    assert response.data == get_record_from_base(record, zone)
     assert aws_strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
@@ -279,15 +273,8 @@ def test_alias_records(api_client, zone):
     assert sorted(strip_ns_and_soa(response.data['records']), key=sort_key) == sorted([
         get_test_record(zone),
         {
-            'id': hash_record(alias_record, zone),
-            'url': 'http://testserver/zones/{}/records/{}'.format(
-                zone.id,
-                hash_record(alias_record, zone)),
-            'name': 'ceva',
-            'type': 'A',
-            'dirty': False,
-            'managed': True,
-            'values': ['ALIAS test.test-zinc.net.']
+            **get_record_from_base(alias_record, zone, managed=True),
+            'values': ['ALIAS test.%s' % zone.root]
         }
     ], key=sort_key)
 
@@ -325,4 +312,38 @@ def test_remove_a_managed_record(api_client, zone):
     )
 
     assert response.status_code == 400
-    assert response.data == ["Can't delete a managed record."]
+    assert response.data == ["Can't DELETE a managed record."]
+
+
+@pytest.mark.django_db
+def test_create_a_new_SOA_record(api_client, zone):
+    zone, _ = zone
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': 'soa_record',
+            'type': 'SOA',
+            'ttl': 3000,
+            'values': ['ns-774.awsdns-32.net.', 'awsdns-hostmaster.amazon.com.', '1',
+                       '17200', '900', '1209600', '86400']
+        }
+    )
+    assert response.status_code == 400
+    assert response.data == {'type': ["Type 'SOA' is not allowed."]}
+
+
+@pytest.mark.django_db
+def test_create_NS_record(api_client, zone):
+    zone, _ = zone
+    ns = {
+        'name': 'dev',
+        'type': 'NS',
+        'ttl': 3000,
+        'values': ['ns-774.awsdns-32.net.', 'awsdns-hostmaster.amazon.com.']
+    }
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data=ns
+    )
+    assert response.status_code == 201
+    assert response.data == get_record_from_base(ns, zone)

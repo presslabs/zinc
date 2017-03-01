@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 from dns.models import RECORD_PREFIX
 from zinc import ZINC_RECORD_TYPES, POLICY_ROUTED
 from zinc.vendors import hashids
+from zinc import ALLOWED_RECORD_TYPES
 
 
 class RecordListSerializer(serializers.ListSerializer):
@@ -67,10 +68,17 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         obj.update(validated_data)
         if obj.get('managed'):
-            raise ValidationError("Can't delete a managed record.".format())
+            raise ValidationError("Can't {} a managed record.".format(
+                self.context['request'].method
+            ))
         record = zone.add_record(obj)
         zone.save()
         return record
+
+    def validate_type(self, value):
+        if value not in ALLOWED_RECORD_TYPES:
+            raise ValidationError("Type '{}' is not allowed.".format(value))
+        return value
 
     def validate_name(self, value):
         # record name should not start with rezerved prefix.
