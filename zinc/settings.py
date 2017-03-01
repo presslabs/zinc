@@ -217,3 +217,13 @@ LATTICE_ROLES = list(map(lambda x: x.strip(),
 
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
+
+if os.getenv('ZINC_SENTRY_DSN', None):
+    import raven
+    INSTALLED_APPS += ['raven.contrib.django.raven_compat']
+    RAVEN_CONFIG = {
+        'dsn': os.getenv('ZINC_SENTRY_DSN'),
+        # If you are using git, you can also automatically configure the
+        # release based on the git info.
+        'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
+    }
