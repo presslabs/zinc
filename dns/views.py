@@ -1,4 +1,3 @@
-from django.shortcuts import get_object_or_404
 from rest_framework.generics import (CreateAPIView, ListCreateAPIView, RetrieveDestroyAPIView,
                                      RetrieveAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework import viewsets, status
@@ -8,7 +7,6 @@ from rest_framework.exceptions import NotFound
 
 from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
                              ZoneDetailSerializer, ZoneListSerializer, RecordSerializer)
-from dns.serializers import RecordListSerializer
 from dns import models
 
 
@@ -65,6 +63,9 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
 
 class RecordCreate(CreateAPIView):
     serializer_class = RecordSerializer
+
+    def get_queryset(self):
+        return None
 
     def get_object(self):
         zone_id = self.kwargs.get('zone_id')

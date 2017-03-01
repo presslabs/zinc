@@ -211,6 +211,32 @@ class Moto:
         records = zone.setdefault('ResourceRecordSets', [])
 
         for change in ChangeBatch['Changes']:
+            if 'ResourceRecordSet' in change and 'ResourceRecords' in change['ResourceRecordSet']:
+                if '300' in change['ResourceRecordSet']['ResourceRecords'][0]['Value']:
+                    raise botocore.exceptions.ClientError(
+                        error_response={
+                            'Error': {
+                                'Code': 'InvalidChangeBatch',
+                                'Message': "...ARRDATAIllegalIPv4Address...",
+                                'Type': 'Sender'
+                            },
+                        },
+                        operation_name='change_resource_record_sets',
+                    )
+                if 'side_effect' in change['ResourceRecordSet']['Name']:
+                    value = change['ResourceRecordSet']['ResourceRecords'][0]['Value']
+                    raise botocore.exceptions.ClientError(
+                        error_response={
+                            'Error': {
+                                'Code': 'InvalidChangeBatch',
+                                'Message': ("Invalid Resource Record: FATAL problem: "
+                                            "ARRDATANotSingleField (Value contains spaces) "
+                                            "encountered with '%s'") % value,
+                                'Type': 'Sender'
+                            },
+                        },
+                        operation_name='change_resource_record_sets',
+                    )
             if change['Action'] == 'DELETE':
                 self._remove_record(records, change['ResourceRecordSet'])
             elif change['Action'] == 'UPSERT':

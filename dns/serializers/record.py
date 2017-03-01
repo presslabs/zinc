@@ -1,12 +1,18 @@
 from rest_framework import fields
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from botocore.exceptions import ClientError
 
 from dns.models import RECORD_PREFIX
 from zinc import ZINC_RECORD_TYPES, POLICY_ROUTED
 from zinc.vendors import hashids
 from zinc import ALLOWED_RECORD_TYPES
 
+
+def interpret_client_error(error):
+    if 'ARRDATAIllegalIPv4Address' in error.response['Error']['Message']:
+        raise ValidationError({'values': ["Value is not a valid IPv4 address."]})
+    raise ValidationError({'non_field_error': [error.response['Error']['Message']]})
 
 class RecordListSerializer(serializers.ListSerializer):
     # This is ued for list the records in Zone serializer
@@ -61,7 +67,11 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         validated_data['id'] = self.get_id(validated_data)
         record = zone.add_record(validated_data)
-        zone.save()
+        try:
+            zone.save()
+        except ClientError as error:
+            print(error)
+            interpret_client_error(error)
         return record
 
     def update(self, obj, validated_data):
@@ -72,7 +82,10 @@ class RecordSerializer(serializers.Serializer):
                 self.context['request'].method
             ))
         record = zone.add_record(obj)
-        zone.save()
+        try:
+            zone.save()
+        except ClientError as error:
+            interpret_client_error(error)
         return record
 
     def validate_type(self, value):

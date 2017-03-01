@@ -317,6 +317,7 @@ def test_remove_a_managed_record(api_client, zone):
 
 @pytest.mark.django_db
 def test_create_a_new_SOA_record(api_client, zone):
+    # SOA or whatever type that is not in the list.
     zone, _ = zone
     response = api_client.post(
         '/zones/%s/records' % zone.id,
@@ -347,3 +348,42 @@ def test_create_NS_record(api_client, zone):
     )
     assert response.status_code == 201
     assert response.data == get_record_from_base(ns, zone)
+
+
+@pytest.mark.django_db
+def test_update_record_with_wrong_values(api_client, zone):
+    zone, _ = zone
+    record = {
+        'values': ['300.0.0.1']
+    }
+    response = api_client.patch(
+        '/zones/%s/records/%s' % (zone.id, hash_test_record(zone)),
+        data=record
+    )
+    assert response.status_code == 400
+    assert response.data == {
+        'values': ['Value is not a valid IPv4 address.']
+    }
+
+
+@pytest.mark.django_db
+def test_forward_boto_errors(api_client, zone):
+    zone, _ = zone
+    record = {
+        'name': 'side_effect',
+        'type': 'A',
+        'ttl': 300,
+        'values': ['trebuie sa crape']
+    }
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data=record
+    )
+    assert response.status_code == 400
+    print (response.data)
+    assert response.data == {
+        'non_field_error': [
+            ("Invalid Resource Record: FATAL problem: ARRDATANotSingleField "
+             "(Value contains spaces) encountered with 'trebuie sa crape'")
+        ]
+    }
