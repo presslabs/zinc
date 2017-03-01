@@ -118,7 +118,31 @@ class Moto:
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
         # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
         zone_id = "{}/{}/{}".format(random_ascii(4), random_ascii(4), random_ascii(4))
-        self._zones[zone_id] = {}
+        self._zones[zone_id] = {
+            'ResourceRecordSets': [
+                {
+                    'Name': Name,
+                    'Type': 'NS',
+                    'TTL': 1300,
+                    'ResourceRecords': [
+                        {
+                            'Value': 'test_ns.presslabs.net',
+                        }
+                    ]
+                },
+                {
+                    'Name': Name,
+                    'Type': 'SOA',
+                    'TTL': 1300,
+                    'ResourceRecords': [
+                        {
+                            'Value': ('ns1.dnsimple.com admin.dnsimple.com '
+                                      '2013022001 86400 7200 604800 300'),
+                        }
+                    ]
+                },
+            ]
+        }
         return {
             'HostedZone': {
                 'Id': zone_id
@@ -211,32 +235,6 @@ class Moto:
         records = zone.setdefault('ResourceRecordSets', [])
 
         for change in ChangeBatch['Changes']:
-            if 'ResourceRecordSet' in change and 'ResourceRecords' in change['ResourceRecordSet']:
-                if '300' in change['ResourceRecordSet']['ResourceRecords'][0]['Value']:
-                    raise botocore.exceptions.ClientError(
-                        error_response={
-                            'Error': {
-                                'Code': 'InvalidChangeBatch',
-                                'Message': "...ARRDATAIllegalIPv4Address...",
-                                'Type': 'Sender'
-                            },
-                        },
-                        operation_name='change_resource_record_sets',
-                    )
-                if 'side_effect' in change['ResourceRecordSet']['Name']:
-                    value = change['ResourceRecordSet']['ResourceRecords'][0]['Value']
-                    raise botocore.exceptions.ClientError(
-                        error_response={
-                            'Error': {
-                                'Code': 'InvalidChangeBatch',
-                                'Message': ("Invalid Resource Record: FATAL problem: "
-                                            "ARRDATANotSingleField (Value contains spaces) "
-                                            "encountered with '%s'") % value,
-                                'Type': 'Sender'
-                            },
-                        },
-                        operation_name='change_resource_record_sets',
-                    )
             if change['Action'] == 'DELETE':
                 self._remove_record(records, change['ResourceRecordSet'])
             elif change['Action'] == 'UPSERT':
@@ -303,43 +301,25 @@ def zone(request, boto_client):
 
     zone_id = zone['HostedZone']['Id']
 
-    records = [
-        {
-            'Action': 'CREATE',
-            'ResourceRecordSet': {
-                'Name': 'test.%s' % zone_name,
-                'Type': 'A',
-                'TTL': 300,
-                'ResourceRecords': [
-                    {
-                        'Value': '1.1.1.1',
-                    }
-                ]
-            }
-        },
-    ]
-    # if it's our fake boto fixture then add a NS record
-    # else a zone has a NS and shouldn't be added.
-    if isinstance(client, Moto):
-        records.append({
-            'Action': 'CREATE',
-            'ResourceRecordSet': {
-                'Name': zone_name,
-                'Type': 'NS',
-                'TTL': 1300,
-                'ResourceRecords': [
-                    {
-                        'Value': 'test_ns.presslabs.net',
-                    }
-                ]
-            }
-        })
-
     client.change_resource_record_sets(
         HostedZoneId=zone_id,
         ChangeBatch={
             'Comment': 'zinc-fixture',
-            'Changes': records
+            'Changes': [
+                {
+                    'Action': 'CREATE',
+                    'ResourceRecordSet': {
+                        'Name': 'test.%s' % zone_name,
+                        'Type': 'A',
+                        'TTL': 300,
+                        'ResourceRecords': [
+                            {
+                                'Value': '1.1.1.1',
+                            }
+                        ]
+                    }
+                },
+            ]
         }
     )
     zone = m.Zone(root=zone_name, route53_id=zone_id, caller_reference=caller_ref)

@@ -207,7 +207,7 @@ class RecordHandler:
             if record['type'] == 'SOA':
                 encoded_record['ResourceRecords'] = [{'Value': ' '.join(record['values'])}]
             else:
-                encoded_record['ResourceRecords'] = [{'Value': v} for v in record['values']]
+                encoded_record['ResourceRecords'] = [{'Value': value} for value in record['values']]
 
         if 'ttl' in record:
             encoded_record['TTL'] = record['ttl']

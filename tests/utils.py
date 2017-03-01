@@ -75,11 +75,12 @@ def create_ip_with_healthcheck(ip='1.2.3.4'):
     ip.refresh_from_db()
     return ip
 
+
 def get_record_from_base(record, zone, managed=False, dirty=False):
     record_hash = hash_record(record, zone)
-    KEYS = ['name', 'type', 'ttl', 'values']
+    keys = ['name', 'type', 'ttl', 'values']
     return {
-        **{key: value for key, value in record.items() if key in KEYS},
+        **{key: value for key, value in record.items() if key in keys},
         'id': record_hash,
         'url': 'http://testserver/zones/%s/records/%s' % (zone.id, record_hash),
         'managed': managed,

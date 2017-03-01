@@ -1,9 +1,9 @@
 # pylint: disable=no-member,unused-argument,protected-access,redefined-outer-name
 import pytest
-import json
+from unittest.mock import patch
 
 from django_dynamic_fixture import G
-from django.core.exceptions import ObjectDoesNotExist
+from botocore.exceptions import ClientError
 
 from tests.fixtures import api_client, boto_client, zone
 from tests.utils import (strip_ns_and_soa, hash_test_record, aws_strip_ns_and_soa, aws_sort_key,
@@ -14,7 +14,7 @@ from zinc.vendors.hashids import encode_record
 
 @pytest.mark.django_db
 def test_get_record(api_client, zone):
-    zone, client = zone
+    zone, _ = zone
     G(m.Zone)
 
     response = api_client.get(
@@ -35,7 +35,6 @@ def test_create_record(api_client, zone):
         'ttl': 300,
         'values': ['1.2.3.4']
     }
-    record_hash = encode_record(record, zone.route53_zone.id)
     response = api_client.post(
         '/zones/{}/records'.format(zone.id),
         data=record
@@ -145,7 +144,7 @@ def test_record_deletion(api_client, zone):
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, record_hash),
     )
-    # assert response.code == 204
+    # assert response.status_code == 204
     assert strip_ns_and_soa(zone.records) == []
     assert aws_strip_ns_and_soa(
         client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id),
@@ -353,13 +352,24 @@ def test_create_NS_record(api_client, zone):
 @pytest.mark.django_db
 def test_update_record_with_wrong_values(api_client, zone):
     zone, _ = zone
-    record = {
-        'values': ['300.0.0.1']
-    }
-    response = api_client.patch(
-        '/zones/%s/records/%s' % (zone.id, hash_test_record(zone)),
-        data=record
-    )
+    with patch('tests.fixtures.Moto.change_resource_record_sets') as mock_moto:
+        mock_moto.side_effect = ClientError(
+            error_response={
+                'Error': {
+                    'Code': 'InvalidChangeBatch',
+                    'Message': "...ARRDATAIllegalIPv4Address...",
+                    'Type': 'Sender'
+                },
+            },
+            operation_name='change_resource_record_sets',
+        )
+        record = {
+            'values': ['300.0.0.1']
+        }
+        response = api_client.patch(
+            '/zones/%s/records/%s' % (zone.id, hash_test_record(zone)),
+            data=record
+        )
     assert response.status_code == 400
     assert response.data == {
         'values': ['Value is not a valid IPv4 address.']
@@ -369,18 +379,30 @@ def test_update_record_with_wrong_values(api_client, zone):
 @pytest.mark.django_db
 def test_forward_boto_errors(api_client, zone):
     zone, _ = zone
-    record = {
-        'name': 'side_effect',
-        'type': 'A',
-        'ttl': 300,
-        'values': ['trebuie sa crape']
-    }
-    response = api_client.post(
-        '/zones/%s/records' % zone.id,
-        data=record
-    )
+    with patch('tests.fixtures.Moto.change_resource_record_sets') as mock_moto:
+        mock_moto.side_effect = ClientError(
+            error_response={
+                'Error': {
+                    'Code': 'InvalidChangeBatch',
+                    'Message': ("Invalid Resource Record: FATAL problem: "
+                                "ARRDATANotSingleField (Value contains spaces) "
+                                "encountered with 'trebuie sa crape'"),
+                    'Type': 'Sender'
+                },
+            },
+            operation_name='change_resource_record_sets',
+        )
+        record = {
+            'name': 'side_effect',
+            'type': 'A',
+            'ttl': 300,
+            'values': ['trebuie sa crape']
+        }
+        response = api_client.post(
+            '/zones/%s/records' % zone.id,
+            data=record
+        )
     assert response.status_code == 400
-    print (response.data)
     assert response.data == {
         'non_field_error': [
             ("Invalid Resource Record: FATAL problem: ARRDATANotSingleField "
