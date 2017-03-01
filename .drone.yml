@@ -11,6 +11,7 @@ build:
       - ZINC_AWS_KEY=$$ZINC_AWS_KEY
       - ZINC_AWS_SECRET=$$ZINC_AWS_SECRET
     commands:
+      - sed -i "s/raven.fetch_git_sha(os.path.dirname(os.pardir))/'$$COMMIT'/g" zinc/settings.py
       - pip install -U -r requirements.dev.txt
       - pep8 --max-line-length=100 --exclude=migrations .
       - py.test --capture=no -v --tb=native
