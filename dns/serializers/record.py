@@ -66,6 +66,8 @@ class RecordSerializer(serializers.Serializer):
     def update(self, obj, validated_data):
         zone = self.context['zone']
         obj.update(validated_data)
+        if obj.get('managed'):
+            raise ValidationError("Can't delete a managed record.".format())
         record = zone.add_record(obj)
         zone.save()
         return record

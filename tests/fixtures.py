@@ -277,25 +277,43 @@ def zone(request, boto_client):
 
     zone_id = zone['HostedZone']['Id']
 
+    records = [
+        {
+            'Action': 'CREATE',
+            'ResourceRecordSet': {
+                'Name': 'test.%s' % zone_name,
+                'Type': 'A',
+                'TTL': 300,
+                'ResourceRecords': [
+                    {
+                        'Value': '1.1.1.1',
+                    }
+                ]
+            }
+        },
+    ]
+    # if it's our fake boto fixture then add a NS record
+    # else a zone has a NS and shouldn't be added.
+    if isinstance(client, Moto):
+        records.append({
+            'Action': 'CREATE',
+            'ResourceRecordSet': {
+                'Name': zone_name,
+                'Type': 'NS',
+                'TTL': 1300,
+                'ResourceRecords': [
+                    {
+                        'Value': 'test_ns.presslabs.net',
+                    }
+                ]
+            }
+        })
+
     client.change_resource_record_sets(
         HostedZoneId=zone_id,
         ChangeBatch={
             'Comment': 'zinc-fixture',
-            'Changes': [
-                {
-                    'Action': 'CREATE',
-                    'ResourceRecordSet': {
-                        'Name': 'test.%s' % zone_name,
-                        'Type': 'A',
-                        'TTL': 300,
-                        'ResourceRecords': [
-                            {
-                                'Value': '1.1.1.1',
-                            }
-                        ]
-                    }
-                }
-            ]
+            'Changes': records
         }
     )
     zone = m.Zone(root=zone_name, route53_id=zone_id, caller_reference=caller_ref)

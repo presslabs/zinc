@@ -308,3 +308,21 @@ def test_validation_prefix(api_client, zone):
     assert response.data == {
         'name': ['Record _zn_something can\'t start with _zn. It\'s a reserved prefix.']
     }
+
+
+def get_ns(records):
+    for record in records:
+        if record['type'] == 'NS':
+            return record
+
+
+@pytest.mark.django_db
+def test_remove_a_managed_record(api_client, zone):
+    zone, _ = zone
+    ns = get_ns(zone.records)
+    response = api_client.delete(
+        '/zones/%s/records/%s' % (zone.id, ns['id'])
+    )
+
+    assert response.status_code == 400
+    assert response.data == ["Can't delete a managed record."]
