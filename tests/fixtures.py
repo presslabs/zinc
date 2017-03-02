@@ -113,6 +113,7 @@ class Moto:
     def __init__(self):
         self._zones = {}
         self._health_checks = {}
+        self._health_checks_caller_reference = {}
 
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
         # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
@@ -125,6 +126,23 @@ class Moto:
         }
 
     def create_health_check(self, CallerReference, HealthCheckConfig):
+        if CallerReference in self._health_checks_caller_reference:
+            check_id = self._health_checks_caller_reference[CallerReference]
+            check = self._health_checks.get(check_id)
+            if check is None or not(
+                    check['HealthCheck']['HealthCheckConfig'].items() >= HealthCheckConfig.items()):
+                raise botocore.exceptions.ClientError(
+                    error_response={
+                        'Error': {
+                            'Code': 'HealthCheckAlreadyExists',
+                            'Message': 'Fake Boto say: Y U reuse CallerReference?',
+                            'Type': 'Sender'
+                        },
+                    },
+                    operation_name='get_health_check',
+                )
+            else:
+                return check
         check_id = random_ascii(8)
         check = {
             'HealthCheck': {
@@ -133,6 +151,7 @@ class Moto:
             }
         }
         self._health_checks[check_id] = check
+        self._health_checks_caller_reference[CallerReference] = check_id
         return check
 
     def get_health_check(self, HealthCheckId):

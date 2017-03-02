@@ -26,11 +26,18 @@ class IP(models.Model):
     enabled = models.BooleanField(default=True)
     healthcheck_id = models.CharField(max_length=200, blank=True, null=True)
     healthcheck_caller_reference = models.UUIDField(null=True, blank=True)
+    deleted = models.BooleanField(default=False)
 
     def save(self, *a, **kwa):
         if self.friendly_name == "":
             self.friendly_name = self.hostname.split(".", 1)[0]
         super().save(*a, **kwa)
+
+    def soft_delete(self):
+        self.deleted = True
+        self.enabled = False
+        self.save(update_fields=['deleted', 'enabled'])
+        self.reconcile_healthcheck()
 
     def reconcile_healthcheck(self):
         HealthCheck(self).reconcile()
