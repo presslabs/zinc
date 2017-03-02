@@ -45,7 +45,7 @@ class RecordSerializer(serializers.Serializer):
     name = fields.CharField(max_length=255)
     type = fields.ChoiceField(choices=ZINC_RECORD_TYPES)
     values = fields.ListField(child=fields.CharField())
-    ttl = fields.IntegerField(allow_null=True, min_value=300, required=False)
+    ttl = fields.IntegerField(allow_null=True, min_value=1, required=False)
     dirty = fields.SerializerMethodField(required=False)
     id = fields.SerializerMethodField(required=False)
     url = fields.SerializerMethodField(required=False)
