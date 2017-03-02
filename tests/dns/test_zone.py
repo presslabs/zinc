@@ -15,8 +15,6 @@ regions = route53.get_local_aws_regions()
 
 @pytest.mark.django_db
 def test_add_zone_record(zone):
-    zone, _ = zone
-
     record = {
         'name': 'goo',
         'type': 'CNAME',
@@ -31,7 +29,6 @@ def test_add_zone_record(zone):
 
 @pytest.mark.django_db
 def test_delete_zone_record(zone):
-    zone, _ = zone
     record_hash = hash_test_record(zone)
     for r in zone.records:
         if r['id'] == record_hash:
@@ -45,7 +42,6 @@ def test_delete_zone_record(zone):
 
 @pytest.mark.django_db
 def test_delete_zone_record_by_hash(zone):
-    zone, _ = zone
     record_hash = hash_test_record(zone)
 
     zone.delete_record_by_hash(record_hash)
@@ -56,7 +52,6 @@ def test_delete_zone_record_by_hash(zone):
 
 @pytest.mark.django_db
 def test_delete_zone_alias_record(zone):
-    zone, _ = zone
     record = {
         'name': '_zn_something',
         'type': 'A',
@@ -76,7 +71,6 @@ def test_delete_zone_alias_record(zone):
 
 @pytest.mark.django_db
 def test_delete_zone_alias_record_with_set_id(zone):
-    zone, _ = zone
     record = {
         'name': '_zn_something',
         'type': 'A',
@@ -97,13 +91,12 @@ def test_delete_zone_alias_record_with_set_id(zone):
 
 
 @pytest.mark.django_db
-def test_zone_delete(zone):
-    zone, client = zone
+def test_zone_delete(zone, boto_client):
     zone_id = zone.route53_zone.id
     zone_name = 'test-zinc.net.'
     # make sure we have extra records in addition to the NS and SOA
     # to ensure zone.delete handles those as well
-    client.change_resource_record_sets(
+    boto_client.change_resource_record_sets(
         HostedZoneId=zone_id,
         ChangeBatch={
             'Comment': 'zinc-fixture',
@@ -139,7 +132,7 @@ def test_zone_delete(zone):
     )
     zone.route53_zone.delete()
     with pytest.raises(botocore.exceptions.ClientError) as excp:
-        client.get_hosted_zone(Id=zone_id)
+        boto_client.get_hosted_zone(Id=zone_id)
     assert excp.value.response['Error']['Code'] == 'NoSuchHostedZone'
 
 
@@ -151,8 +144,7 @@ def test_zone_exists_false(boto_client):
 
 @pytest.mark.django_db
 def test_zone_exists_true(zone):
-    zone_record, client = zone
-    assert route53.Zone(zone_record).exists
+    assert route53.Zone(zone).exists
 
 
 @pytest.mark.django_db

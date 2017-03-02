@@ -58,7 +58,6 @@ def test_list_zones(api_client, boto_client):
 
 @pytest.mark.django_db
 def test_detail_zone(api_client, zone):
-    zone, _ = zone
     response = api_client.get(
         '/zones/%s' % zone.id,
     )
@@ -70,14 +69,13 @@ def test_detail_zone(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_delete_a_zone(api_client, zone):
-    zone, client = zone
+def test_delete_a_zone(api_client, zone, boto_client):
     response = api_client.delete(
         '/zones/%s' % zone.id
     )
 
     with pytest.raises(ClientError) as excp_info:
-        client.get_hosted_zone(Id=zone.route53_id)
+        boto_client.get_hosted_zone(Id=zone.route53_id)
     assert excp_info.value.response['Error']['Code'] == 'NoSuchHostedZone'
     assert m.Zone.objects.filter(pk=zone.pk).count() == 0
     assert not response.data

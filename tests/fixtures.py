@@ -324,4 +324,4 @@ def zone(request, boto_client):
     )
     zone = m.Zone(root=zone_name, route53_id=zone_id, caller_reference=caller_ref)
     zone.save()
-    return zone, client
+    return zone

@@ -14,7 +14,6 @@ from zinc.vendors.hashids import encode_record
 
 @pytest.mark.django_db
 def test_get_record(api_client, zone):
-    zone, _ = zone
     G(m.Zone)
 
     response = api_client.get(
@@ -25,8 +24,7 @@ def test_get_record(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_create_record(api_client, zone):
-    zone, client = zone
+def test_create_record(api_client, zone, boto_client):
     G(m.Zone)
 
     record = {
@@ -42,7 +40,7 @@ def test_create_record(api_client, zone):
 
     assert response.data == get_record_from_base(record, zone)
     assert aws_strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
         record_to_aws(record, zone.root),
         record_to_aws(get_test_record(zone), zone.root)
@@ -50,8 +48,7 @@ def test_create_record(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_update_record_values(api_client, zone):
-    zone, client = zone
+def test_update_record_values(api_client, zone, boto_client):
     G(m.Zone)
 
     record = {
@@ -67,7 +64,7 @@ def test_update_record_values(api_client, zone):
         **record
     }
     assert aws_strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
         record_to_aws({
             **get_test_record(zone),
@@ -77,8 +74,7 @@ def test_update_record_values(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_update_record_ttl(api_client, zone):
-    zone, client = zone
+def test_update_record_ttl(api_client, zone, boto_client):
     G(m.Zone)
 
     record = {
@@ -94,7 +90,7 @@ def test_update_record_ttl(api_client, zone):
         **record
     }
     assert aws_strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
         record_to_aws({
             **get_test_record(zone),
@@ -105,7 +101,6 @@ def test_update_record_ttl(api_client, zone):
 
 @pytest.mark.django_db
 def test_update_record_type(api_client, zone):
-    zone, _ = zone
     G(m.Zone)
 
     record = {
@@ -122,7 +117,6 @@ def test_update_record_type(api_client, zone):
 
 @pytest.mark.django_db
 def test_update_record_name(api_client, zone):
-    zone, _ = zone
     G(m.Zone)
 
     record = {
@@ -138,8 +132,7 @@ def test_update_record_name(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_record_deletion(api_client, zone):
-    zone, client = zone
+def test_record_deletion(api_client, zone, boto_client):
     record_hash = hash_test_record(zone)
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, record_hash),
@@ -147,14 +140,13 @@ def test_record_deletion(api_client, zone):
     # assert response.status_code == 204
     assert strip_ns_and_soa(zone.records) == []
     assert aws_strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id),
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id),
         zone.root
     ) == []
 
 
 @pytest.mark.django_db
 def test_delete_nonexistent_records(api_client, zone):
-    zone, _ = zone
     record2 = {
         'name': 'detest',
         'ttl': 400,
@@ -172,7 +164,6 @@ def test_delete_nonexistent_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_patch_nonexistent_records(api_client, zone):
-    zone, _ = zone
     response = api_client.patch(
         '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
@@ -182,7 +173,6 @@ def test_patch_nonexistent_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_add_record_without_values(api_client, zone):
-    zone, _ = zone
     record = {
         'name': 'test',
         'ttl': 400,
@@ -197,7 +187,6 @@ def test_add_record_without_values(api_client, zone):
 
 @pytest.mark.django_db
 def test_add_record_without_ttl(api_client, zone):
-    zone, _ = zone
     record = {
         'name': 'test',
         'type': 'A',
@@ -214,7 +203,6 @@ def test_add_record_without_ttl(api_client, zone):
 
 @pytest.mark.django_db
 def test_add_record_invalid_ttl(api_client, zone):
-    zone, _ = zone
     record = {
         'name': 'test',
         'type': 'A',
@@ -232,7 +220,6 @@ def test_add_record_invalid_ttl(api_client, zone):
 
 @pytest.mark.django_db
 def test_hidden_records(api_client, zone):
-    zone, _ = zone
     zone.add_record({
         'name': '{}_ceva'.format(m.RECORD_PREFIX),
         'ttl': 300,
@@ -250,7 +237,6 @@ def test_hidden_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_alias_records(api_client, zone):
-    zone, _ = zone
     alias_record = {
         'name': 'ceva',
         'type': 'A',
@@ -280,7 +266,6 @@ def test_alias_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_validation_prefix(api_client, zone):
-    zone, _ = zone
     response = api_client.post(
         '/zones/%s/records' % zone.id,
         data={
@@ -304,7 +289,6 @@ def get_ns(records):
 
 @pytest.mark.django_db
 def test_remove_a_managed_record(api_client, zone):
-    zone, _ = zone
     ns = get_ns(zone.records)
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, ns['id'])
@@ -317,7 +301,6 @@ def test_remove_a_managed_record(api_client, zone):
 @pytest.mark.django_db
 def test_create_a_new_SOA_record(api_client, zone):
     # SOA or whatever type that is not in the list.
-    zone, _ = zone
     response = api_client.post(
         '/zones/%s/records' % zone.id,
         data={
@@ -334,7 +317,6 @@ def test_create_a_new_SOA_record(api_client, zone):
 
 @pytest.mark.django_db
 def test_create_NS_record(api_client, zone):
-    zone, _ = zone
     ns = {
         'name': 'dev',
         'type': 'NS',
@@ -351,7 +333,6 @@ def test_create_NS_record(api_client, zone):
 
 @pytest.mark.django_db
 def test_update_record_with_wrong_values(api_client, zone):
-    zone, _ = zone
     with patch('tests.fixtures.Moto.change_resource_record_sets') as mock_moto:
         mock_moto.side_effect = ClientError(
             error_response={
@@ -378,7 +359,6 @@ def test_update_record_with_wrong_values(api_client, zone):
 
 @pytest.mark.django_db
 def test_forward_boto_errors(api_client, zone):
-    zone, _ = zone
     with patch('tests.fixtures.Moto.change_resource_record_sets') as mock_moto:
         mock_moto.side_effect = ClientError(
             error_response={
