@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 
 from zinc.vendors import hashids
+from dns.utils.output import output
 
 AWS_KEY = getattr(settings, 'AWS_KEY', '')
 AWS_SECRET = getattr(settings, 'AWS_SECRET', '')
@@ -276,6 +277,9 @@ class HealthCheck:
         self.ip = ip
         self._aws_data = None
 
+    def report(self, msg, *args, **kwargs):
+        output("{}\t"+msg, self.ip.ip, *args, **kwargs)
+
     @property
     def exists(self):
         self._load()
@@ -318,16 +322,19 @@ class HealthCheck:
     def create(self):
         if self.ip.healthcheck_caller_reference is None:
             self.ip.healthcheck_caller_reference = uuid.uuid4()
+            self.report("new caller_reference {}", self.ip.healthcheck_caller_reference)
             self.ip.save()
         resp = client.create_health_check(
             CallerReference=str(self.ip.healthcheck_caller_reference),
             HealthCheckConfig=self.desired_config
         )
         self.ip.healthcheck_id = resp['HealthCheck']['Id']
+        self.report("created hc: {}", self.ip.healthcheck_id)
         self.ip.save()
 
     def delete(self):
         if self.exists:
+            self.report("delete hc: {}", self.ip.healthcheck_id)
             client.delete_health_check(HealthCheckId=self.id)
             self.ip.healthcheck_caller_reference = None
             self.ip.save(update_fields=['healthcheck_caller_reference'])
@@ -341,6 +348,8 @@ class HealthCheck:
             if not self.desired_config.items() <= self.config.items():
                 self.delete()
                 self.create()
+            else:
+                self.report("nothing to do")
         else:
             self.create()
 

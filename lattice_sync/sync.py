@@ -1,7 +1,8 @@
+import ipaddress
 from urllib.parse import urlparse
-from requests.auth import HTTPBasicAuth
 
 from django.conf import settings
+from requests.auth import HTTPBasicAuth
 from zipa import lattice  # pylint: disable=no-name-in-module
 
 from dns import models
@@ -33,7 +34,6 @@ def sync(lattice_client):
     for server in servers:
         for ip in server.ips:
             enabled = server['state'] == 'configured'
-
             datacenter_id = int(
                 server['datacenter_url'].split('?')[0].split('/')[-1])
             location = locations.get(datacenter_id, 'fake_location')
@@ -41,9 +41,19 @@ def sync(lattice_client):
             friendly_name = '{} {} {}'.format(server['hostname'],
                                               server['datacenter_name'],
                                               location)
-            cron_ip = models.IP(ip=ip['ip'], hostname=server['hostname'],
-                                friendly_name=friendly_name, enabled=enabled)
-            cron_ip.save()
+            # ignore ipv6 addresses for now
+            try:
+                ipaddress.IPv6Address(ip['ip'])
+                continue
+            except ipaddress.AddressValueError:
+                pass
+
+            cron_ip, _ = models.IP.objects.get_or_create(
+                ip=ip['ip'],
+                defaults=dict(
+                    hostname=server['hostname'],
+                    friendly_name=friendly_name,
+                    enabled=enabled))
             cron_ip.reconcile_healthcheck()
             lattice_ip_pks.add(cron_ip.pk)
 
