@@ -1,7 +1,7 @@
 test:
-	py.test -v --no-migrations -k 'not with_aws'
+	py.test -v --capture=no --color=yes --no-migrations -k 'not with_aws'
 full-test:
-	py.test -v
+	py.test -v --capture=no --color=yes
 run:
 	@echo "##########################################################################"
 	@echo "#                                                                        #"
@@ -12,7 +12,7 @@ run:
 build:
 	@echo "There is nothing to build for this project"
 lint:
-	py.test -v --flake8 -m 'flake8'
+	py.test -v --capture=no --color=yes --flake8 -m 'flake8'
 seed:
 	@echo "This project has no seeding yet"
 
