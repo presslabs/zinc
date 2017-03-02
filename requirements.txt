@@ -1,4 +1,4 @@
-Django==1.10.5
+Django==1.10.6
 boto3==1.4.4
 celery==4.0.2
 django-rest-swagger==2.1.1
