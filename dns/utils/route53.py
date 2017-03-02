@@ -294,8 +294,8 @@ class HealthCheck:
             return
         if self.ip.healthcheck_id is not None:
             try:
-                self._aws_data = client.get_health_check(HealthCheckId=self.ip.healthcheck_id)\
-                                 .get('HealthCheck')
+                health_check = client.get_health_check(HealthCheckId=self.ip.healthcheck_id)
+                self._aws_data = health_check.get('HealthCheck')
             except ClientError as exception:
                 if exception.response['Error']['Code'] != 'NoSuchHealthCheck':
                     raise  # re-raise any error, we only handle non-existant health checks

@@ -1,7 +1,5 @@
 from django.contrib import admin
 
-from dns.models import Zone
-
 
 class SoftDeleteAdmin(admin.ModelAdmin):
 

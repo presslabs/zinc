@@ -2,7 +2,7 @@ import pytest
 import responses
 
 from dns.models import IP
-from tests.fixtures import boto_client
+from tests.fixtures import boto_client  # noqa: F401
 
 from factories.dns.ip_factory import IPFactory
 from lattice_sync import sync

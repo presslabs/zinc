@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+# This needs to exists so that django allows installing this app

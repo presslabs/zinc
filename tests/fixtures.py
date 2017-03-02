@@ -102,7 +102,7 @@ class CleanupClient:
 @pytest.mark.django_db
 def api_client():
     user = G(get_user_model())
-    client = APIClient()
+    client = APIClient(format='json')
     client.force_authenticate(user=user)
     return client
 

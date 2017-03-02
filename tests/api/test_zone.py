@@ -1,17 +1,14 @@
 # pylint: disable=no-member,unused-argument,protected-access,redefined-outer-name
 import pytest
-import json
 
 from botocore.exceptions import ClientError
 from django_dynamic_fixture import G
-from django.core.exceptions import ObjectDoesNotExist
-from django.test import override_settings
 
-from tests.fixtures import api_client, boto_client, zone
-from tests.utils import (strip_ns_and_soa, hash_test_record, get_test_record,
-                         aws_strip_ns_and_soa, record_to_aws)
+
+from tests.fixtures import api_client, boto_client, zone  # noqa: F401
+from tests.utils import strip_ns_and_soa, get_test_record
+
 from dns import models as m
-from zinc.vendors.hashids import encode_record
 
 
 @pytest.mark.django_db

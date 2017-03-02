@@ -5,6 +5,7 @@ from django.conf import settings
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zinc.settings")
 
+
 class Celery(celery.Celery):
     def _configure_sentry(self, raven_config):
         import raven
@@ -22,6 +23,7 @@ class Celery(celery.Celery):
         raven_config = getattr(settings, 'RAVEN_CONFIG', '')
         if raven_config:
             self._configure_sentry(raven_config)
+
 
 app = Celery(__name__)
 app.config_from_object('django.conf:settings')

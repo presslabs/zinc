@@ -5,11 +5,10 @@ from unittest.mock import patch
 from django_dynamic_fixture import G
 from botocore.exceptions import ClientError
 
-from tests.fixtures import api_client, boto_client, zone
+from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from tests.utils import (strip_ns_and_soa, hash_test_record, aws_strip_ns_and_soa, aws_sort_key,
-                         get_test_record, record_to_aws, hash_record, get_record_from_base)
+                         get_test_record, record_to_aws, get_record_from_base)
 from dns import models as m
-from zinc.vendors.hashids import encode_record
 
 
 @pytest.mark.django_db
@@ -137,7 +136,7 @@ def test_record_deletion(api_client, zone, boto_client):
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, record_hash),
     )
-    # assert response.status_code == 204
+    assert response.status_code == 204
     assert strip_ns_and_soa(zone.records) == []
     assert aws_strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id),
@@ -158,7 +157,7 @@ def test_delete_nonexistent_records(api_client, zone):
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
-    # assert response.status_code == 204
+    assert response.status_code == 404
     assert response.data == {'detail': 'Record not found.'}
 
 
@@ -167,7 +166,7 @@ def test_patch_nonexistent_records(api_client, zone):
     response = api_client.patch(
         '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
-    # assert response.status_code == 204
+    assert response.status_code == 404
     assert response.data == {'detail': 'Record not found.'}
 
 

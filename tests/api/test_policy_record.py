@@ -1,12 +1,10 @@
 # pylint: disable=no-member,unused-argument,protected-access,redefined-outer-name
 import pytest
-import json
 
 from django_dynamic_fixture import G
-from django.core.exceptions import ObjectDoesNotExist
 
-from tests.fixtures import api_client, boto_client, zone
-from tests.utils import (strip_ns_and_soa, hash_test_record, hash_policy_record,
+from tests.fixtures import api_client, boto_client, zone  # noqa: F401
+from tests.utils import (strip_ns_and_soa, hash_policy_record,
                          get_test_record, create_ip_with_healthcheck)
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
@@ -95,10 +93,11 @@ def test_policy_record_delete(api_client, zone):
     policy_record = G(m.PolicyRecord, zone=zone, name='@', policy=policy)
 
     response = api_client.delete(
-        '/zones/%s/records/%s' % (zone.id, get_policy_record(policy_record)['id']),
+        '/zones/%s/records/%s' % (zone.id, get_policy_record(policy_record)['id'])
     )
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
+    assert response.status_code == 204, response.data
     assert str(pr.policy.id) == str(policy.id)
     assert pr.dirty is True
     assert pr.deleted is True

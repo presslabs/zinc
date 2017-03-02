@@ -1,4 +1,4 @@
-from .base import *  # NOQA
+from .base import *  # noqa
 
 SECRET_KEY = 'test-secret'
 CELERY_ALWAYS_EAGER = True
