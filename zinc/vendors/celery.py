@@ -1,6 +1,9 @@
+import os
+
 import celery
 from django.conf import settings
 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zinc.settings")
 
 class Celery(celery.Celery):
     def _configure_sentry(self, raven_config):
@@ -16,7 +19,7 @@ class Celery(celery.Celery):
         register_signal(client)
 
     def on_configure(self):
-        raven_config = getattr(settings, 'RAVEN_CONFIG', None)
+        raven_config = getattr(settings, 'RAVEN_CONFIG', '')
         if raven_config:
             self._configure_sentry(raven_config)
 
