@@ -4,10 +4,9 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 
 from lattice_sync import sync
-from dns.utils.output import output
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('zinc.cli')
 
 
 class Command(BaseCommand):
@@ -22,6 +21,5 @@ class Command(BaseCommand):
         lattice = sync.lattice_factory(options['url'],
                                        options['user'],
                                        options['password'])
-        output.use_stdout()
         sync.sync(lattice)
-        output("Done!")
+        logger.info("done")

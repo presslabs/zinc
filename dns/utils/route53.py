@@ -7,7 +7,6 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 
 from zinc.vendors import hashids
-from dns.utils.output import output
 
 AWS_KEY = getattr(settings, 'AWS_KEY', '')
 AWS_SECRET = getattr(settings, 'AWS_SECRET', '')
@@ -18,7 +17,7 @@ client = boto3.client(
     aws_secret_access_key=AWS_SECRET
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('zinc.route53')
 
 
 def _get_aws_regions():
@@ -80,19 +79,13 @@ class Zone(object):
         if not self._change_batch:
             return
 
-        try:
-            client.change_resource_record_sets(
-                HostedZoneId=self.id,
-                ChangeBatch={'Changes': self._change_batch}
-            )
-            # clear cache
-            self._reset_change_batch()
-            self._clear_cache()
-        except ClientError as error:
-            import json
-            print('Error on commit({}): {}, changes:\n {}'.format(
-                self.root, error, json.dumps(self._change_batch, indent=4)))
-            raise
+        client.change_resource_record_sets(
+            HostedZoneId=self.id,
+            ChangeBatch={'Changes': self._change_batch}
+        )
+        # clear cache
+        self._reset_change_batch()
+        self._clear_cache()
 
     def records(self, rfilter=None):
         self._cache_aws_records()
@@ -277,9 +270,6 @@ class HealthCheck:
         self.ip = ip
         self._aws_data = None
 
-    def report(self, msg, *args, **kwargs):
-        output("{}\t"+msg, self.ip.ip, *args, **kwargs)
-
     @property
     def exists(self):
         self._load()
@@ -322,19 +312,20 @@ class HealthCheck:
     def create(self):
         if self.ip.healthcheck_caller_reference is None:
             self.ip.healthcheck_caller_reference = uuid.uuid4()
-            self.report("new caller_reference {}", self.ip.healthcheck_caller_reference)
+            logger.info("%-15s new caller_reference %s",
+                        self.ip.ip, self.ip.healthcheck_caller_reference)
             self.ip.save()
         resp = client.create_health_check(
             CallerReference=str(self.ip.healthcheck_caller_reference),
             HealthCheckConfig=self.desired_config
         )
         self.ip.healthcheck_id = resp['HealthCheck']['Id']
-        self.report("created hc: {}", self.ip.healthcheck_id)
+        logger.info("%-15s created hc: %s", self.ip.ip, self.ip.healthcheck_id)
         self.ip.save()
 
     def delete(self):
         if self.exists:
-            self.report("delete hc: {}", self.ip.healthcheck_id)
+            logger.info("%-15s delete hc: %s", self.ip.ip, self.ip.healthcheck_id)
             client.delete_health_check(HealthCheckId=self.id)
             self.ip.healthcheck_caller_reference = None
             self.ip.save(update_fields=['healthcheck_caller_reference'])
@@ -349,7 +340,7 @@ class HealthCheck:
                 self.delete()
                 self.create()
             else:
-                self.report("nothing to do")
+                logger.info("%-15s nothing to do", self.ip.ip)
         else:
             self.create()
 

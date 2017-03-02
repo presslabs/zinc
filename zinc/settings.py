@@ -164,24 +164,6 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-
-# logging
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
-        },
-    },
-}
-
 # HASHIDS
 
 HASHIDS_MIN_LENGTH = 0
@@ -224,6 +206,27 @@ LATTICE_ROLES = list(map(lambda x: x.strip(),
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
 
+
+# logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        },
+        'zinc': {
+            'handlers': ['console'],
+            'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        },
+    },
+}
 if os.getenv('ZINC_SENTRY_DSN', None):
     import raven
     INSTALLED_APPS += ['raven.contrib.django.raven_compat']
@@ -242,6 +245,10 @@ if os.getenv('ZINC_SENTRY_DSN', None):
         'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler'
     }
     LOGGING['loggers']['celery.task'] = {
+        'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        'handlers': ['console', 'sentry']
+    }
+    LOGGING['loggers']['zinc'] = {
         'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
         'handlers': ['console', 'sentry']
     }
