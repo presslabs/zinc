@@ -6,9 +6,10 @@ ENV PYTHONUNBUFFERED=1 \
 COPY ./requirements.txt /requirements.txt
 RUN set -ex \
     && apk add --no-cache \
-       mariadb-client-libs \
-       openssl \
-       su-exec \
+        make \
+        mariadb-client-libs \
+        openssl \
+        su-exec \
     && addgroup -g 998 zinc \
     && adduser -SD -u 998 -G zinc -h /app zinc \
     && apk add --no-cache --virtual .build-deps \
