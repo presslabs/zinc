@@ -11,10 +11,14 @@ from zinc.vendors import hashids
 AWS_KEY = getattr(settings, 'AWS_KEY', '')
 AWS_SECRET = getattr(settings, 'AWS_SECRET', '')
 
+# Pass '-' as if AWS_KEY from settings is empty
+# because boto will look into '~/.aws/config' file if
+# AWS_KEY or AWS_SECRET are not defined, which is the default
+# and can mistaknely use production keys
 client = boto3.client(
     service_name='route53',
-    aws_access_key_id=AWS_KEY,
-    aws_secret_access_key=AWS_SECRET
+    aws_access_key_id=AWS_KEY or '-',
+    aws_secret_access_key=AWS_SECRET or '-'
 )
 
 logger = logging.getLogger('zinc.route53')
