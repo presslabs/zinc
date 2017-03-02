@@ -6,3 +6,5 @@ CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
 
 DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1']
+
+LOGGING['loggers']['zinc']['level'] = 'WARN'
