@@ -272,6 +272,11 @@ class HealthCheck:
         self._aws_data = None
 
     @property
+    def exists(self):
+        self._load()
+        return self._aws_data is not None
+
+    @property
     def id(self):
         self._load()
         return self._aws_data.get('Id')
@@ -317,24 +322,21 @@ class HealthCheck:
         self.ip.save()
 
     def delete(self):
-        client.delete_health_check(HealthCheckId=self.id)
-        self.ip.healthcheck_id = None
-        self.ip.healthcheck_caller_reference = None
-        self.ip.save()
-
-    @property
-    def exists(self):
-        self._load()
-        return self._aws_data is not None
+        if self.exists:
+            client.delete_health_check(HealthCheckId=self.id)
+            self.ip.healthcheck_caller_reference = None
+            self.ip.save(update_fields=['healthcheck_caller_reference'])
 
     def reconcile(self):
-        if self.exists:
+        if self.ip.deleted:
+            self.delete()
+            self.ip.delete()
+        elif self.exists:
             # if the desired config is not a subset of the current config
             if not self.desired_config.items() <= self.config.items():
                 self.delete()
                 self.create()
         else:
-            self.ip.healthcheck_caller_reference = None
             self.create()
 
     @classmethod

@@ -151,7 +151,13 @@ CELERYBEAT_SCHEDULE = {
     'lattice_sync': {
         'task': 'lattice_sync.tasks.lattice_sync',
         'schedule': 30
-    }
+    },
+    'reconcile_healthchecks': {
+        'task': 'dns.tasks.reconcile_healthchecks',
+        # these are already performed synchronously, reconcile handles transient AWS errors,
+        # so it doesn't need to run frequently
+        'schedule': 300
+    },
 }
 
 CELERY_ACCEPT_CONTENT = ['json']

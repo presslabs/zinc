@@ -44,8 +44,10 @@ def sync(lattice_client):
             cron_ip = models.IP(ip=ip['ip'], hostname=server['hostname'],
                                 friendly_name=friendly_name, enabled=enabled)
             cron_ip.save()
+            cron_ip.reconcile_healthcheck()
             lattice_ip_pks.add(cron_ip.pk)
 
     ips_to_remove = set(
         models.IP.objects.values_list('pk', flat=True)) - lattice_ip_pks
-    models.IP.objects.filter(pk__in=ips_to_remove).delete()
+    for ip in models.IP.objects.filter(pk__in=ips_to_remove):
+        ip.soft_delete()

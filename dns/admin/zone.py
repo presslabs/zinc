@@ -2,9 +2,11 @@ from django.contrib import admin
 
 from dns.models import Zone
 
+from .soft_delete import SoftDeleteAdmin
+
 
 @admin.register(Zone)
-class ZoneAdmin(admin.ModelAdmin):
+class ZoneAdmin(SoftDeleteAdmin):
     list_display = ['root', 'is_deleted', 'aws_link']
     readonly_fields = ['route53_id', 'caller_reference']
     list_filter = ['deleted']
@@ -13,20 +15,6 @@ class ZoneAdmin(admin.ModelAdmin):
         if obj:
             return self.readonly_fields + ['root']
         return self.readonly_fields
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        # we don't allow bulk delete of zones, because we want to enforce soft delete
-        if 'delete_selected' in actions:
-            del actions['delete_selected']
-        return actions
-
-    def delete_model(self, request, obj):
-        """Soft delete zone object"""
-        obj.soft_delete()
-
-    def is_deleted(self, obj):
-        return "DELETED" if obj.deleted else ""
 
     def aws_link(self, obj):
         if obj.route53_id is not None:

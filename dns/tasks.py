@@ -41,3 +41,8 @@ def reconcile_policy_records(bind=True):
             logger.exception(
                 "apply_record failed for PolicyRecord %s.%s", policy.name, policy.zone.root
             )
+
+
+@shared_task(bind=True, ignore_result=True, default_retry_delay=60)
+def reconcile_healthchecks(bind=True):
+    route53.Healthcheck.reconcile_for_ips(models.IP.objects.all())
