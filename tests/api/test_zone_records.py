@@ -205,7 +205,7 @@ def test_add_record_invalid_ttl(api_client, zone):
     record = {
         'name': 'test',
         'type': 'A',
-        'ttl': 23,
+        'ttl': 0,
         'valuse': ['4.5.6.7'],
     }
     response = api_client.post(
@@ -213,7 +213,7 @@ def test_add_record_invalid_ttl(api_client, zone):
         data=record
     )
     assert response.data == {
-        'ttl': ['Ensure this value is greater than or equal to 300.']
+        'ttl': ['Ensure this value is greater than or equal to 1.']
     }
 
 
