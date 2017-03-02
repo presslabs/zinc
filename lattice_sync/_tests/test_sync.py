@@ -1,5 +1,3 @@
-from django.core.management import call_command
-from mock import MagicMock, call
 import pytest
 import responses
 
@@ -7,7 +5,9 @@ from dns.models import IP
 from tests.fixtures import boto_client
 
 from factories.dns.ip_factory import IPFactory
-from lattice_sync.management.commands.ips_from_lattice import Command
+from lattice_sync import sync
+
+lattice = sync.lattice_factory(url='http://lattice', user='user', password='password')
 
 
 @pytest.mark.django_db
@@ -22,14 +22,7 @@ def test_resets_existing_ips_on_run(boto_client):
     IPFactory(ip=addr)
 
     assert list(IP.objects.all().values_list('ip', flat=True)) == [addr]
-
-    args = []
-    opts = {
-        'url': 'http://lattice',
-        'user': 'user',
-        'password': 'password',
-    }
-    call_command('ips_from_lattice', *args, **opts)
+    sync.sync(lattice)
     assert IP.objects.filter(ip=addr).count() == 0
 
 
@@ -38,12 +31,7 @@ def test_resets_existing_ips_on_run(boto_client):
 def test_adds_only_ips_from_servers_in_specified_roles(boto_client):
     _mock_lattice_responses()
 
-    opts = {
-        'url': 'http://lattice',
-        'user': 'user',
-        'password': 'password',
-    }
-    call_command('ips_from_lattice', *[], **opts)
+    sync.sync(lattice)
 
     assert IP.objects.count() == 2
     assert IP.objects.filter(ip__in=['123.123.123.123', '123.123.123.124']).count() == 2
@@ -54,13 +42,7 @@ def test_adds_only_ips_from_servers_in_specified_roles(boto_client):
 def test_fields_on_written_ip(boto_client):
     _mock_lattice_responses()
 
-    args = []
-    opts = {
-        'url': 'http://lattice',
-        'user': 'user',
-        'password': 'password',
-    }
-    call_command('ips_from_lattice', *args, **opts)
+    sync.sync(lattice)
 
     ip = IP.objects.get(ip='123.123.123.123')
 
