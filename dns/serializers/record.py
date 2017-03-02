@@ -1,10 +1,24 @@
+from contextlib import contextmanager
+
 from rest_framework import fields
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
+from botocore.exceptions import ClientError
 
 from dns.models import RECORD_PREFIX
 from zinc import ZINC_RECORD_TYPES, POLICY_ROUTED
 from zinc.vendors import hashids
+from zinc import ALLOWED_RECORD_TYPES
+
+
+@contextmanager
+def interpret_client_error():
+    try:
+        yield
+    except ClientError as error:
+        if 'ARRDATAIllegalIPv4Address' in error.response['Error']['Message']:
+            raise ValidationError({'values': ["Value is not a valid IPv4 address."]})
+        raise ValidationError({'non_field_error': [error.response['Error']['Message']]})
 
 
 class RecordListSerializer(serializers.ListSerializer):
@@ -60,15 +74,26 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         validated_data['id'] = self.get_id(validated_data)
         record = zone.add_record(validated_data)
-        zone.save()
+        with interpret_client_error():
+            zone.save()
         return record
 
     def update(self, obj, validated_data):
         zone = self.context['zone']
         obj.update(validated_data)
+        if obj.get('managed'):
+            raise ValidationError("Can't {} a managed record.".format(
+                self.context['request'].method
+            ))
         record = zone.add_record(obj)
-        zone.save()
+        with interpret_client_error():
+            zone.save()
         return record
+
+    def validate_type(self, value):
+        if value not in ALLOWED_RECORD_TYPES:
+            raise ValidationError("Type '{}' is not allowed.".format(value))
+        return value
 
     def validate_name(self, value):
         # record name should not start with rezerved prefix.

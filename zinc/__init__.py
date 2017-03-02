@@ -3,9 +3,12 @@ from zinc.vendors.celery import app as celery_app
 POLICY_ROUTED = 'POLICY_ROUTED'
 
 RECORD_TYPES = [
-    'A', 'AAAA', 'CNAME', 'MX', 'TXT',
-    'SPF', 'SRV', 'NS', 'SOA', POLICY_ROUTED
+    'A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SOA',
+    'SPF', 'SRV', 'NS', POLICY_ROUTED
 ]
+
+ALLOWED_RECORD_TYPES = set(RECORD_TYPES)
+ALLOWED_RECORD_TYPES.remove('SOA')
 
 ZINC_RECORD_TYPES = [(rtype, rtype) for rtype in RECORD_TYPES]
 

@@ -118,7 +118,31 @@ class Moto:
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
         # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
         zone_id = "{}/{}/{}".format(random_ascii(4), random_ascii(4), random_ascii(4))
-        self._zones[zone_id] = {}
+        self._zones[zone_id] = {
+            'ResourceRecordSets': [
+                {
+                    'Name': Name,
+                    'Type': 'NS',
+                    'TTL': 1300,
+                    'ResourceRecords': [
+                        {
+                            'Value': 'test_ns.presslabs.net',
+                        }
+                    ]
+                },
+                {
+                    'Name': Name,
+                    'Type': 'SOA',
+                    'TTL': 1300,
+                    'ResourceRecords': [
+                        {
+                            'Value': ('ns1.dnsimple.com admin.dnsimple.com '
+                                      '2013022001 86400 7200 604800 300'),
+                        }
+                    ]
+                },
+            ]
+        }
         return {
             'HostedZone': {
                 'Id': zone_id
@@ -294,10 +318,10 @@ def zone(request, boto_client):
                             }
                         ]
                     }
-                }
+                },
             ]
         }
     )
     zone = m.Zone(root=zone_name, route53_id=zone_id, caller_reference=caller_ref)
     zone.save()
-    return zone, client
+    return zone

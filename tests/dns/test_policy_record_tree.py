@@ -111,8 +111,7 @@ def test_policy_member_to_list_helper():
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_builder(zone):
-    zone, client = zone
+def test_policy_record_tree_builder(zone, boto_client):
     policy = G(m.Policy)
     region = get_local_aws_regions()[0]
     ip = create_ip_with_healthcheck()
@@ -134,13 +133,12 @@ def test_policy_record_tree_builder(zone):
     ] + policy_members_to_list(policy_members, policy_record)
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_with_multiple_regions(zone):
-    zone, client = zone
+def test_policy_record_tree_with_multiple_regions(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
@@ -161,13 +159,12 @@ def test_policy_record_tree_with_multiple_regions(zone):
         },
     ] + policy_members_to_list(policy_members, policy_record)
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_with_multiple_regions_and_members(zone):
-    zone, client = zone
+def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
@@ -192,13 +189,12 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone):
         },
     ] + policy_members_to_list(policy_members, policy_record)
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_within_members(zone):
-    zone, client = zone
+def test_policy_record_tree_within_members(zone, boto_client):
     policy = G(m.Policy)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
     policy_record.apply_record()
@@ -213,13 +209,12 @@ def test_policy_record_tree_within_members(zone):
     ] + policy_members_to_list([], policy_record)
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_with_two_trees(zone):
-    zone, client = zone
+def test_policy_record_tree_with_two_trees(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
@@ -260,13 +255,12 @@ def test_policy_record_tree_with_two_trees(zone):
     ]
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_deletion(zone):
-    zone, client = zone
+def test_policy_record_deletion(zone, boto_client):
     policy = G(m.Policy)
     region = get_local_aws_regions()[0]
     ip = create_ip_with_healthcheck()
@@ -288,13 +282,13 @@ def test_policy_record_deletion(zone):
     ] + policy_members_to_list(policy_members, policy_record)
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
     policy_record.delete_record()
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root) == [
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root) == [
             {
                 'Name': 'test.test-zinc.net.',
                 'ResourceRecords': [{'Value': '1.1.1.1'}],
@@ -305,8 +299,7 @@ def test_policy_record_deletion(zone):
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_deletion_with_two_trees(zone):
-    zone, client = zone
+def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
@@ -338,13 +331,12 @@ def test_policy_record_tree_deletion_with_two_trees(zone):
     ] + policy_members_to_list(policy_members, policy_record)
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_with_ips_0_weight(zone):
-    zone, client = zone
+def test_policy_record_with_ips_0_weight(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
@@ -366,13 +358,12 @@ def test_policy_record_with_ips_0_weight(zone):
     ] + policy_members_to_list(policy_members, policy_record)
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
 
 
 @pytest.mark.django_db
-def test_policy_record_with_all_ips_0_weight(zone):
-    zone, client = zone
+def test_policy_record_with_all_ips_0_weight(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
@@ -393,5 +384,5 @@ def test_policy_record_with_all_ips_0_weight(zone):
     ]
 
     assert strip_ns_and_soa(
-        client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)

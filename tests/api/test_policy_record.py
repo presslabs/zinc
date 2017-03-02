@@ -31,7 +31,6 @@ def get_policy_record(policy_record, dirty=False, managed=False):
 
 @pytest.mark.django_db
 def test_policy_record_get(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
@@ -50,7 +49,6 @@ def test_policy_record_get(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_create(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
@@ -69,7 +67,6 @@ def test_policy_record_create(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_update_policy(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     new_policy = G(m.Policy)
 
@@ -92,7 +89,6 @@ def test_policy_record_update_policy(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_delete(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
@@ -111,7 +107,6 @@ def test_policy_record_delete(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_get_more_than_one(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
@@ -134,7 +129,6 @@ def test_policy_record_get_more_than_one(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_create_more_than_one(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     ip1 = create_ip_with_healthcheck()
     ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
@@ -164,7 +158,6 @@ def test_policy_record_create_more_than_one(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_create_no_policy(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
@@ -181,7 +174,6 @@ def test_policy_record_create_no_policy(api_client, zone):
 
 @pytest.mark.django_db
 def test_policy_record_create_more_values(api_client, zone):
-    zone, _ = zone
     policy = G(m.Policy)
     G(m.PolicyMember, policy=policy, region=regions[0])
 
