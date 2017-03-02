@@ -232,6 +232,7 @@ if os.getenv('ZINC_SENTRY_DSN', None):
         # If you are using git, you can also automatically configure the
         # release based on the git info.
         'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
+        'environment': os.getenv('ZINC_ENV_NAME', None),
     }
 
     # Sentry logging with celery is a real pain in the ass
