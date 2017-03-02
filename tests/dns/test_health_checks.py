@@ -3,7 +3,7 @@ import pytest
 import botocore.exceptions
 
 from dns import models as m
-from tests.fixtures import boto_client  # pylint: disable=unused-import
+from tests.fixtures import boto_client  # noqa: F401, pylint: disable=unused-import
 
 
 @pytest.mark.django_db

@@ -3,8 +3,7 @@ import botocore.exceptions
 import pytest
 from django_dynamic_fixture import G
 
-from tests.fixtures import boto_client, zone
-from dns.utils.route53 import get_local_aws_regions
+from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import hash_test_record
 from zinc.vendors.hashids import encode_record
 from dns.utils import route53

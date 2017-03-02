@@ -7,14 +7,13 @@ build:
       password: $$DOCKER_PASSWORD
       email: ping@presslabs.com
     environment:
-      - DJANGO_SETTINGS_MODULE=zinc.test_settings
+      - DJANGO_SETTINGS_MODULE=zinc.settings.test
       - ZINC_AWS_KEY=$$ZINC_AWS_KEY
       - ZINC_AWS_SECRET=$$ZINC_AWS_SECRET
     commands:
-      - sed -i "s/raven.fetch_git_sha(os.path.dirname(os.pardir))/'$$COMMIT'/g" zinc/settings.py
       - pip install -U -r requirements.dev.txt
-      - pep8 --max-line-length=100 --exclude=migrations .
-      - py.test --capture=no -v --tb=native
+      - make lint
+      - make full-test
 
 publish:
   docker:
@@ -25,7 +24,7 @@ publish:
     tag: $${BRANCH/master/latest}
     storage_path: /drone/docker
     when:
-      event: push
+      branch: master
 
 cache:
   mount:

@@ -2,7 +2,7 @@
 import pytest
 from django_dynamic_fixture import G
 
-from tests.fixtures import api_client, boto_client, zone
+from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from dns import models as m
 
 
@@ -76,11 +76,10 @@ def test_policy_deletion_1(api_client):
     assert m.PolicyMember.objects.count() == 2
 
     response = api_client.delete(
-        '/policies/%s' % policy.id,
-        format='json',
+        '/policies/%s' % policy.id
     )
 
-    assert response.status_code == 200, response
+    assert response.status_code == 204, response
     assert m.PolicyMember.objects.count() == 0
     assert m.Policy.objects.count() == 0
 
@@ -95,11 +94,10 @@ def test_policy_deletion_2(api_client):
     assert m.PolicyMember.objects.count() == 3
 
     response = api_client.delete(
-        '/policies/%s' % policy.id,
-        format='json',
+        '/policies/%s' % policy.id
     )
 
-    assert response.status_code == 200, response
+    assert response.status_code == 204, response
     assert list(m.Policy.objects.all()) == [policy_to_keep]
     assert list(m.PolicyMember.objects.all()) == [member_to_keep]
 

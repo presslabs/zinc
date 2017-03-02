@@ -2,7 +2,7 @@
 import pytest
 from django_dynamic_fixture import G
 
-from tests.fixtures import boto_client, zone
+from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck
 from dns import models as m
 from dns.utils.route53 import get_local_aws_regions
@@ -52,17 +52,17 @@ def policy_members_to_list(policy_members, policy_record):
             'HealthCheckId': str(policy_member.ip.healthcheck_id),
         } for policy_member in policy_members if policy_member.weight > 0]
     the_policy_record = [
-            {
-                'Name': ('{}.{}'.format(policy_record.name, zone.root)
-                         if policy_record.name != '@' else zone.root),
-                'Type': 'A',
-                'AliasTarget': {
-                    'HostedZoneId': zone.route53_zone.id,
-                    'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
-                    'EvaluateTargetHealth': False
-                },
-            }
-        ] if len(regions) >= 1 else []
+        {
+            'Name': ('{}.{}'.format(policy_record.name, zone.root)
+                     if policy_record.name != '@' else zone.root),
+            'Type': 'A',
+            'AliasTarget': {
+                'HostedZoneId': zone.route53_zone.id,
+                'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
+                'EvaluateTargetHealth': False
+            },
+        }
+    ] if len(regions) >= 1 else []
 
     return records_for_regions + records_for_policy_members + the_policy_record
 
@@ -240,18 +240,19 @@ def test_policy_record_tree_with_two_trees(zone, boto_client):
             'ResourceRecords': [{'Value': '1.1.1.1'}],
             'TTL': 300,
             'Type': 'A'
-        },  # this is a ordinary record. should be not modified.
+        },
+        # this is a ordinary record. should be not modified.
         # we expect to have the policy tree created just once.
     ] + policy_members_to_list(policy_members, policy_record) + [
-       {
-           'Name': '{}.{}'.format(policy_record2.name, zone.root),
-           'Type': 'A',
-           'AliasTarget': {
-               'HostedZoneId': zone.route53_zone.id,
-               'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
-               'EvaluateTargetHealth': False
-           },
-       }  # also we need to have the cdn policy_record ALIAS to the same policy.
+        {
+            'Name': '{}.{}'.format(policy_record2.name, zone.root),
+            'Type': 'A',
+            'AliasTarget': {
+                'HostedZoneId': zone.route53_zone.id,
+                'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
+                'EvaluateTargetHealth': False
+            },
+        }  # also we need to have the cdn policy_record ALIAS to the same policy.
     ]
 
     assert strip_ns_and_soa(
@@ -287,15 +288,15 @@ def test_policy_record_deletion(zone, boto_client):
 
     policy_record.delete_record()
 
-    assert strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root) == [
-            {
-                'Name': 'test.test-zinc.net.',
-                'ResourceRecords': [{'Value': '1.1.1.1'}],
-                'TTL': 300,
-                'Type': 'A'
-            }
-        ]
+    rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
+    assert strip_ns_and_soa(rrsets, zone.root) == [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        }
+    ]
 
 
 @pytest.mark.django_db
@@ -367,10 +368,9 @@ def test_policy_record_with_all_ips_0_weight(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
-    policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0),
-        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0),
-    ]
+
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0),
+    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0),
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record.apply_record()
@@ -383,6 +383,6 @@ def test_policy_record_with_all_ips_0_weight(zone, boto_client):
         },  # this is a ordinary record. should be not modified.
     ]
 
-    assert strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
-    ) == sorted(expected, key=sort_key)
+    rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
+
+    assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)

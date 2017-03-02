@@ -168,9 +168,6 @@ CELERY_RESULT_SERIALIZER = 'json'
 
 HASHIDS_MIN_LENGTH = 0
 
-AWS_KEY = ''
-AWS_SECRET = ''
-
 REST_FRAMEWORK = {
     'PAGE_SIZE': 100,
     'DEFAULT_PARSER_CLASSES': (
@@ -188,7 +185,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
-    )
+    ),
 }
 
 HEALTH_CHECK_CONFIG = {
