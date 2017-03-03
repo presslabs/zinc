@@ -11,10 +11,11 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+from django.utils.log import DEFAULT_LOGGING
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
 WEBROOT_DIR = os.getenv('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT,
                                                          'webroot/'))
@@ -28,9 +29,8 @@ SECRET_KEY = os.getenv('ZINC_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('ZINC_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = list(map(lambda x: x.strip(),
-                         os.getenv('ZINC_ALLOWED_HOSTS', '').split(',')))
-
+ALLOWED_HOSTS = list(filter(lambda x: x, map(lambda x: x.strip(),
+                                             os.getenv('ZINC_ALLOWED_HOSTS', '').split(','))))
 # Application definition
 
 INSTALLED_APPS = [
@@ -204,26 +204,16 @@ AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
 
 
-# logging
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
-        },
-        'zinc': {
-            'handlers': ['console'],
-            'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
-        },
-    },
+# configure logging
+
+LOGGING = DEFAULT_LOGGING.copy()
+LOGGING['loggers']['django']['level'] = os.getenv('ZINC_LOG_LEVEL', 'INFO')
+LOGGING['loggers']['zinc'] = {
+    'handlers': ['console'],
+    'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
 }
+
+
 if os.getenv('ZINC_SENTRY_DSN', None):
     import raven
     INSTALLED_APPS += ['raven.contrib.django.raven_compat']
