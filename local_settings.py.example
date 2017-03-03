@@ -1,0 +1,13 @@
+# vim: set ft=python:
+from zinc.settings.base import *
+
+DEBUG=True
+SECRET_KEY='not-so-secret'
+
+AWS_KEY='ASK FOR A AWS KEY'
+AWS_SECRET=''
+
+CELERY_ALWAYS_EAGER = True
+CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+
+del CELERYBEAT_SCHEDULE['lattice_sync']
