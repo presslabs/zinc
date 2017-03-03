@@ -169,7 +169,8 @@ CELERY_RESULT_SERIALIZER = 'json'
 HASHIDS_MIN_LENGTH = 0
 
 REST_FRAMEWORK = {
-    'PAGE_SIZE': 100,
+    'PAGE_SIZE': 50,
+    'DEFAULT_PAGINATION_CLASS': 'dns.pagination.LinkHeaderPagination',
     'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',

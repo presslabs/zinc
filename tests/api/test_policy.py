@@ -32,7 +32,7 @@ def test_policy_list(api_client):
         format='json',
     )
     assert resp.status_code == 200, resp
-    assert [str(pol.id)] == [res['id'] for res in resp.data['results']]
+    assert [str(pol.id)] == [res['id'] for res in resp.data]
 
 
 @pytest.mark.django_db
