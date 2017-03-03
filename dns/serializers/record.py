@@ -76,7 +76,7 @@ class RecordSerializer(serializers.Serializer):
         validated_data['id'] = self.get_id(validated_data)
         record = zone.add_record(validated_data)
         with interpret_client_error():
-            zone.save()
+            zone.route53_zone.commit()
         return record
 
     def update(self, obj, validated_data):
@@ -86,7 +86,7 @@ class RecordSerializer(serializers.Serializer):
             raise ValidationError("Can't change a managed record.")
         record = zone.add_record(obj)
         with interpret_client_error():
-            zone.save()
+            zone.route53_zone.commit()
         return record
 
     def validate_type(self, value):
