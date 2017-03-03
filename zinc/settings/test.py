@@ -1,4 +1,4 @@
-from .base import *  # noqa
+from zinc.settings import *  # noqa
 
 SECRET_KEY = 'test-secret'
 CELERY_ALWAYS_EAGER = True
