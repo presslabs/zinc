@@ -1,7 +1,7 @@
 test:
 	py.test -v -n auto --capture=no --no-migrations -k 'not with_aws' --flake8
 full-test:
-	py.test -v -n 2    --capture=no --color=yes
+	py.test -v         --capture=no --color=yes
 lint:
 	py.test -v -n auto --capture=no --color=yes --flake8 -m 'flake8'
 run:
