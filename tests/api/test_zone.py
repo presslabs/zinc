@@ -46,11 +46,11 @@ def test_list_zones(api_client, boto_client):
 
     response = api_client.get('/zones')
 
-    assert [result['url'] for result in response.data['results']] == [
+    assert [result['url'] for result in response.data] == [
         "http://testserver/zones/{}".format(zone.id) for zone in zones]
     assert ([(zone.id, zone.root, zone.dirty, zone.route53_zone.id) for zone in zones] ==
             [(zone['id'], zone['root'], zone['dirty'], zone['route53_id'])
-             for zone in response.data['results']])
+             for zone in response.data])
 
 
 @pytest.mark.django_db
