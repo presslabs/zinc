@@ -331,7 +331,7 @@ def test_create_NS_record(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_update_record_with_wrong_values(api_client, zone):
+def test_record_with_wrong_ipv4_values(api_client, zone):
     with patch('tests.fixtures.Moto.change_resource_record_sets') as mock_moto:
         mock_moto.side_effect = ClientError(
             error_response={
@@ -344,15 +344,47 @@ def test_update_record_with_wrong_values(api_client, zone):
             operation_name='change_resource_record_sets',
         )
         record = {
+            'name': 'ipv4',
+            'type': 'A',
+            'ttl': 300,
             'values': ['300.0.0.1']
         }
-        response = api_client.patch(
-            '/zones/%s/records/%s' % (zone.id, hash_test_record(zone)),
+        response = api_client.post(
+            '/zones/%s/records' % (zone.id),
             data=record
         )
     assert response.status_code == 400
     assert response.data == {
         'values': ['Value is not a valid IPv4 address.']
+    }
+
+
+@pytest.mark.django_db
+def test_record_with_wrong_ipv6_values(api_client, zone):
+    with patch('tests.fixtures.Moto.change_resource_record_sets') as mock_moto:
+        mock_moto.side_effect = ClientError(
+            error_response={
+                'Error': {
+                    'Code': 'InvalidChangeBatch',
+                    'Message': "...AAAARRDATAIllegalIPv6Address...",
+                    'Type': 'Sender'
+                },
+            },
+            operation_name='change_resource_record_sets',
+        )
+        record = {
+            'name': 'ipv6',
+            'ttl': 300,
+            'type': 'AAAA',
+            'values': ['xx:xx:xx:']
+        }
+        response = api_client.post(
+            '/zones/%s/records' % (zone.id),
+            data=record
+        )
+    assert response.status_code == 400
+    assert response.data == {
+        'values': ['Value is not a valid IPv6 address.']
     }
 
 

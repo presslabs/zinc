@@ -18,6 +18,8 @@ def interpret_client_error():
     except ClientError as error:
         if 'ARRDATAIllegalIPv4Address' in error.response['Error']['Message']:
             raise ValidationError({'values': ["Value is not a valid IPv4 address."]})
+        elif 'AAAARRDATAIllegalIPv6Address' in error.response['Error']['Message']:
+            raise ValidationError({'values': ["Value is not a valid IPv6 address."]})
         raise ValidationError({'non_field_error': [error.response['Error']['Message']]})
 
 
@@ -41,7 +43,6 @@ class RecordListSerializer(serializers.ListSerializer):
 
 
 class RecordSerializer(serializers.Serializer):
-
     name = fields.CharField(max_length=255)
     type = fields.ChoiceField(choices=ZINC_RECORD_TYPES)
     values = fields.ListField(child=fields.CharField())
