@@ -142,6 +142,16 @@ def test_zone_exists_false(boto_client):
 
 
 @pytest.mark.django_db
+def test_zone_reconcile_deleted_from_aws(zone, boto_client):
+    original_id = zone.route53_id
+    route53.Zone(zone)._delete_records()
+    boto_client.delete_hosted_zone(Id=original_id)
+    zone.route53_zone._clear_cache()
+    zone.route53_zone.reconcile()
+    assert zone.route53_id != original_id
+
+
+@pytest.mark.django_db
 def test_zone_exists_true(zone):
     assert route53.Zone(zone).exists
 

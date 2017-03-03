@@ -128,7 +128,7 @@ class Zone(models.Model):
     root = models.CharField(max_length=255, validators=[validate_domain])
     route53_id = models.CharField(max_length=32, unique=True, editable=False,
                                   null=True, default=None)
-    caller_reference = models.UUIDField(default=uuid.uuid4)
+    caller_reference = models.UUIDField(editable=False, null=True)
     deleted = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
@@ -249,6 +249,9 @@ class Zone(models.Model):
 
     def __str__(self):
         return '{} {}'.format(self.pk, self.root)
+
+    def reconcile(self):
+        self.route53_zone.reconcile()
 
 
 class PolicyRecord(models.Model):

@@ -15,6 +15,7 @@ AWS_SECRET = getattr(settings, 'AWS_SECRET', '')
 # because boto will look into '~/.aws/config' file if
 # AWS_KEY or AWS_SECRET are not defined, which is the default
 # and can mistaknely use production keys
+
 client = boto3.client(
     service_name='route53',
     aws_access_key_id=AWS_KEY or '-',
@@ -51,10 +52,6 @@ class Zone(object):
     @property
     def id(self):
         return self.zone_record.route53_id
-
-    @property
-    def caller_reference(self):
-        return self.zone_record.caller_reference
 
     @property
     def root(self):
@@ -160,9 +157,12 @@ class Zone(object):
                 })
 
     def create(self):
+        if self.zone_record.caller_reference is None:
+            self.zone_record.caller_reference = uuid.uuid4()
+            self.zone_record.save()
         zone = client.create_hosted_zone(
             Name=self.root,
-            CallerReference=str(self.caller_reference),
+            CallerReference=str(self.zone_record.caller_reference),
             HostedZoneConfig={
                 'Comment': 'zinc'
             }
@@ -175,6 +175,17 @@ class Zone(object):
             self.delete()
         elif self.zone_record.route53_id is None:
             self.create()
+        elif not self.exists:
+            try:
+                self.create()
+            except ClientError as excp:
+                if excp.response['Error']['Code'] != 'HostedZoneAlreadyExists':
+                    raise
+                # This can happen if a zone was manually deleted from AWS.
+                # Create will fail because we re-use the caller_reference
+                self.zone_record.caller_reference = None
+                self.zone_record.save()
+                self.create()
 
     @classmethod
     def reconcile_multiple(cls, zones):
@@ -283,11 +294,6 @@ class HealthCheck:
     def id(self):
         self._load()
         return self._aws_data.get('Id')
-
-    @property
-    def caller_reference(self):
-        self._load()
-        return self._aws_data.get('CallerReference')
 
     def _load(self):
         if self._aws_data is not None:

@@ -1,8 +1,13 @@
+import logging
+
+from botocore.exceptions import ClientError
 from django.contrib import admin
 
 from dns.models import Zone
 
 from .soft_delete import SoftDeleteAdmin
+
+logger = logging.getLogger('zinc.admin')
 
 
 @admin.register(Zone)
@@ -15,6 +20,13 @@ class ZoneAdmin(SoftDeleteAdmin):
         if obj:
             return self.readonly_fields + ['root']
         return self.readonly_fields
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        try:
+            obj.reconcile()
+        except ClientError:
+            logger.exception("Error while calling reconcile for hosted zone")
 
     def aws_link(self, obj):
         if obj.route53_id is not None:
