@@ -1,4 +1,4 @@
-from rest_framework.generics import (CreateAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework.generics import (ListAPIView, CreateAPIView, RetrieveUpdateDestroyAPIView)
 from rest_framework import viewsets, status, mixins
 from rest_framework.response import Response
 from rest_framework.generics import get_object_or_404
@@ -68,8 +68,14 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
         serializer.save()
 
 
-class RecordCreate(CreateAPIView):
+class RecordCreate(ListAPIView, CreateAPIView):
     serializer_class = RecordSerializer
+    paginator = None
+
+    def list(self, request, zone_id):
+        zone = get_object_or_404(models.Zone, id=zone_id)
+        zone_data = ZoneDetailSerializer(zone, context={'request': request}).data
+        return Response(zone_data['records'])
 
     def get_queryset(self):
         return None
