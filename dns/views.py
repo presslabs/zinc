@@ -1,25 +1,32 @@
-from rest_framework.generics import (CreateAPIView, ListCreateAPIView, RetrieveDestroyAPIView,
-                                     RetrieveAPIView, RetrieveUpdateDestroyAPIView)
-from rest_framework import viewsets, status
+from rest_framework.generics import (CreateAPIView, RetrieveUpdateDestroyAPIView)
+from rest_framework import viewsets, status, mixins
 from rest_framework.response import Response
 from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import NotFound
 
-from dns.serializers import (PolicySerializer, PolicyMemberSerializer,
-                             ZoneDetailSerializer, ZoneListSerializer, RecordSerializer)
+from dns.serializers import (PolicySerializer, ZoneDetailSerializer,
+                             ZoneListSerializer, RecordSerializer)
 from dns import models
 
 
-class ZoneList(ListCreateAPIView):
+class PolicyViewset(viewsets.ReadOnlyModelViewSet):
+    serializer_class = PolicySerializer
+    queryset = models.Policy.objects.all()
+
+
+class ZoneViewset(mixins.CreateModelMixin,
+                  mixins.RetrieveModelMixin,
+                  mixins.DestroyModelMixin,
+                  mixins.ListModelMixin,
+                  viewsets.GenericViewSet):
     queryset = models.Zone.objects.filter(deleted=False)
-    serializer_class = ZoneListSerializer
 
+    def get_serializer_class(self):
+        if self.action in ['list', 'create']:
+            return ZoneListSerializer
+        return ZoneDetailSerializer
 
-class ZoneDetail(RetrieveDestroyAPIView):
-    queryset = models.Zone.objects.filter(deleted=False)
-    serializer_class = ZoneDetailSerializer
-
-    def delete(self, request, pk, *args, **kwargs):
+    def destroy(self, request, pk=None):
         zone = get_object_or_404(models.Zone.objects, pk=pk)
         zone.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -77,13 +84,3 @@ class RecordCreate(CreateAPIView):
         context = super(RecordCreate, self).get_serializer_context()
         context['zone'] = zone
         return context
-
-
-class Policy(viewsets.ModelViewSet):
-    serializer_class = PolicySerializer
-    queryset = models.Policy.objects.all()
-
-
-class PolicyMemberDetail(RetrieveAPIView):
-    queryset = models.PolicyMember.objects.all()
-    serializer_class = PolicyMemberSerializer
