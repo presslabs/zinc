@@ -57,6 +57,11 @@ class Policy(models.Model):
     class Meta:
         verbose_name_plural = 'policies'
 
+    def mark_policy_records_dirty(self):
+        for policy_record in self.records.all():
+            policy_record.dirty = True
+            policy_record.save()
+
     @transaction.atomic
     def apply_policy(self, zone):
         # build the tree base for the provided zone
@@ -84,7 +89,14 @@ class Policy(models.Model):
                 'Region': region,
                 'SetIdentifier': region,
             })
-
+        if not regions:
+            # no policy record applied
+            # should raise an error or log this
+            raise Exception(
+                "Policy can't be applied. zone: '{}'; policy: '{}'".format(
+                    zone, self
+                )
+            )
         zone.save()
         return regions
 
@@ -119,6 +131,10 @@ class PolicyMember(models.Model):
     ip = models.ForeignKey(IP, on_delete=models.CASCADE)
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
     weight = models.PositiveIntegerField(default=10)
+
+    def save(self, *args, **kwargs):
+        self.policy.mark_policy_records_dirty()
+        return super(PolicyMember, self).save(*args, **kwargs)
 
     def __str__(self):
         return '{} {} {}'.format(self.ip, self.region, self.weight)
@@ -181,8 +197,7 @@ class Zone(models.Model):
             return policy_record.serialize(zone=self)
         else:
             # This is a normal record. Forward it to route53 utils.
-            record_hash = hashids.encode_record(record, self.route53_zone.id)
-            self.route53_zone.add_record_changes(record, key=record_hash)
+            self.route53_zone.add_records([record])
             return record
 
     def delete_record_by_hash(self, record_hash):
@@ -192,7 +207,7 @@ class Zone(models.Model):
             return
         to_delete_record = records[record_hash]
         to_delete_record['delete'] = True
-        self.route53_zone.add_record_changes(to_delete_record, key=record_hash)
+        self.route53_zone.add_records([to_delete_record])
 
     def delete_record(self, record):
         self.delete_record_by_hash(hashids.encode_record(record, self.route53_zone.id))
@@ -253,11 +268,23 @@ class Zone(models.Model):
     def reconcile(self):
         self.route53_zone.reconcile()
 
+    def build_tree(self):
+        policies = set([policy_record.policy for policy_record in self.policy_records.all()])
+        for policy in policies:
+            policy.apply_policy(self)
+
+        print(policies)
+        for policy_record in self.policy_records.all():
+            policy_record.apply_record(single=True)
+
+        # to commit changes into AWS
+        self.save()
+
 
 class PolicyRecord(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
-    policy = models.ForeignKey(Policy)
+    policy = models.ForeignKey(Policy, related_name='records')
     dirty = models.BooleanField(default=True, editable=False)
     zone = models.ForeignKey(Zone, related_name='policy_records')
     deleted = models.BooleanField(default=False)
@@ -283,26 +310,30 @@ class PolicyRecord(models.Model):
         }
 
     @transaction.atomic
-    def apply_record(self):
+    def apply_record(self, single=False):
         # build the tree for this policy record.
+        # single = True will not apply the policy just the record
         if self.deleted:
             # if the zone is marked as deleted don't try to build the tree.
             return
 
         # first build tree base if succeed then add the top record
-        if self.policy.apply_policy(self.zone):
-            self.zone.add_record({
-                'name': self.name,
-                'type': 'A',
-                'AliasTarget': {
-                    'HostedZoneId': self.zone.route53_zone.id,
-                    'DNSName': '{}_{}'.format(RECORD_PREFIX, self.policy.name),
-                    'EvaluateTargetHealth': False
-                },
-            })
+        if not single:
+            self.policy.apply_policy(self.zone)
 
-        # save the zone
-        self.zone.save()
+        self.zone.add_record({
+            'name': self.name,
+            'type': 'A',
+            'AliasTarget': {
+                'HostedZoneId': self.zone.route53_zone.id,
+                'DNSName': '{}_{}'.format(RECORD_PREFIX, self.policy.name),
+                'EvaluateTargetHealth': False
+            },
+        })
+
+        if not single:
+            # save the zone
+            self.zone.save()
         self.dirty = False  # mark as clean
         self.save()
 
