@@ -21,7 +21,7 @@ def test_add_zone_record(zone):
         'ttl': 300,
     }
     zone.add_record(record)
-    zone.save()
+    zone.route53_zone.commit()
 
     assert encode_record(record, zone.route53_zone.id) in [r['id'] for r in zone.records]
 
@@ -34,7 +34,7 @@ def test_delete_zone_record(zone):
             record = r
 
     zone.delete_record(record)
-    zone.save()
+    zone.route53_zone.commit()
 
     assert record_hash not in [r['id'] for r in zone.records]
 
@@ -44,7 +44,7 @@ def test_delete_zone_record_by_hash(zone):
     record_hash = hash_test_record(zone)
 
     zone.delete_record_by_hash(record_hash)
-    zone.save()
+    zone.route53_zone.commit()
 
     assert record_hash not in zone.records
 
@@ -63,7 +63,7 @@ def test_delete_zone_alias_record(zone):
     record_hash = zone.add_record(record)
 
     zone.delete_record(record)
-    zone.save()
+    zone.route53_zone.commit()
 
     assert record_hash not in zone.records
 
@@ -82,9 +82,10 @@ def test_delete_zone_alias_record_with_set_id(zone):
         'Region': regions[0]
     }
     record_hash = zone.add_record(record)
+    zone.route53_zone.commit()
 
     zone.delete_record(record)
-    zone.save()
+    zone.route53_zone.commit()
 
     assert record_hash not in zone.records
 

@@ -97,7 +97,6 @@ class Policy(models.Model):
                     zone, self
                 )
             )
-        zone.save()
         return regions
 
     def delete_policy(self, zone):
@@ -163,7 +162,6 @@ class Zone(models.Model):
         if self.route53_id is not None:
             if self.route53_id.startswith('/hostedzone/'):
                 self.route53_id = self.route53_id[len('/hostedzone/'):]
-            self.route53_zone.commit()
         return super(Zone, self).save(*args, **kwargs)
 
     def add_record(self, record):
@@ -273,12 +271,11 @@ class Zone(models.Model):
         for policy in policies:
             policy.apply_policy(self)
 
-        print(policies)
         for policy_record in self.policy_records.all():
             policy_record.apply_record(single=True)
 
         # to commit changes into AWS
-        self.save()
+        self.route53_zone.commit()
 
 
 class PolicyRecord(models.Model):
@@ -333,7 +330,7 @@ class PolicyRecord(models.Model):
 
         if not single:
             # save the zone
-            self.zone.save()
+            self.zone.route53_zone.commit()
         self.dirty = False  # mark as clean
         self.save()
 
@@ -345,4 +342,4 @@ class PolicyRecord(models.Model):
             'AliasTarget': {},
         })
         self.policy.delete_policy(self.zone)
-        self.zone.save()
+        self.zone.route53_zone.commit()

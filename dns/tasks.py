@@ -37,12 +37,14 @@ def reconcile_zones(self):
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def reconcile_policy_records(bind=True):
     """Periodic task to reconcile dirty policy records"""
-    for policy in models.PolicyRecord.objects.filter(dirty=True):
+    for zone in models.Zone.objects.all():
+        if not zone.dirty:
+            continue
         try:
-            policy.apply_record()
+            zone.build_tree()
         except:
             logger.exception(
-                "apply_record failed for PolicyRecord %s.%s", policy.name, policy.zone.root
+                "apply_record failed for Zone %s.%s", zone, zone.root
             )
 
 

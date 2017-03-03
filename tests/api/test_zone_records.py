@@ -153,7 +153,7 @@ def test_delete_nonexistent_records(api_client, zone):
         'values': ['ns.test.com', 'ns2.test.com']
     }
     zone.records = [record2]
-    zone.save()
+    zone.route53_zone.commit()
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
@@ -225,7 +225,7 @@ def test_hidden_records(api_client, zone):
         'type': 'A',
         'values': ['1.2.3.4']
     })
-    zone.save()
+    zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
     )
@@ -246,7 +246,7 @@ def test_alias_records(api_client, zone):
         },
     }
     zone.add_record(alias_record)
-    zone.save()
+    zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
     )
