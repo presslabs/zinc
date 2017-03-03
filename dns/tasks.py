@@ -48,4 +48,4 @@ def reconcile_policy_records(bind=True):
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def reconcile_healthchecks(bind=True):
-    route53.Healthcheck.reconcile_for_ips(models.IP.objects.all())
+    route53.HealthCheck.reconcile_for_ips(models.IP.objects.all())
