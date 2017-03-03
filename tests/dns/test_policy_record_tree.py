@@ -1,6 +1,7 @@
 # pylint: disable=no-member,protected-access,redefined-outer-name
 import pytest
 from django_dynamic_fixture import G
+from mock import patch, call
 
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck
@@ -20,7 +21,7 @@ def strip_ns_and_soa(records, zone_root):
     ], key=sort_key)
 
 
-def policy_members_to_list(policy_members, policy_record):
+def policy_members_to_list(policy_members, policy_record, just_pr=False):
     """
     Tries to reproduce what should be in AWS after a policy is applied.
     """
@@ -62,7 +63,7 @@ def policy_members_to_list(policy_members, policy_record):
                 'EvaluateTargetHealth': False
             },
         }
-    ] if len(regions) >= 1 else []
+    ] if len(regions) >= 1 or just_pr else []
 
     return records_for_regions + records_for_policy_members + the_policy_record
 
@@ -197,8 +198,10 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client)
 def test_policy_record_tree_within_members(zone, boto_client):
     policy = G(m.Policy)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
-    policy_record.apply_record()
+    with pytest.raises(Exception) as exc:
+        policy_record.apply_record()
 
+    assert "Policy can't be applied" in str(exc)
     expected = [
         {
             'Name': 'test.test-zinc.net.',
@@ -206,7 +209,7 @@ def test_policy_record_tree_within_members(zone, boto_client):
             'TTL': 300,
             'Type': 'A'
         },
-    ] + policy_members_to_list([], policy_record)
+    ]
 
     assert strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
@@ -369,11 +372,13 @@ def test_policy_record_with_all_ips_0_weight(zone, boto_client):
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
 
-    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0),
-    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0),
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0)
+    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0)
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    policy_record.apply_record()
+    with pytest.raises(Exception) as exc:
+        policy_record.apply_record()
+    assert "Policy can't be applied" in str(exc)
     expected = [
         {
             'Name': 'test.test-zinc.net.',
@@ -384,5 +389,70 @@ def test_policy_record_with_all_ips_0_weight(zone, boto_client):
     ]
 
     rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
-
     assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_apply_policy_on_zone(zone, boto_client):
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
+
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
+    ]
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy, name='www')
+
+    zone.build_tree()
+
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },  # this is a ordinary record. should be not modified.
+    ] + (policy_members_to_list(policy_members, policy_record) +
+         policy_members_to_list([], policy_record_2, just_pr=True))
+
+    rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
+    assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_apply_policy_ensure_is_efficiently(zone, boto_client):
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+
+    G(m.PolicyMember, policy=policy, region=regions[0])
+    G(m.PolicyMember, policy=policy, region=regions[1])
+
+    G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    G(m.PolicyRecord, zone=zone, policy=policy, name='www')
+
+    with patch('dns.models.Policy.apply_policy') as apply_policy:
+        with patch('dns.models.PolicyRecord.apply_record'):
+            zone.build_tree()
+            apply_policy.assert_called_once_with(zone)
+
+
+@pytest.mark.django_db
+def test_apply_policy_ensure_is_efficiently_2(zone, boto_client):
+    policy = G(m.Policy)
+    policy_2 = G(m.Policy)
+    regions = get_local_aws_regions()
+
+    G(m.PolicyMember, policy=policy, region=regions[0])
+    G(m.PolicyMember, policy=policy_2, region=regions[1])
+
+    G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    G(m.PolicyRecord, zone=zone, policy=policy_2, name='www')
+
+    with patch('dns.models.Policy.apply_policy') as apply_policy:
+        with patch('dns.models.PolicyRecord.apply_record'):
+            zone.build_tree()
+            # assert called 2 times, because 2 policies.
+            calls = [call(zone), call(zone)]
+            apply_policy.assert_has_calls(calls)

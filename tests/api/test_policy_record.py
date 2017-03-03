@@ -112,14 +112,15 @@ def test_policy_record_get_more_than_one(api_client, zone):
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record.apply_record()
 
-    policy_record_2 = G(m.PolicyRecord, zone=zone, name='test')
+    policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy, name='www')
     policy_record_2.apply_record()
 
     response = api_client.get(
         '/zones/%s' % zone.id
     )
 
-    assert strip_ns_and_soa(response.data['records']) == [
+    result = strip_ns_and_soa(response.data['records'])
+    assert result == [
         get_test_record(zone),
         get_policy_record(policy_record),
         get_policy_record(policy_record_2),

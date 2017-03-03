@@ -58,8 +58,10 @@ class Zone(object):
         return self.zone_record.root
 
     def add_records(self, records):
-        for record_hash, record in records.items():
-            self.add_record_changes(record, key=record_hash)
+        for record in records:
+            if 'id' not in record:
+                record['id'] = hashids.encode_record(record, self.zone_record.route53_zone.id)
+            self.add_record_changes(record, key=record['id'])
 
     def add_record_changes(self, record, key=None):
         rrs = RecordHandler.encode(record, self.root)
