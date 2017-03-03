@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := build
+
 test:
 	py.test -v -n auto --capture=no --no-migrations -k 'not with_aws' --flake8
 full-test:
@@ -14,6 +16,6 @@ run:
 build:
 	@echo "There is nothing to build for this project"
 seed:
-	@echo "This project has no seeding yet"
-
+	python ./manage.py migrate --no-input
+	python ./manage.py seed
 .PHONY: test full-test run build lint seed
