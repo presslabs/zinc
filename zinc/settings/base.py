@@ -145,7 +145,7 @@ CELERYBEAT_SCHEDULE = {
         'schedule': 30
     },
     'reconcile_zones': {
-        'task': 'dns.tasks.cleanup_deleted_zones',
+        'task': 'dns.tasks.reconcile_zones',
         'schedule': 300
     },
     'lattice_sync': {
