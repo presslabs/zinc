@@ -26,9 +26,12 @@ def aws_delete_zone(self, pk):
 
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
-def cleanup_deleted_zones(self):
-    """Periodic task to delete zones that are soft deleted but still exist in the db"""
-    route53.Zone.reconcile_multiple(models.Zone.objects.filter(deleted=True))
+def reconcile_zones(self):
+    """
+    Periodic task to delete zones that are soft deleted but still exist in the db,
+    or zones that have been created in the db but don't exist in AWS.
+    """
+    route53.Zone.reconcile_multiple(models.Zone.objects.filter(deleted=True, route53_id=None))
 
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)

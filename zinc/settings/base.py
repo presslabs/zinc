@@ -144,7 +144,7 @@ CELERYBEAT_SCHEDULE = {
         'task': 'dns.tasks.reconcile_policy_records',
         'schedule': 30
     },
-    'cleanup_deleted_zones': {
+    'reconcile_zones': {
         'task': 'dns.tasks.cleanup_deleted_zones',
         'schedule': 300
     },
