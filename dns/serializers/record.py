@@ -125,8 +125,8 @@ class RecordSerializer(serializers.Serializer):
 
         # for normal records ttl and values fields are required.
         if not data.get('ttl', False):
-            raise ValidationError({'ttl': ('This field is required. '
-                                           'If record type is not POLICY_RECORD.')})
+            raise ValidationError({'ttl': 'This field is required for {} '
+                                   'records.'.format(data.get('type'))})
         if not data.get('values', False):
             raise ValidationError({'values': 'This field is required.'})
 

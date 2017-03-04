@@ -196,7 +196,7 @@ def test_add_record_without_ttl(api_client, zone):
         data=record
     )
     assert response.data == {
-        'ttl': ['This field is required. If record type is not POLICY_RECORD.']
+        'ttl': ['This field is required for A records.']
     }
 
 
