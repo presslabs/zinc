@@ -115,10 +115,11 @@ class RecordSerializer(serializers.Serializer):
             return data
 
         # for POLICY_ROUTED the values should contain just one value
-        if data['type'] == POLICY_ROUTED:
+        if data['type'] in ['CNAME', POLICY_ROUTED]:
             if not len(data['values']) == 1:
-                raise ValidationError({'values': ('For POLICY_ROUTED record values list '
-                                                  'should contain just one element.')})
+                raise ValidationError({'values': ('Only one value can be '
+                                                  'specified for {} records.'.format(data['type']))
+                                       })
             return data
 
         # for normal records ttl and values fields are required.

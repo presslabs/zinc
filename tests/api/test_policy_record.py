@@ -187,6 +187,6 @@ def test_policy_record_create_more_values(api_client, zone):
     assert response.status_code == 400
     assert response.data == {
         'values': [
-            'For POLICY_ROUTED record values list should contain just one element.'
+            'Only one value can be specified for POLICY_ROUTED records.'
         ]
     }
