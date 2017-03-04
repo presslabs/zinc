@@ -294,7 +294,7 @@ def test_remove_a_managed_record(api_client, zone):
     )
 
     assert response.status_code == 400
-    assert response.data == ["Can't DELETE a managed record."]
+    assert response.data == ["Can't change a managed record."]
 
 
 @pytest.mark.django_db

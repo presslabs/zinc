@@ -83,9 +83,7 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         obj.update(validated_data)
         if obj.get('managed'):
-            raise ValidationError("Can't {} a managed record.".format(
-                self.context['request'].method
-            ))
+            raise ValidationError("Can't change a managed record.")
         record = zone.add_record(obj)
         with interpret_client_error():
             zone.save()
