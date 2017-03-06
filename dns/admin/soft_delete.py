@@ -1,14 +1,21 @@
+from django.core.exceptions import PermissionDenied
 from django.contrib import admin
+from django.contrib.admin.actions import delete_selected as delete_selected_
+
+
+def delete_selected(modeladmin, request, queryset):
+    if not modeladmin.has_delete_permission(request):
+        raise PermissionDenied
+    if request.POST.get('post'):
+        for obj in queryset:
+            obj.soft_delete()
+    else:
+        return delete_selected_(modeladmin, request, queryset)
+delete_selected.short_description = "Delete selected"  # noqa
 
 
 class SoftDeleteAdmin(admin.ModelAdmin):
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        # we don't allow bulk delete of zones, because we want to enforce soft delete
-        if 'delete_selected' in actions:
-            del actions['delete_selected']
-        return actions
+    actions = (delete_selected,)
 
     def delete_model(self, request, obj):
         """Soft delete zone object"""

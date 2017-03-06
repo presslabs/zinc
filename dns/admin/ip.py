@@ -13,8 +13,13 @@ logger = logging.getLogger(__name__)
 
 @admin.register(IP)
 class IPAdmin(SoftDeleteAdmin):
-    list_display = ['ip', 'hostname', 'enabled', 'healthcheck']
-    list_filter = ['deleted']
+    list_display = ('ip', 'hostname', 'enabled', 'healthcheck')
+    list_filter = ('hostname', 'deleted')
+
+    fields = ('ip', 'hostname', 'friendly_name', 'healthcheck_id',
+              'healthcheck_caller_reference', 'enabled', 'deleted')
+
+    readonly_fields = ('deleted',)
 
     @transaction.atomic
     def save_model(self, request, obj, form, change):
@@ -23,7 +28,7 @@ class IPAdmin(SoftDeleteAdmin):
         obj.mark_policy_records_dirty()
 
     def healthcheck(self, obj):
-        if obj.healthcheck_id is not None:
+        if obj.healthcheck_id:
             return ('<a href="https://console.aws.amazon.com/route53/healthchecks/home'
                     '#/details/{0}">AWS:{0}</a>'.format(obj.healthcheck_id))
         else:
