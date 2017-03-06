@@ -122,7 +122,9 @@ def test_policy_record_tree_builder(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
+    policy.apply_policy(zone)
     policy_record.apply_record()
+    zone.route53_zone.commit()
 
     expected = [
         {
@@ -149,7 +151,7 @@ def test_policy_record_tree_with_multiple_regions(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
-    policy_record.apply_record()
+    zone.build_tree()
 
     expected = [
         {
@@ -179,7 +181,7 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client)
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
-    policy_record.apply_record()
+    zone.build_tree()
 
     expected = [
         {
@@ -197,9 +199,10 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client)
 @pytest.mark.django_db
 def test_policy_record_tree_within_members(zone, boto_client):
     policy = G(m.Policy)
-    policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
+    G(m.PolicyRecord, zone=zone, policy=policy)
+
     with pytest.raises(Exception) as exc:
-        policy_record.apply_record()
+        zone.build_tree()
 
     assert "Policy can't be applied" in str(exc)
     expected = [
@@ -234,8 +237,7 @@ def test_policy_record_tree_with_two_trees(zone, boto_client):
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record2 = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
 
-    policy_record.apply_record()
-    policy_record2.apply_record()
+    zone.build_tree()
 
     expected = [
         {
@@ -274,7 +276,7 @@ def test_policy_record_deletion(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
-    policy_record.apply_record()
+    zone.build_tree()
 
     expected = [
         {
@@ -320,8 +322,7 @@ def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record_to_delete = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
 
-    policy_record.apply_record()
-    policy_record_to_delete.apply_record()
+    zone.build_tree()
 
     policy_record_to_delete.delete_record()
     expected = [
@@ -350,7 +351,7 @@ def test_policy_record_with_ips_0_weight(zone, boto_client):
     ]
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    policy_record.apply_record()
+    zone.build_tree()
     expected = [
         {
             'Name': 'test.test-zinc.net.',
@@ -375,9 +376,10 @@ def test_policy_record_with_all_ips_0_weight(zone, boto_client):
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0)
     G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0)
 
-    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+    G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+
     with pytest.raises(Exception) as exc:
-        policy_record.apply_record()
+        zone.build_tree()
     assert "Policy can't be applied" in str(exc)
     expected = [
         {
@@ -422,7 +424,7 @@ def test_apply_policy_on_zone(zone, boto_client):
 
 
 @pytest.mark.django_db
-def test_apply_policy_ensure_is_efficiently(zone, boto_client):
+def test_apply_policy_is_not_duplicated(zone):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
 
@@ -439,7 +441,7 @@ def test_apply_policy_ensure_is_efficiently(zone, boto_client):
 
 
 @pytest.mark.django_db
-def test_apply_policy_ensure_is_efficiently_2(zone, boto_client):
+def test_apply_policy_ensure_both_policies_are_applied(zone):
     policy = G(m.Policy)
     policy_2 = G(m.Policy)
     regions = get_local_aws_regions()
@@ -456,3 +458,28 @@ def test_apply_policy_ensure_is_efficiently_2(zone, boto_client):
             # assert called 2 times, because 2 policies.
             calls = [call(zone), call(zone)]
             apply_policy.assert_has_calls(calls)
+
+
+@pytest.mark.django_db
+def test_modifying_a_policy_member_in_policy_all_policy_members_get_dirty(zone):
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+    ip = create_ip_with_healthcheck()
+
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
+    policy_member = G(m.PolicyMember, policy=policy, region=regions[1], ip=ip)
+
+    policy_records = [
+        G(m.PolicyRecord, zone=zone, policy=policy, name='@'),
+        G(m.PolicyRecord, zone=zone, policy=policy, name='www')
+    ]
+
+    zone.build_tree()
+    policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
+    assert policy_records_from_db == set([(record.id, False) for record in policy_records])
+
+    policy_member.weight = 3
+    policy_member.save()
+
+    policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
+    assert policy_records_from_db == set([(record.id, True) for record in policy_records])
