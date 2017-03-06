@@ -19,21 +19,24 @@ def lattice_factory(url, user, password):
     lattice.config.prefix = parts.path
     lattice.config.append_slash = True
     lattice.config.auth = HTTPBasicAuth(user, password)
-
     return lattice
 
 
 def sync(lattice_client):
     roles = set(settings.LATTICE_ROLES)
-    servers = [server for server in lattice.servers()
-               if (set(server['roles']).intersection(roles) and
-                   server['state'] not in ('unconfigured', 'decommissioned'))]
+    env = settings.LATTICE_ENV.lower()
+    servers = [
+        server for server in lattice.servers()
+        if (set(server['roles']).intersection(roles) and
+            server['environment'].lower() == env and
+            server['state'].lower() not in ('unconfigured', 'decommissioned'))
+    ]
     locations = {d['id']: d['location'] for d in lattice.datacenters()}
 
     lattice_ip_pks = set()
     for server in servers:
         for ip in server.ips:
-            enabled = server['state'] == 'configured'
+            enabled = server['state'].lower() == 'configured'
             datacenter_id = int(
                 server['datacenter_url'].split('?')[0].split('/')[-1])
             location = locations.get(datacenter_id, 'fake_location')
