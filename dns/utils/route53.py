@@ -347,7 +347,14 @@ class HealthCheck:
             else:
                 logger.info("%-15s nothing to do", self.ip.ip)
         else:
-            self.create()
+            try:
+                self.create()
+            except ClientError as excp:
+                if excp.response['Error']['Code'] != 'HealthCheckAlreadyExists':
+                    raise
+                self.ip.healthcheck_caller_reference = None
+                self.ip.save()
+                self.create()
 
     @classmethod
     def reconcile_for_ips(cls, ips):
