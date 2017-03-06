@@ -144,20 +144,22 @@ CELERYBEAT_SCHEDULE = {
         'task': 'dns.tasks.reconcile_policy_records',
         'schedule': 30
     },
-    'reconcile_zones': {
-        'task': 'dns.tasks.reconcile_zones',
-        'schedule': 300
-    },
+    # COMMENTED OUT, WILL BE MOVED TO A COMMAND
+    # 'reconcile_zones': {
+    #     'task': 'dns.tasks.reconcile_zones',
+    #     'schedule': 300
+    # },
     'lattice_sync': {
         'task': 'lattice_sync.tasks.lattice_sync',
         'schedule': 30
     },
-    'reconcile_healthchecks': {
-        'task': 'dns.tasks.reconcile_healthchecks',
-        # these are already performed synchronously, reconcile handles transient AWS errors,
-        # so it doesn't need to run frequently
-        'schedule': 300
-    },
+    # COMMENTED OUT, WILL BE MOVED TO A COMMAND
+    # 'reconcile_healthchecks': {
+    #     'task': 'dns.tasks.reconcile_healthchecks',
+    #     # these are already performed synchronously, reconcile handles transient AWS errors,
+    #     # so it doesn't need to run frequently
+    #     'schedule': 300
+    # },
 }
 
 CELERY_ACCEPT_CONTENT = ['json']
