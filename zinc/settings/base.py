@@ -200,6 +200,7 @@ LATTICE_USER = os.getenv('LATTICE_USER')
 LATTICE_PASSWORD = os.getenv('LATTICE_PASSWORD')
 LATTICE_ROLES = list(map(lambda x: x.strip(),
                          os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
+LATTICE_ENV = os.getenv('LATTICE_ENV', 'production')
 
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
