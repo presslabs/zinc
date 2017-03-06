@@ -483,3 +483,23 @@ def test_modifying_a_policy_member_in_policy_all_policy_members_get_dirty(zone):
 
     policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
     assert policy_records_from_db == set([(record.id, True) for record in policy_records])
+
+
+@pytest.mark.django_db
+def test_changing_an_disabled(zone):
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+
+    ip = G(m.IP, healthcheck_id=None)
+    ip2 = G(m.IP, healthcheck_id=None)
+
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
+    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2)
+
+    policy_records = [
+        G(m.PolicyRecord, zone=zone, policy=policy, name='@', dirty=False),
+        G(m.PolicyRecord, zone=zone, policy=policy, name='www', dirty=False)
+    ]
+    zone.build_tree()
+    policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
+    assert policy_records_from_db == set([(record.id, False) for record in policy_records])
