@@ -28,10 +28,22 @@ class IP(models.Model):
     healthcheck_caller_reference = models.UUIDField(null=True, blank=True)
     deleted = models.BooleanField(default=False)
 
+    @transaction.atomic
     def save(self, *a, **kwa):
         if self.friendly_name == "":
             self.friendly_name = self.hostname.split(".", 1)[0]
         super().save(*a, **kwa)
+
+    def mark_policy_records_dirty(self):
+        # sadly this breaks sqlite
+        # policies = [
+        #     member.policy for member in
+        #     self.policy_members.order_by('policy_id').distinct('policy_id')]
+        policies = set([
+            member.policy for member in
+            self.policy_members.all()])
+        for policy in policies:
+            policy.mark_policy_records_dirty()
 
     def soft_delete(self):
         self.deleted = True
@@ -57,10 +69,9 @@ class Policy(models.Model):
     class Meta:
         verbose_name_plural = 'policies'
 
+    @transaction.atomic
     def mark_policy_records_dirty(self):
-        for policy_record in self.records.all():
-            policy_record.dirty = True
-            policy_record.save()
+        self.records.update(dirty=True)
 
     @transaction.atomic
     def apply_policy(self, zone):
@@ -131,7 +142,7 @@ class PolicyMember(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     region = models.CharField(choices=AWS_REGIONS, max_length=20)
-    ip = models.ForeignKey(IP, on_delete=models.CASCADE)
+    ip = models.ForeignKey(IP, on_delete=models.CASCADE, related_name='policy_members')
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
     weight = models.PositiveIntegerField(default=10)
 
