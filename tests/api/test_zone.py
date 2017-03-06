@@ -76,3 +76,22 @@ def test_delete_a_zone(api_client, zone, boto_client):
     assert excp_info.value.response['Error']['Code'] == 'NoSuchHostedZone'
     assert m.Zone.objects.filter(pk=zone.pk).count() == 0
     assert not response.data
+
+
+@pytest.mark.django_db
+def test_policy_record_create_more_values(api_client, zone):
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': '@',
+            'type': 'CNAME',
+            'ttl': 300,
+            'values': ['test1.com', 'test2.com']
+        }
+    )
+    assert response.status_code == 400
+    assert response.data == {
+        'values': [
+            'Only one value can be specified for CNAME records.'
+        ]
+    }

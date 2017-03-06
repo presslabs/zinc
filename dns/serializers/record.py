@@ -18,6 +18,8 @@ def interpret_client_error():
     except ClientError as error:
         if 'ARRDATAIllegalIPv4Address' in error.response['Error']['Message']:
             raise ValidationError({'values': ["Value is not a valid IPv4 address."]})
+        elif 'AAAARRDATAIllegalIPv6Address' in error.response['Error']['Message']:
+            raise ValidationError({'values': ["Value is not a valid IPv6 address."]})
         raise ValidationError({'non_field_error': [error.response['Error']['Message']]})
 
 
@@ -41,7 +43,6 @@ class RecordListSerializer(serializers.ListSerializer):
 
 
 class RecordSerializer(serializers.Serializer):
-
     name = fields.CharField(max_length=255)
     type = fields.ChoiceField(choices=ZINC_RECORD_TYPES)
     values = fields.ListField(child=fields.CharField())
@@ -82,9 +83,7 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         obj.update(validated_data)
         if obj.get('managed'):
-            raise ValidationError("Can't {} a managed record.".format(
-                self.context['request'].method
-            ))
+            raise ValidationError("Can't change a managed record.")
         record = zone.add_record(obj)
         with interpret_client_error():
             zone.save()
@@ -116,16 +115,17 @@ class RecordSerializer(serializers.Serializer):
             return data
 
         # for POLICY_ROUTED the values should contain just one value
-        if data['type'] == POLICY_ROUTED:
+        if data['type'] in ['CNAME', POLICY_ROUTED]:
             if not len(data['values']) == 1:
-                raise ValidationError({'values': ('For POLICY_ROUTED record values list '
-                                                  'should contain just one element.')})
+                raise ValidationError({'values': ('Only one value can be '
+                                                  'specified for {} records.'.format(data['type']))
+                                       })
             return data
 
         # for normal records ttl and values fields are required.
         if not data.get('ttl', False):
-            raise ValidationError({'ttl': ('This field is required. '
-                                           'If record type is not POLICY_RECORD.')})
+            raise ValidationError({'ttl': 'This field is required for {} '
+                                   'records.'.format(data.get('type'))})
         if not data.get('values', False):
             raise ValidationError({'values': 'This field is required.'})
 

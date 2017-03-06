@@ -36,11 +36,7 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
     queryset = models.Zone.objects.filter(deleted=False)
     serializer_class = RecordSerializer
 
-    @property
-    def allowed_methods(self):
-        _allowed_methods = self._allowed_methods()
-        _allowed_methods.pop(_allowed_methods.index('PUT'))
-        return _allowed_methods
+    allowed_methods = ['GET', 'DELETE', 'PATCH']
 
     def get_object(self):
         queryset = self.get_queryset()
