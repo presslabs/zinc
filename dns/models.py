@@ -272,14 +272,14 @@ class Zone(models.Model):
 
     @transaction.atomic
     def build_tree(self):
-        policies = set([policy_record.policy for policy_record in self.policy_records.all()])
+        policy_records =  self.policy_records.select_for_update().filter(dirty=True)
+        policies = set([policy_record.policy for policy_record in policy_records])
         for policy in policies:
             policy.apply_policy(self)
 
-        for policy_record in self.policy_records.all():
+        for policy_record in policy_records:
             policy_record.apply_record()
 
-        # to commit changes into AWS
         self.route53_zone.commit()
 
 
