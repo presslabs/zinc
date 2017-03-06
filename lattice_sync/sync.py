@@ -47,7 +47,7 @@ def handle_ip(ip_addr, server, locations):
     ip = models.IP.objects.filter(
         ip=ip_addr,
     ).first()
-    if ip is None: # new record
+    if ip is None:  # new record
         ip = models.IP(ip=ip_addr)
         ip.reconcile_healthcheck()
     elif ip.enabled != enabled:

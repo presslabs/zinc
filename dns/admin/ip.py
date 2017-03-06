@@ -1,6 +1,5 @@
 import logging
 
-from botocore.exceptions import ClientError
 from django.contrib import admin
 from django.db import transaction
 
