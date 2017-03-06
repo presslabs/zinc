@@ -131,7 +131,7 @@ def test_policy_record_get_more_than_one(api_client, zone):
 def test_policy_record_create_more_than_one(api_client, zone):
     policy = G(m.Policy)
     ip1 = create_ip_with_healthcheck()
-    ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
+    ip2 = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2)
 

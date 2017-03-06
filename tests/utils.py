@@ -1,3 +1,5 @@
+from django_dynamic_fixture import G
+
 from zinc.vendors import hashids
 from zinc import POLICY_ROUTED
 from dns import models as m
@@ -66,11 +68,8 @@ def record_to_aws(record, zone_root):
     return rrs
 
 
-def create_ip_with_healthcheck(ip='1.2.3.4'):
-    ip = m.IP.objects.create(
-        ip=ip,
-        hostname='fe01-mordor.presslabs.net.',
-    )
+def create_ip_with_healthcheck():
+    ip = G(m.IP, healthcheck_id=None, healthcheck_caller_reference=None)
     ip.reconcile_healthcheck()
     ip.refresh_from_db()
     return ip
