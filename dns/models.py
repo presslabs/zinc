@@ -283,7 +283,7 @@ class Zone(models.Model):
 
     @transaction.atomic
     def build_tree(self):
-        policy_records =  self.policy_records.select_for_update().filter(dirty=True)
+        policy_records = self.policy_records.select_for_update().filter(dirty=True)
         policies = set([policy_record.policy for policy_record in policy_records])
         for policy in policies:
             policy.apply_policy(self)

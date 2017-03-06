@@ -519,7 +519,8 @@ def test_ip_mark_policy_records_dirty(zone):
 
     policy_record_1 = G(m.PolicyRecord, zone=zone, policy=policy1, name='pr1', dirty=False)
     policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy1, name='pr2', dirty=False)
-    other_zone_policy_record = G(m.PolicyRecord, zone=zone, policy=policy2, name='oz_pr', dirty=False)
+    other_zone_policy_record = G(
+        m.PolicyRecord, zone=zone, policy=policy2, name='oz_pr', dirty=False)
 
     ip1.mark_policy_records_dirty()
 
