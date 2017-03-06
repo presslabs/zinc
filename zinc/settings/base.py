@@ -215,6 +215,10 @@ LOGGING['loggers']['zinc'] = {
     'handlers': ['console'],
     'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
 }
+LOGGING['loggers']['celery'] = {
+    'handlers': ['console'],
+    'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+}
 
 
 if os.getenv('ZINC_SENTRY_DSN', None):
