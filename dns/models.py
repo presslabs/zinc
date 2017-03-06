@@ -28,10 +28,8 @@ class IP(models.Model):
     healthcheck_caller_reference = models.UUIDField(null=True, blank=True)
     deleted = models.BooleanField(default=False)
 
-    def save(self, *a, **kwa):
-        if self.friendly_name == "":
-            self.friendly_name = self.hostname.split(".", 1)[0]
-        super().save(*a, **kwa)
+    class Meta:
+        verbose_name = 'IP'
 
     def soft_delete(self):
         self.deleted = True
@@ -43,8 +41,8 @@ class IP(models.Model):
         HealthCheck(self).reconcile()
 
     def __str__(self):
-        value = self.friendly_name or self.hostname
-        return '{} {}'.format(self.ip, value)
+        value = self.friendly_name or self.hostname.split(".", 1)[0]
+        return '{} ({})'.format(self.ip, value)
 
 
 class Policy(models.Model):
@@ -265,7 +263,7 @@ class Zone(models.Model):
             self.add_record(record)
 
     def __str__(self):
-        return '{} {}'.format(self.pk, self.root)
+        return '{} ({})'.format(self.root, self.route53_id)
 
     def reconcile(self):
         self.route53_zone.reconcile()
@@ -295,7 +293,7 @@ class PolicyRecord(models.Model):
         unique_together = ('name', 'zone')
 
     def __str__(self):
-        return '{} {} {}'.format(self.name, self.policy, self.zone)
+        return '{}.{}'.format(self.name, self.zone.root)
 
     def serialize(self, zone):
         return {

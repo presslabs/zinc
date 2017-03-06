@@ -14,6 +14,3 @@ class PolicyMemberInline(admin.TabularInline):
 class PolicyAdmin(admin.ModelAdmin):
     inlines = [PolicyMemberInline]
     exclude = ['members']
-
-
-admin.site.register(PolicyMember)
