@@ -2,6 +2,7 @@ import logging
 
 from botocore.exceptions import ClientError
 from django.contrib import admin
+from django.db import transaction
 
 from dns.models import IP
 
@@ -16,12 +17,11 @@ class IPAdmin(SoftDeleteAdmin):
     list_display = ['ip', 'hostname', 'enabled', 'healthcheck']
     list_filter = ['deleted']
 
+    @transaction.atomic
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
-        try:
-            obj.reconcile_healthcheck()
-        except ClientError:
-            logger.exception("Error while calling reconcile_healthcheck")
+        obj.reconcile_healthcheck()
+        obj.mark_policy_records_dirty()
 
     def healthcheck(self, obj):
         if obj.healthcheck_id is not None:
