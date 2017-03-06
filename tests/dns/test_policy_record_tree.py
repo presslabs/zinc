@@ -224,7 +224,7 @@ def test_policy_record_tree_with_two_trees(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
-    ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
+    ip2 = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2),
         G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2),
@@ -309,7 +309,7 @@ def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
-    ip2 = create_ip_with_healthcheck(ip='2.3.4.5')
+    ip2 = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
         G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2),
@@ -503,3 +503,30 @@ def test_changing_an_disabled(zone):
     zone.build_tree()
     policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
     assert policy_records_from_db == set([(record.id, False) for record in policy_records])
+
+
+@pytest.mark.django_db
+def test_ip_mark_policy_records_dirty(zone):
+    policy1 = G(m.Policy)
+    policy2 = G(m.Policy)
+    regions = get_local_aws_regions()
+
+    ip1 = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck()
+
+    G(m.PolicyMember, policy=policy1, region=regions[0], ip=ip1)
+    G(m.PolicyMember, policy=policy2, region=regions[1], ip=ip2)
+
+    policy_record_1 = G(m.PolicyRecord, zone=zone, policy=policy1, name='pr1', dirty=False)
+    policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy1, name='pr2', dirty=False)
+    other_zone_policy_record = G(m.PolicyRecord, zone=zone, policy=policy2, name='oz_pr', dirty=False)
+
+    ip1.mark_policy_records_dirty()
+
+    policy_record_1.refresh_from_db()
+    policy_record_2.refresh_from_db()
+    other_zone_policy_record.refresh_from_db()
+
+    assert policy_record_1.dirty is True
+    assert policy_record_2.dirty is True
+    assert other_zone_policy_record.dirty is False  # different policy, should not have changed
