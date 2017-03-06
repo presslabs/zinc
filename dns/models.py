@@ -65,7 +65,11 @@ class Policy(models.Model):
     @transaction.atomic
     def apply_policy(self, zone):
         # build the tree base for the provided zone
-        for policy_member in self.members.exclude(weight=0):
+        for policy_member in self.members.exclude(weight=0, ip__enabled=True):
+            health_check = {}
+            if policy_member.ip.healthcheck_id:
+                health_check['HealthCheckId'] = str(policy_member.ip.healthcheck_id)
+
             zone.add_record({
                 'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'ttl': 30,
@@ -73,10 +77,10 @@ class Policy(models.Model):
                 'values': [policy_member.ip.ip],
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
-                'HealthCheckId': str(policy_member.ip.healthcheck_id),
+                **health_check
             })
 
-        regions = set([pm.region for pm in self.members.exclude(weight=0)])
+        regions = set([pm.region for pm in self.members.exclude(weight=0, ip__enabled=True)])
         for region in regions:
             zone.add_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
@@ -106,7 +110,7 @@ class Policy(models.Model):
             return
 
         # Same as building the tree
-        regions = set([pm.region for pm in self.members.exclude(weight=0)])
+        regions = set([pm.region for pm in self.members.exclude(weight=0, ip__enabled=True)])
         for region in regions:
             zone.delete_record({
                 'name': '{}_{}'.format(RECORD_PREFIX, self.name),
@@ -114,7 +118,7 @@ class Policy(models.Model):
                 'SetIdentifier': region,
             })
 
-        for policy_member in self.members.exclude(weight=0):
+        for policy_member in self.members.exclude(weight=0, ip__enabled=True):
             zone.delete_record({
                 'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
                 'type': 'A',
