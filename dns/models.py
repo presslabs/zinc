@@ -266,13 +266,14 @@ class Zone(models.Model):
     def reconcile(self):
         self.route53_zone.reconcile()
 
+    @transaction.atomic
     def build_tree(self):
         policies = set([policy_record.policy for policy_record in self.policy_records.all()])
         for policy in policies:
             policy.apply_policy(self)
 
         for policy_record in self.policy_records.all():
-            policy_record.apply_record(single=True)
+            policy_record.apply_record()
 
         # to commit changes into AWS
         self.route53_zone.commit()
@@ -307,16 +308,11 @@ class PolicyRecord(models.Model):
         }
 
     @transaction.atomic
-    def apply_record(self, single=False):
+    def apply_record(self):
         # build the tree for this policy record.
-        # single = True will not apply the policy just the record
         if self.deleted:
             # if the zone is marked as deleted don't try to build the tree.
             return
-
-        # first build tree base if succeed then add the top record
-        if not single:
-            self.policy.apply_policy(self.zone)
 
         self.zone.add_record({
             'name': self.name,
@@ -328,9 +324,6 @@ class PolicyRecord(models.Model):
             },
         })
 
-        if not single:
-            # save the zone
-            self.zone.route53_zone.commit()
         self.dirty = False  # mark as clean
         self.save()
 
