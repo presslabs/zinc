@@ -166,3 +166,12 @@ def test_delete_missing_zone(boto_client):
     zone_record = G(models.Zone, route53_id='Does/Not/Exist', deleted=True)
     route53.Zone(zone_record).delete()
     assert models.Zone.objects.filter(pk=zone_record.pk).count() == 0
+
+
+@pytest.mark.django_db
+def test_delete_zone_no_zone_id(boto_client):
+    """Test zone delete works for zones that don't have a route53_id
+    """
+    zone_record = G(models.Zone, route53_id=None, deleted=False)
+    zone_record.soft_delete()
+    assert models.Zone.objects.filter(pk=zone_record.pk).count() == 0
