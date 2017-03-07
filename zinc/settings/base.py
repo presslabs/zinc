@@ -58,7 +58,7 @@ LOGIN_URL = '/_auth/login/google-oauth2/'
 
 SOCIAL_AUTH_ADMIN_USER_SEARCH_FIELDS = ['username', 'first_name', 'email']
 SOCIAL_AUTH_ADMIN_EMAILS = [
-    'bogdan@presslabs.com'
+    'bogdan@presslabs.com',
     'calin@presslabs.com',
     'flavius@presslabs.com',
     'ionut@presslabs.com',
