@@ -116,6 +116,8 @@ class Zone(object):
     def _cache_aws_records(self):
         if self._aws_records is not None:
             return
+        if not self.id:
+            return
         try:
             response = client.list_resource_record_sets(HostedZoneId=self.id)
         except ClientError as excp:
