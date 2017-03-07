@@ -1,13 +1,12 @@
 # pylint: disable=no-member,protected-access,redefined-outer-name
 import botocore.exceptions
-import pytest
 from django_dynamic_fixture import G
 
+import pytest
+from dns import models, route53
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import hash_test_record
 from zinc.vendors.hashids import encode_record
-from dns import route53
-from dns import models
 
 regions = route53.get_local_aws_regions()
 
@@ -174,4 +173,4 @@ def test_delete_zone_no_zone_id(boto_client):
     """
     zone_record = G(models.Zone, route53_id=None, deleted=False)
     zone_record.soft_delete()
-    assert models.Zone.objects.filter(pk=zone_record.pk).count() == 0
+    assert not models.Zone.objects.filter(pk=zone_record.pk).exists()
