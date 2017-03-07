@@ -21,7 +21,7 @@ def strip_ns_and_soa(records, zone_root):
     ], key=sort_key)
 
 
-def policy_members_to_list(policy_members, policy_record, just_pr=False):
+def policy_members_to_list(policy_members, policy_record, just_pr=False, no_health=False):
     """
     Tries to reproduce what should be in AWS after a policy is applied.
     """
@@ -29,29 +29,44 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False):
     policy = policy_record.policy
     policy_members = [pm for pm in policy_members if pm.policy == policy]
     regions = set([pm.region for pm in policy_members if pm.weight > 0])
-    records_for_regions = [
-        {
-            'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
-            'Type': 'A',
-            'AliasTarget': {
-                'DNSName': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name, region),
-                'EvaluateTargetHealth': len(regions) > 1,
-                'HostedZoneId': zone.route53_zone.id
-            },
-            'Region': region,
-            'SetIdentifier': region,
-        } for region in regions]
-    records_for_policy_members = [
-        {
-            'Name': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
-                                                     policy_member.region),
-            'Type': 'A',
-            'ResourceRecords': [{'Value': policy_member.ip.ip}],
-            'TTL': 30,
-            'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
-            'Weight': policy_member.weight,
-            'HealthCheckId': str(policy_member.ip.healthcheck_id),
-        } for policy_member in policy_members if policy_member.weight > 0]
+    if len(regions) > 1:
+        records_for_regions = [
+            {
+                'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
+                'Type': 'A',
+                'AliasTarget': {
+                    'DNSName': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name, region),
+                    'EvaluateTargetHealth': len(regions) > 1,
+                    'HostedZoneId': zone.route53_zone.id
+                },
+                'Region': region,
+                'SetIdentifier': region,
+            } for region in regions]
+        records_for_policy_members = [
+            {
+                'Name': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
+                                                        policy_member.region),
+                'Type': 'A',
+                'ResourceRecords': [{'Value': policy_member.ip.ip}],
+                'TTL': 30,
+                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
+                'Weight': policy_member.weight,
+                'HealthCheckId': str(policy_member.ip.healthcheck_id),
+            } for policy_member in policy_members if policy_member.weight > 0]
+
+    else:
+        records_for_regions = []
+        records_for_policy_members = [
+            {
+                'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
+                'Type': 'A',
+                'ResourceRecords': [{'Value': policy_member.ip.ip}],
+                'TTL': 30,
+                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
+                'Weight': policy_member.weight,
+                'HealthCheckId': str(policy_member.ip.healthcheck_id),
+            } for policy_member in policy_members if policy_member.weight > 0]
+
     the_policy_record = [
         {
             'Name': ('{}.{}'.format(policy_record.name, zone.root)
@@ -64,6 +79,10 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False):
             },
         }
     ] if len(regions) >= 1 or just_pr else []
+
+    if no_health:
+        for record in records_for_policy_members:
+            del record['HealthCheckId']
 
     return records_for_regions + records_for_policy_members + the_policy_record
 
@@ -78,11 +97,56 @@ def test_policy_member_to_list_helper():
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
     result = policy_members_to_list(policy_members, policy_record)
-    assert result == [
+    assert sorted(result, key=sort_key) == sorted([
+        {
+            'Name': '_zn_%s.test-zinc.net.' % (policy.name),
+            'ResourceRecords': [{'Value': policy_members[0].ip.ip}],
+            'SetIdentifier': '%s-%s' % (policy_members[0].id, region),
+            'TTL': 30,
+            'Type': 'A',
+            'Weight': 10,
+            'HealthCheckId': str(policy_members[0].ip.healthcheck_id),
+        },
+        {
+            'AliasTarget': {
+                'DNSName': '_zn_%s.%s' % (policy.name, zone.root),
+                'EvaluateTargetHealth': False,
+                'HostedZoneId': 'Fake'
+            },
+            'Name': '%s.%s' % (policy_record.name, zone.root),
+            'Type': 'A',
+        }
+    ], key=sort_key)
+
+
+@pytest.mark.django_db
+def test_policy_member_to_list_helper_two_regions():
+    zone = G(m.Zone, route53_id='Fake')
+    policy = G(m.Policy)
+    region = get_local_aws_regions()[0]
+    region2 = get_local_aws_regions()[1]
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=region),
+        G(m.PolicyMember, policy=policy, region=region2),
+    ]
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
+    result = policy_members_to_list(policy_members, policy_record)
+    assert sorted(result, key=sort_key) == sorted([
+        {
+            'AliasTarget': {
+                'DNSName': '_zn_%s.%s.test-zinc.net.' % (policy.name, region2),
+                'EvaluateTargetHealth': True,
+                'HostedZoneId': zone.route53_id
+            },
+            'Name': '_zn_%s.test-zinc.net.' % policy.name,
+            'Region': region2,
+            'SetIdentifier': region2,
+            'Type': 'A'
+        },
         {
             'AliasTarget': {
                 'DNSName': '_zn_%s.%s.test-zinc.net.' % (policy.name, region),
-                'EvaluateTargetHealth': False,
+                'EvaluateTargetHealth': True,
                 'HostedZoneId': zone.route53_id
             },
             'Name': '_zn_%s.test-zinc.net.' % policy.name,
@@ -100,6 +164,15 @@ def test_policy_member_to_list_helper():
             'HealthCheckId': str(policy_members[0].ip.healthcheck_id),
         },
         {
+            'Name': '_zn_%s.%s.test-zinc.net.' % (policy.name, region2),
+            'ResourceRecords': [{'Value': policy_members[1].ip.ip}],
+            'SetIdentifier': '%s-%s' % (policy_members[1].id, region2),
+            'TTL': 30,
+            'Type': 'A',
+            'Weight': 10,
+            'HealthCheckId': str(policy_members[1].ip.healthcheck_id),
+        },
+        {
             'AliasTarget': {
                 'DNSName': '_zn_%s.%s' % (policy.name, zone.root),
                 'EvaluateTargetHealth': False,
@@ -108,17 +181,19 @@ def test_policy_member_to_list_helper():
             'Name': '%s.%s' % (policy_record.name, zone.root),
             'Type': 'A',
         }
-    ]
+    ], key=sort_key)
+
 
 
 @pytest.mark.django_db
 def test_policy_record_tree_builder(zone, boto_client):
     policy = G(m.Policy)
     region = get_local_aws_regions()[0]
+    region2 = get_local_aws_regions()[1]
     ip = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=region, ip=ip),
-        G(m.PolicyMember, policy=policy, region=region, ip=ip),
+        G(m.PolicyMember, policy=policy, region=region2, ip=ip),
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
@@ -531,3 +606,32 @@ def test_ip_mark_policy_records_dirty(zone):
     assert policy_record_1.dirty is True
     assert policy_record_2.dirty is True
     assert other_zone_policy_record.dirty is False  # different policy, should not have changed
+
+
+@pytest.mark.django_db
+def test_tree_with_one_region(zone, boto_client):
+    policy = G(m.Policy)
+    regions = get_local_aws_regions()
+    ip = G(m.IP, healthcheck_id=None)
+    ip2 = G(m.IP, healthcheck_id=None)
+
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2)
+    ]
+
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
+
+    zone.build_tree()
+
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },  # this is a ordinary record. should be not modified.
+    ] + policy_members_to_list(policy_members, policy_record, no_health=True)
+
+    rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
+    assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)

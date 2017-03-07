@@ -72,38 +72,62 @@ class Policy(models.Model):
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
 
-    @transaction.atomic
     def apply_policy(self, zone):
-        # build the tree base for the provided zone
-        for policy_member in self.members.exclude(weight=0, ip__enabled=True):
+        return self._apply_policy(zone, zone.add_record)
+
+    def delete_policy(self, zone):
+        # If the policy is in used by another record then don't delete it.
+        policy_records = zone.policy_records.filter(policy=self)
+        if len(policy_records) > 1:
+            return
+        return self._apply_policy(zone, zone.delete_record)
+
+    def _create_weighted_records(self, policy_members, zone_apply_record, multiple_regions=True):
+        for policy_member in policy_members:
             health_check = {}
             if policy_member.ip.healthcheck_id:
                 health_check['HealthCheckId'] = str(policy_member.ip.healthcheck_id)
-
-            zone.add_record({
-                'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
+            record = {
                 'ttl': 30,
                 'type': 'A',
                 'values': [policy_member.ip.ip],
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
                 **health_check
-            })
+            }
+            if multiple_regions:
+                record['name'] = '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region)
+            else:
+                record['name'] = '{}_{}'.format(RECORD_PREFIX, self.name)
 
-        regions = set([pm.region for pm in self.members.exclude(weight=0, ip__enabled=True)])
-        for region in regions:
-            zone.add_record({
-                'name': '{}_{}'.format(RECORD_PREFIX, self.name),
-                'type': 'A',
-                'AliasTarget': {
-                    'HostedZoneId': zone.route53_zone.id,
-                    'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.name, region),
-                    'EvaluateTargetHealth': len(regions) > 1
-                },
-                'Region': region,
-                'SetIdentifier': region,
-            })
-        if not regions:
+            zone_apply_record(record)
+
+    @transaction.atomic
+    def _apply_policy(self, zone, zone_apply_record):
+        # build the tree base for the provided zone
+        policy_members = self.members.exclude(weight=0).exclude(ip__enabled=False)
+        regions = set([pm.region for pm in policy_members])
+        if len(regions) > 1:
+            # Here is the case where are multiple regions
+            self._create_weighted_records(policy_members, zone_apply_record)
+            for region in regions:
+                record = {
+                    'name': '{}_{}'.format(RECORD_PREFIX, self.name),
+                    'type': 'A',
+                    'AliasTarget': {
+                        'HostedZoneId': zone.route53_zone.id,
+                        'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.name, region),
+                        'EvaluateTargetHealth': True  # len(regions) > 1
+                    },
+                    'Region': region,
+                    'SetIdentifier': region,
+                }
+                zone_apply_record(record)
+        elif len(regions) == 1:
+            # Case with a single region
+            self._create_weighted_records(policy_members, zone_apply_record, multiple_regions=False)
+
+        else:
             # no policy record applied
             # should raise an error or log this
             raise Exception(
@@ -112,28 +136,6 @@ class Policy(models.Model):
                 )
             )
         return regions
-
-    def delete_policy(self, zone):
-        # If the policy is in used by another record then don't delete it.
-        policy_records = zone.policy_records.filter(policy=self)
-        if len(policy_records) > 1:
-            return
-
-        # Same as building the tree
-        regions = set([pm.region for pm in self.members.exclude(weight=0, ip__enabled=True)])
-        for region in regions:
-            zone.delete_record({
-                'name': '{}_{}'.format(RECORD_PREFIX, self.name),
-                'type': 'A',
-                'SetIdentifier': region,
-            })
-
-        for policy_member in self.members.exclude(weight=0, ip__enabled=True):
-            zone.delete_record({
-                'name': '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region),
-                'type': 'A',
-                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
-            })
 
 
 class PolicyMember(models.Model):
