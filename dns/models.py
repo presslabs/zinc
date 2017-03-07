@@ -28,7 +28,6 @@ class IP(models.Model):
     healthcheck_caller_reference = models.UUIDField(null=True, blank=True)
     deleted = models.BooleanField(default=False)
 
-    @transaction.atomic
     def save(self, *a, **kwa):
         if self.friendly_name == "":
             self.friendly_name = self.hostname.split(".", 1)[0]
@@ -69,6 +68,8 @@ class Policy(models.Model):
     class Meta:
         verbose_name_plural = 'policies'
 
+    # atomic isn't strictly required since it's a single statement that would run
+    # in a transaction in autocommit mode on innodb, but it's better to be explicit
     @transaction.atomic
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
