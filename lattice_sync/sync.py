@@ -1,4 +1,3 @@
-import ipaddress
 from urllib.parse import urlparse
 from logging import getLogger
 
@@ -8,6 +7,7 @@ from requests.auth import HTTPBasicAuth
 from zipa import lattice  # pylint: disable=no-name-in-module
 
 from dns import models
+from dns.utils.validation import is_ipv6
 
 
 logger = getLogger('zinc.' + __name__)
@@ -27,35 +27,47 @@ def lattice_factory(url, user, password):
     return lattice
 
 
+def apply_changes(obj, **kwargs):
+    changed = False
+    for attr_name, value in kwargs.items():
+        if getattr(obj, attr_name) != value:
+            setattr(obj, attr_name, value)
+            changed = True
+    return changed
+
+
 @transaction.atomic
 def handle_ip(ip_addr, server, locations):
     # ignore ipv6 addresses for now
-    try:
-        ipaddress.IPv6Address(ip_addr)
-        raise
-    except ipaddress.AddressValueError:
-        pass
+    if is_ipv6(ip_addr):
+        return
 
     enabled = server['state'] == 'configured'
     datacenter_id = int(
         server['datacenter_url'].split('?')[0].split('/')[-1])
     location = locations.get(datacenter_id, 'fake_location')
 
-    friendly_name = '{} {} {}'.format(server['hostname'],
-                                      server['datacenter_name'],
-                                      location)
+    friendly_name = '{} {}'.format(server['hostname'].split('.')[0],
+                                   location)
     ip = models.IP.objects.filter(
         ip=ip_addr,
     ).first()
+    changed = False
     if ip is None:  # new record
         ip = models.IP(ip=ip_addr)
         ip.reconcile_healthcheck()
+        changed = True
     elif ip.enabled != enabled:
         ip.enabled = enabled
         ip.mark_policy_records_dirty()
-    ip.hostname = server['hostname']
-    ip.friendly_name = friendly_name
-    ip.save()
+        changed = True
+    changed |= apply_changes(
+        ip,
+        hostname=server['hostname'],
+        friendly_name=friendly_name
+    )
+    if changed:
+        ip.save()
     return ip.pk
 
 

@@ -48,9 +48,9 @@ def test_fields_on_written_ip(boto_client):
 
     expected_fields = {
         'ip': '123.123.123.123',
-        'friendly_name': 'a AMS1 Amsterdam, NL',
+        'friendly_name': 'a Amsterdam, NL',
         'enabled': True,
-        'hostname': 'a'
+        'hostname': 'a.presslabs.net'
     }
     attributes = {
         field: getattr(ip, field)
@@ -62,7 +62,7 @@ def test_fields_on_written_ip(boto_client):
 def _mock_lattice_responses():
     servers_payload = '''
     [{
-    "hostname": "a",
+    "hostname": "a.presslabs.net",
     "state": "configured",
     "group": "",
     "environment": "production",
