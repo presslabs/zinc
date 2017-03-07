@@ -81,6 +81,7 @@ class Zone(object):
         if not self._change_batch:
             return
 
+        #import ipdb; ipdb.set_trace()
         client.change_resource_record_sets(
             HostedZoneId=self.id,
             ChangeBatch={'Changes': self._change_batch}
