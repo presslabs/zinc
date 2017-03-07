@@ -35,7 +35,8 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
                 'Type': 'A',
                 'AliasTarget': {
-                    'DNSName': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name, region),
+                    'DNSName': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
+                                                                region),
                     'EvaluateTargetHealth': len(regions) > 1,
                     'HostedZoneId': zone.route53_zone.id
                 },
@@ -45,7 +46,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
         records_for_policy_members = [
             {
                 'Name': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
-                                                        policy_member.region),
+                                                         policy_member.region),
                 'Type': 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
                 'TTL': 30,
@@ -182,7 +183,6 @@ def test_policy_member_to_list_helper_two_regions():
             'Type': 'A',
         }
     ], key=sort_key)
-
 
 
 @pytest.mark.django_db
