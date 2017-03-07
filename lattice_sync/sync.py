@@ -27,15 +27,6 @@ def lattice_factory(url, user, password):
     return lattice
 
 
-def apply_changes(obj, **kwargs):
-    changed = False
-    for attr_name, value in kwargs.items():
-        if getattr(obj, attr_name) != value:
-            setattr(obj, attr_name, value)
-            changed = True
-    return changed
-
-
 @transaction.atomic
 def handle_ip(ip_addr, server, locations):
     # ignore ipv6 addresses for now
@@ -61,11 +52,12 @@ def handle_ip(ip_addr, server, locations):
         ip.enabled = enabled
         ip.mark_policy_records_dirty()
         changed = True
-    changed |= apply_changes(
-        ip,
-        hostname=server['hostname'],
-        friendly_name=friendly_name
-    )
+    if ip.hostname != server['hostname']:
+        ip.hostname = server['hostname']
+        changed = True
+    if ip.friendly_name != friendly_name:
+        ip.friendly_name = friendly_name
+        changed = True
     if changed:
         ip.save()
     return ip.pk
