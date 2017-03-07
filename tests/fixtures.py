@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from django_dynamic_fixture import G
 
 from dns import models as m
-from dns.utils import route53
+from dns import route53
 
 
 def random_ascii(length):
@@ -274,7 +274,7 @@ class Moto:
 )
 def boto_client(request):
     client = request.param()
-    patcher = patch('dns.utils.route53.client', client)
+    patcher = patch('dns.route53.client', client)
     patcher.start()
 
     def cleanup():

@@ -4,7 +4,7 @@ from rest_framework.reverse import reverse
 
 from dns.models import Zone
 from dns.serializers import RecordSerializer
-from dns.utils import route53
+from dns import route53
 
 
 class ZoneListSerializer(serializers.HyperlinkedModelSerializer):

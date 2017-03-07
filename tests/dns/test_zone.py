@@ -6,7 +6,7 @@ from django_dynamic_fixture import G
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import hash_test_record
 from zinc.vendors.hashids import encode_record
-from dns.utils import route53
+from dns import route53
 from dns import models
 
 regions = route53.get_local_aws_regions()

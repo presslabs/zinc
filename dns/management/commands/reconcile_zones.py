@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from dns import models
-from dns.utils import route53
+from dns import route53
 
 
 class Command(BaseCommand):

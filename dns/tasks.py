@@ -2,7 +2,7 @@ from celery.utils.log import get_task_logger
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 
-from dns.utils import route53
+from dns import route53
 from dns import models
 
 

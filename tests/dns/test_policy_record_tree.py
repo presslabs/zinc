@@ -6,7 +6,7 @@ from mock import patch, call
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck
 from dns import models as m
-from dns.utils.route53 import get_local_aws_regions
+from dns.route53 import get_local_aws_regions
 
 
 def sort_key(record):
