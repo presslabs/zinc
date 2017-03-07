@@ -31,6 +31,8 @@ DEBUG = os.getenv('ZINC_DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = list(filter(lambda x: x, map(lambda x: x.strip(),
                                              os.getenv('ZINC_ALLOWED_HOSTS', '').split(','))))
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 
 INSTALLED_APPS = [
