@@ -9,8 +9,8 @@ def set_user_perms(details=None, user=None, is_new=False, **kwargs):
     if not user:
         return None
 
-    user.is_staff = True
     if details['email'] in getattr(settings, 'SOCIAL_AUTH_ADMIN_EMAILS', []):
+        user.is_staff = True
         user.is_superuser = True
 
     user.save()
