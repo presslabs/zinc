@@ -1,0 +1,12 @@
+{% extends "admin/login.html" %}
+
+{% block content %}
+{{ block.super }}
+
+<div style="padding-left: 6.1em;">
+<form action="{% url 'social:begin' 'google-oauth2' %}">
+    <input type="hidden" name="next" value="{{ next }}" />
+    <input type="submit" value="Presslabs Single Signon" />
+</form>
+</div>
+{% endblock %}
