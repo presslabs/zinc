@@ -97,7 +97,6 @@ class Policy(models.Model):
                 to_delete_records.append(record)
         zone.records = to_delete_records
 
-
     def _build_weighted_tree(self, policy_members, region_suffixed=True):
         # Build simple tree
         records = []
