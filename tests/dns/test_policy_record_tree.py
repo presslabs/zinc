@@ -35,7 +35,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
                 'Type': 'A',
                 'AliasTarget': {
-                    'DNSName': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
+                    'DNSName': '{}_{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
                                                                 region),
                     'EvaluateTargetHealth': len(regions) > 1,
                     'HostedZoneId': zone.route53_zone.id
@@ -45,7 +45,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
             } for region in regions]
         records_for_policy_members = [
             {
-                'Name': '{}_{}.{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
+                'Name': '{}_{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
                                                          policy_member.region),
                 'Type': 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
@@ -135,7 +135,7 @@ def test_policy_member_to_list_helper_two_regions():
     assert sorted(result, key=sort_key) == sorted([
         {
             'AliasTarget': {
-                'DNSName': '_zn_%s.%s.test-zinc.net.' % (policy.name, region2),
+                'DNSName': '_zn_%s_%s.test-zinc.net.' % (policy.name, region2),
                 'EvaluateTargetHealth': True,
                 'HostedZoneId': zone.route53_id
             },
@@ -146,7 +146,7 @@ def test_policy_member_to_list_helper_two_regions():
         },
         {
             'AliasTarget': {
-                'DNSName': '_zn_%s.%s.test-zinc.net.' % (policy.name, region),
+                'DNSName': '_zn_%s_%s.test-zinc.net.' % (policy.name, region),
                 'EvaluateTargetHealth': True,
                 'HostedZoneId': zone.route53_id
             },
@@ -156,7 +156,7 @@ def test_policy_member_to_list_helper_two_regions():
             'Type': 'A'
         },
         {
-            'Name': '_zn_%s.%s.test-zinc.net.' % (policy.name, region),
+            'Name': '_zn_%s_%s.test-zinc.net.' % (policy.name, region),
             'ResourceRecords': [{'Value': policy_members[0].ip.ip}],
             'SetIdentifier': '%s-%s' % (policy_members[0].id, region),
             'TTL': 30,
@@ -165,7 +165,7 @@ def test_policy_member_to_list_helper_two_regions():
             'HealthCheckId': str(policy_members[0].ip.healthcheck_id),
         },
         {
-            'Name': '_zn_%s.%s.test-zinc.net.' % (policy.name, region2),
+            'Name': '_zn_%s_%s.test-zinc.net.' % (policy.name, region2),
             'ResourceRecords': [{'Value': policy_members[1].ip.ip}],
             'SetIdentifier': '%s-%s' % (policy_members[1].id, region2),
             'TTL': 30,
