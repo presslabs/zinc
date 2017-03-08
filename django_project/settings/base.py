@@ -156,7 +156,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'zinc.wsgi.application'
+WSGI_APPLICATION = 'django_project.wsgi.application'
 
 DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
 
