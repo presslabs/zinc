@@ -72,17 +72,29 @@ class Policy(models.Model):
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
 
+    @transaction.atomic
     def apply_policy(self, zone):
-        return self._apply_policy(zone, zone.add_record)
+        records, regions = self._build_tree(zone)
+        zone.records = records
+        zone.commit()
+        return regions
 
+    @transaction.atomic
     def delete_policy(self, zone):
         # If the policy is in used by another record then don't delete it.
         policy_records = zone.policy_records.filter(policy=self)
         if len(policy_records) > 1:
             return
-        return self._apply_policy(zone, zone.delete_record)
+        records, regions = self._build_tree(zone)
+        for record in records:
+            record['delete'] = True
+        zone.records = records
+        zone.commit()
+        return regions
 
-    def _create_weighted_records(self, policy_members, zone_apply_record, multiple_regions=True):
+    def _build_weighted_tree(self, policy_members, region_prefixed=True):
+        # Build simple tree
+        records = []
         for policy_member in policy_members:
             health_check = {}
             if policy_member.ip.healthcheck_id:
@@ -95,38 +107,43 @@ class Policy(models.Model):
                 'Weight': policy_member.weight,
                 **health_check
             }
-            if multiple_regions:
+            if region_prefixed:
                 record['name'] = '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region)
             else:
                 record['name'] = '{}_{}'.format(RECORD_PREFIX, self.name)
+            records.append(record)
 
-            zone_apply_record(record)
+        return records
 
-    @transaction.atomic
-    def _apply_policy(self, zone, zone_apply_record):
+    def _build_lbr_tree(self, zone, policy_members):
+        # Build load balancing tree
+        records = self._build_weighted_tree(policy_members)
+        regions = set([pm.region for pm in policy_members])
+        for region in regions:
+            record = {
+                'name': '{}_{}'.format(RECORD_PREFIX, self.name),
+                'type': 'A',
+                'AliasTarget': {
+                    'HostedZoneId': zone.route53_zone.id,
+                    'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.name, region),
+                    'EvaluateTargetHealth': True  # len(regions) > 1
+                },
+                'Region': region,
+                'SetIdentifier': region,
+            }
+            records.append(record)
+        return records
+
+    def _build_tree(self, zone):
         # build the tree base for the provided zone
         policy_members = self.members.exclude(weight=0).exclude(ip__enabled=False)
         regions = set([pm.region for pm in policy_members])
         if len(regions) > 1:
             # Here is the case where are multiple regions
-            self._create_weighted_records(policy_members, zone_apply_record)
-            for region in regions:
-                record = {
-                    'name': '{}_{}'.format(RECORD_PREFIX, self.name),
-                    'type': 'A',
-                    'AliasTarget': {
-                        'HostedZoneId': zone.route53_zone.id,
-                        'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.name, region),
-                        'EvaluateTargetHealth': True  # len(regions) > 1
-                    },
-                    'Region': region,
-                    'SetIdentifier': region,
-                }
-                zone_apply_record(record)
+            records = self._build_lbr_tree(zone, policy_members)
         elif len(regions) == 1:
             # Case with a single region
-            self._create_weighted_records(policy_members, zone_apply_record, multiple_regions=False)
-
+            records = self._build_weighted_tree(policy_members, region_prefixed=False)
         else:
             # no policy record applied
             # should raise an error or log this
@@ -135,7 +152,7 @@ class Policy(models.Model):
                     zone, self
                 )
             )
-        return regions
+        return records, regions
 
 
 class PolicyMember(models.Model):
@@ -179,6 +196,9 @@ class Zone(models.Model):
             if self.route53_id.startswith('/hostedzone/'):
                 self.route53_id = self.route53_id[len('/hostedzone/'):]
         return super(Zone, self).save(*args, **kwargs)
+
+    def commit(self):
+        self.route53_zone.commit()
 
     def add_record(self, record):
         # Add record if is POLICY_ROUTED then create one and add it.
@@ -292,7 +312,7 @@ class Zone(models.Model):
         for policy_record in policy_records:
             policy_record.apply_record()
 
-        self.route53_zone.commit()
+        self.commit()
 
 
 class PolicyRecord(models.Model):
@@ -351,4 +371,4 @@ class PolicyRecord(models.Model):
             'AliasTarget': {},
         })
         self.policy.delete_policy(self.zone)
-        self.zone.route53_zone.commit()
+        self.zone.commit()
