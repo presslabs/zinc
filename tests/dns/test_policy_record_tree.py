@@ -5,8 +5,8 @@ from mock import patch, call
 
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck
-from dns import models as m
-from dns.route53 import get_local_aws_regions
+from zinc import models as m
+from zinc.route53 import get_local_aws_regions
 
 
 def sort_key(record):
@@ -509,8 +509,8 @@ def test_apply_policy_is_not_duplicated(zone):
     G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     G(m.PolicyRecord, zone=zone, policy=policy, name='www')
 
-    with patch('dns.models.Policy.apply_policy') as apply_policy:
-        with patch('dns.models.PolicyRecord.apply_record'):
+    with patch('zinc.models.Policy.apply_policy') as apply_policy:
+        with patch('zinc.models.PolicyRecord.apply_record'):
             zone.build_tree()
             apply_policy.assert_called_once_with(zone)
 
@@ -527,8 +527,8 @@ def test_apply_policy_ensure_both_policies_are_applied(zone):
     G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     G(m.PolicyRecord, zone=zone, policy=policy_2, name='www')
 
-    with patch('dns.models.Policy.apply_policy') as apply_policy:
-        with patch('dns.models.PolicyRecord.apply_record'):
+    with patch('zinc.models.Policy.apply_policy') as apply_policy:
+        with patch('zinc.models.PolicyRecord.apply_record'):
             zone.build_tree()
             # assert called 2 times, because 2 policies.
             calls = [call(zone), call(zone)]

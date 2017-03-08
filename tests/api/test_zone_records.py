@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from tests.utils import (strip_ns_and_soa, hash_test_record, aws_strip_ns_and_soa, aws_sort_key,
                          get_test_record, record_to_aws, get_record_from_base)
-from dns import models as m
+from zinc import models as m
 
 
 @pytest.mark.django_db
@@ -306,7 +306,7 @@ def test_create_a_new_SOA_record(api_client, zone):
             'name': 'soa_record',
             'type': 'SOA',
             'ttl': 3000,
-            'values': ['ns-774.awsdns-32.net.', 'awsdns-hostmaster.amazon.com.', '1',
+            'values': ['ns-774.awszinc-32.net.', 'awszinc-hostmaster.amazon.com.', '1',
                        '17200', '900', '1209600', '86400']
         }
     )
@@ -320,7 +320,7 @@ def test_create_NS_record(api_client, zone):
         'name': 'dev',
         'type': 'NS',
         'ttl': 3000,
-        'values': ['ns-774.awsdns-32.net.', 'awsdns-hostmaster.amazon.com.']
+        'values': ['ns-774.awszinc-32.net.', 'awszinc-hostmaster.amazon.com.']
     }
     response = api_client.post(
         '/zones/%s/records' % zone.id,

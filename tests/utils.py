@@ -1,8 +1,8 @@
 from django_dynamic_fixture import G
 
-from zinc.vendors import hashids
-from zinc import POLICY_ROUTED
-from dns import models as m
+from django_project.vendors import hashids
+from django_project import POLICY_ROUTED
+from zinc import models as m
 
 
 def strip_ns_and_soa(records):

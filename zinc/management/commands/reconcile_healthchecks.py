@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
-from dns.models import IP
-from dns.route53 import HealthCheck
+from zinc.models import IP
+from zinc.route53 import HealthCheck
 
 
 class Command(BaseCommand):

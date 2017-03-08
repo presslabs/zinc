@@ -2,9 +2,9 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
-from dns.models import Zone
-from dns.serializers import RecordSerializer
-from dns import route53
+from zinc.models import Zone
+from zinc.serializers import RecordSerializer
+from zinc import route53
 
 
 class ZoneListSerializer(serializers.HyperlinkedModelSerializer):

@@ -3,7 +3,7 @@ import logging
 from botocore.exceptions import ClientError
 from django.contrib import admin
 
-from dns.models import Zone
+from zinc.models import Zone
 
 from .soft_delete import SoftDeleteAdmin
 

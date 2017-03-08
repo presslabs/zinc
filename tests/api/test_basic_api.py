@@ -5,7 +5,7 @@ import pytest
 from django_dynamic_fixture import G
 
 from tests.fixtures import api_client  # noqa: F401
-from dns import models as m
+from zinc import models as m
 
 
 @pytest.mark.django_db

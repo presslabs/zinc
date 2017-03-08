@@ -5,10 +5,10 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from botocore.exceptions import ClientError
 
-from dns.models import RECORD_PREFIX
-from zinc import ZINC_RECORD_TYPES, POLICY_ROUTED
-from zinc.vendors import hashids
-from zinc import ALLOWED_RECORD_TYPES
+from zinc.models import RECORD_PREFIX
+from django_project import ZINC_RECORD_TYPES, POLICY_ROUTED
+from django_project.vendors import hashids
+from django_project import ALLOWED_RECORD_TYPES
 
 
 @contextmanager

@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'social_django',
     'rest_framework',
     'rest_framework_swagger',
-    'dns',
+    'zinc',
     'lattice_sync',
 ]
 
@@ -109,7 +109,7 @@ SOCIAL_AUTH_PIPELINE = (
     'social_core.pipeline.user.create_user',
 
     # Set superuser and is_staff
-    'zinc.social_auth_pipeline.set_user_perms',
+    'django_project.social_auth_pipeline.set_user_perms',
 
     # Create the record that associates the social account with the user.
     'social_core.pipeline.social_auth.associate_user',
@@ -137,7 +137,7 @@ MIDDLEWARE_CLASSES = [
     'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
 
-ROOT_URLCONF = 'zinc.urls'
+ROOT_URLCONF = 'django_project.urls'
 
 
 TEMPLATES = [
@@ -222,12 +222,12 @@ BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
 CELERYBEAT_SCHEDULE = {
     'reconcile_policy_records': {
-        'task': 'dns.tasks.reconcile_policy_records',
+        'task': 'zinc.tasks.reconcile_policy_records',
         'schedule': 30
     },
     # COMMENTED OUT, WILL BE MOVED TO A COMMAND
     # 'reconcile_zones': {
-    #     'task': 'dns.tasks.reconcile_zones',
+    #     'task': 'zinc.tasks.reconcile_zones',
     #     'schedule': 300
     # },
     'lattice_sync': {
@@ -236,7 +236,7 @@ CELERYBEAT_SCHEDULE = {
     },
     # COMMENTED OUT, WILL BE MOVED TO A COMMAND
     # 'reconcile_healthchecks': {
-    #     'task': 'dns.tasks.reconcile_healthchecks',
+    #     'task': 'zinc.tasks.reconcile_healthchecks',
     #     # these are already performed synchronously, reconcile handles transient AWS errors,
     #     # so it doesn't need to run frequently
     #     'schedule': 300
@@ -253,7 +253,7 @@ HASHIDS_MIN_LENGTH = 0
 
 REST_FRAMEWORK = {
     'PAGE_SIZE': 50,
-    'DEFAULT_PAGINATION_CLASS': 'dns.pagination.LinkHeaderPagination',
+    'DEFAULT_PAGINATION_CLASS': 'zinc.pagination.LinkHeaderPagination',
     'DEFAULT_PARSER_CLASSES': (
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',

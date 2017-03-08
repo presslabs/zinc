@@ -2,7 +2,7 @@ from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from celery.utils.log import get_task_logger
 
-from dns import models, route53
+from zinc import models, route53
 
 logger = get_task_logger(__name__)
 

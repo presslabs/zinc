@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django_dynamic_fixture import G
 
-from dns import models
+from zinc import models
 
 
 class Command(BaseCommand):

@@ -7,7 +7,7 @@ build:
       password: $$DOCKER_PASSWORD
       email: ping@presslabs.com
     environment:
-      - DJANGO_SETTINGS_MODULE=zinc.settings.test
+      - DJANGO_SETTINGS_MODULE=django_project.settings.test
       - ZINC_AWS_KEY=$$ZINC_AWS_KEY
       - ZINC_AWS_SECRET=$$ZINC_AWS_SECRET
     commands:

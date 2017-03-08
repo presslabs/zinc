@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from dns.models import Policy, PolicyMember
+from zinc.models import Policy, PolicyMember
 
 
 class PolicyMemberSerializer(serializers.ModelSerializer):

@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
-from dns import models
-from dns import route53
+from zinc import models
+from zinc import route53
 
 
 class Command(BaseCommand):
