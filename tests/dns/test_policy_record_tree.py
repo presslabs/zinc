@@ -635,3 +635,38 @@ def test_tree_with_one_region(zone, boto_client):
 
     rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_dangling_records(zone, boto_client):
+    dangling_record = {
+        'Name': '_zn_test1.us-east-1.' + zone.root,
+        'Type': 'A',
+        'ResourceRecords': [{'Value': '127.1.1.1'}],
+        'SetIdentifier': 'test-identifier',
+        'Weight': 20,
+        'TTL': 30
+    }
+
+    boto_client.change_resource_record_sets(
+        HostedZoneId=zone.route53_id,
+        ChangeBatch={
+            'Comment': 'string',
+            'Changes': [
+                {
+                    'Action': 'CREATE',
+                    'ResourceRecordSet': dangling_record
+                }
+            ]
+        }
+    )
+
+    ip = create_ip_with_healthcheck()
+    policy = G(m.Policy, name='test1')
+    G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
+    G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=False)
+    policy.apply_policy(zone)
+    zone.route53_zone.commit()
+
+    records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
+    assert dangling_record not in records['ResourceRecordSets']
