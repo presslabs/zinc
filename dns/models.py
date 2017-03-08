@@ -74,6 +74,8 @@ class Policy(models.Model):
 
     @transaction.atomic
     def apply_policy(self, zone):
+        # first delete the existing policy
+        self.delete_policy(zone)
         records, regions = self._build_tree(zone)
         zone.records = records
         zone.commit()
@@ -85,12 +87,13 @@ class Policy(models.Model):
         policy_records = zone.policy_records.filter(policy=self)
         if len(policy_records) > 1:
             return
-        records, regions = self._build_tree(zone)
-        for record in records:
-            record['delete'] = True
-        zone.records = records
+        to_delete_records = []
+        for _, record in zone.route53_zone.records().items():
+            if record['name'].startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
+                record['delete'] = True
+                to_delete_records.append(record)
+        zone.records = to_delete_records
         zone.commit()
-        return regions
 
     def _build_weighted_tree(self, policy_members, region_prefixed=True):
         # Build simple tree
