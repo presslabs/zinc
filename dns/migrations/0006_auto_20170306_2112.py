@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dns', '0004_merge_20170306_1138'),
+        ('dns', '0005_auto_20170306_1758'),
     ]
 
     operations = [
