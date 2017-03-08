@@ -79,7 +79,6 @@ class Policy(models.Model):
         records, regions = self._build_tree(zone)
         zone.records = records
         zone.commit()
-        return regions
 
     @transaction.atomic
     def delete_policy(self, zone):
@@ -95,7 +94,7 @@ class Policy(models.Model):
         zone.records = to_delete_records
         zone.commit()
 
-    def _build_weighted_tree(self, policy_members, region_prefixed=True):
+    def _build_weighted_tree(self, policy_members, region_suffixed=True):
         # Build simple tree
         records = []
         for policy_member in policy_members:
@@ -110,8 +109,8 @@ class Policy(models.Model):
                 'Weight': policy_member.weight,
                 **health_check
             }
-            if region_prefixed:
-                record['name'] = '{}_{}.{}'.format(RECORD_PREFIX, self.name, policy_member.region)
+            if region_suffixed:
+                record['name'] = '{}_{}_{}'.format(RECORD_PREFIX, self.name, policy_member.region)
             else:
                 record['name'] = '{}_{}'.format(RECORD_PREFIX, self.name)
             records.append(record)
@@ -128,7 +127,7 @@ class Policy(models.Model):
                 'type': 'A',
                 'AliasTarget': {
                     'HostedZoneId': zone.route53_zone.id,
-                    'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.name, region),
+                    'DNSName': '{}_{}_{}'.format(RECORD_PREFIX, self.name, region),
                     'EvaluateTargetHealth': True  # len(regions) > 1
                 },
                 'Region': region,
@@ -146,7 +145,7 @@ class Policy(models.Model):
             records = self._build_lbr_tree(zone, policy_members)
         elif len(regions) == 1:
             # Case with a single region
-            records = self._build_weighted_tree(policy_members, region_prefixed=False)
+            records = self._build_weighted_tree(policy_members, region_suffixed=False)
         else:
             # no policy record applied
             # should raise an error or log this
