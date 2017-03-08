@@ -3,7 +3,7 @@ import logging
 from django.contrib import admin
 from django.db import transaction
 
-from dns.models import IP
+from zinc.models import IP
 
 from .soft_delete import SoftDeleteAdmin
 

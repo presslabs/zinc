@@ -3,7 +3,7 @@ import pytest
 from django_dynamic_fixture import G
 
 from tests.fixtures import api_client, boto_client, zone  # noqa: F401
-from dns import models as m
+from zinc import models as m
 
 
 def policy_member_to_dict(record):

@@ -1,4 +1,4 @@
-from zinc.settings import *  # noqa
+from django_project.settings import *  # noqa
 
 SECRET_KEY = 'test-secret'
 CELERY_ALWAYS_EAGER = True

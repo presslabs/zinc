@@ -4,12 +4,12 @@ from django.db import models
 from django.db import transaction
 from django.core.exceptions import SuspiciousOperation
 
-from dns import route53
-from dns.route53 import get_local_aws_regions, HealthCheck
-from dns.validators import validate_domain, validate_hostname
-from zinc.vendors import hashids
-from dns import tasks
-from zinc import POLICY_ROUTED
+from zinc import route53
+from zinc.route53 import get_local_aws_regions, HealthCheck
+from zinc.validators import validate_domain, validate_hostname
+from django_project.vendors import hashids
+from zinc import tasks
+from django_project import POLICY_ROUTED
 
 
 RECORD_PREFIX = '_zn'

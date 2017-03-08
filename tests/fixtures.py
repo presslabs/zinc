@@ -11,8 +11,8 @@ from mock import patch
 from rest_framework.test import APIClient
 from django_dynamic_fixture import G
 
-from dns import models as m
-from dns import route53
+from zinc import models as m
+from zinc import route53
 
 
 def random_ascii(length):
@@ -136,7 +136,7 @@ class Moto:
                     'TTL': 1300,
                     'ResourceRecords': [
                         {
-                            'Value': ('ns1.dnsimple.com admin.dnsimple.com '
+                            'Value': ('ns1.zincimple.com admin.zincimple.com '
                                       '2013022001 86400 7200 604800 300'),
                         }
                     ]
@@ -274,7 +274,7 @@ class Moto:
 )
 def boto_client(request):
     client = request.param()
-    patcher = patch('dns.route53.client', client)
+    patcher = patch('zinc.route53.client', client)
     patcher.start()
 
     def cleanup():

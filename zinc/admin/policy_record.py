@@ -1,7 +1,7 @@
 from django.contrib import admin
 
-from dns.models import PolicyRecord
-from dns.admin.zone import aws_zone_link
+from zinc.models import PolicyRecord
+from zinc.admin.zone import aws_zone_link
 
 
 @admin.register(PolicyRecord)

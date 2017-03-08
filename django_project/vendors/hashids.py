@@ -2,7 +2,7 @@ import hashlib
 from hashids import Hashids
 from django.conf import settings
 
-from zinc import get_record_type
+from django_project import get_record_type
 
 HASHIDS_SALT = getattr(settings, 'SECRET_KEY', '')
 HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)

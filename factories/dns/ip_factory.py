@@ -8,5 +8,5 @@ class IPFactory(DjangoModelFactory):
     enabled = True
 
     class Meta:
-        model = 'dns.IP'
+        model = 'zinc.IP'
         django_get_or_create = ('ip',)

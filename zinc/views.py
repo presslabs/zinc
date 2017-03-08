@@ -4,9 +4,9 @@ from rest_framework.response import Response
 from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import NotFound
 
-from dns.serializers import (PolicySerializer, ZoneDetailSerializer,
-                             ZoneListSerializer, RecordSerializer)
-from dns import models
+from zinc.serializers import (PolicySerializer, ZoneDetailSerializer,
+                              ZoneListSerializer, RecordSerializer)
+from zinc import models
 
 
 class PolicyViewset(viewsets.ReadOnlyModelViewSet):

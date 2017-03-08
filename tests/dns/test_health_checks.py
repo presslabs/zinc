@@ -2,7 +2,7 @@
 import pytest
 import botocore.exceptions
 
-from dns import models as m
+from zinc import models as m
 from tests.fixtures import boto_client  # noqa: F401, pylint: disable=unused-import
 
 

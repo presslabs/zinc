@@ -3,10 +3,10 @@ import botocore.exceptions
 from django_dynamic_fixture import G
 
 import pytest
-from dns import models, route53
+from zinc import models, route53
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import hash_test_record
-from zinc.vendors.hashids import encode_record
+from django_project.vendors.hashids import encode_record
 
 regions = route53.get_local_aws_regions()
 
@@ -108,7 +108,7 @@ def test_zone_delete(zone, boto_client):
                         'TTL': 300,
                         'ResourceRecords': [
                             {
-                                'Value': 'ns-1941.awsdns-50.co.uk.',
+                                'Value': 'ns-1941.awszinc-50.co.uk.',
                             }
                         ]
                     }

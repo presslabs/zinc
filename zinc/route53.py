@@ -6,7 +6,7 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 from django.conf import settings
 
-from zinc.vendors import hashids
+from django_project.vendors import hashids
 
 AWS_KEY = getattr(settings, 'AWS_KEY', '')
 AWS_SECRET = getattr(settings, 'AWS_SECRET', '')

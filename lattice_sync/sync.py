@@ -6,8 +6,8 @@ from django.db import transaction
 from requests.auth import HTTPBasicAuth
 from zipa import lattice  # pylint: disable=no-name-in-module
 
-from dns import models
-from dns.utils.validation import is_ipv6
+from zinc import models
+from zinc.utils.validation import is_ipv6
 
 
 logger = getLogger('zinc.' + __name__)

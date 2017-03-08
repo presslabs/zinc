@@ -6,8 +6,8 @@ from django_dynamic_fixture import G
 from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from tests.utils import (strip_ns_and_soa, hash_policy_record,
                          get_test_record, create_ip_with_healthcheck)
-from dns import models as m
-from dns.route53 import get_local_aws_regions
+from zinc import models as m
+from zinc.route53 import get_local_aws_regions
 
 
 regions = get_local_aws_regions()

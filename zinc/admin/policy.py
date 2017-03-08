@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from dns.models import Policy, PolicyMember
+from zinc.models import Policy, PolicyMember
 
 
 class PolicyMemberInline(admin.TabularInline):

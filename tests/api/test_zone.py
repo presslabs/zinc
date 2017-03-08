@@ -8,7 +8,7 @@ from django_dynamic_fixture import G
 from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from tests.utils import strip_ns_and_soa, get_test_record
 
-from dns import models as m
+from zinc import models as m
 
 
 @pytest.mark.django_db
