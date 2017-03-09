@@ -1,3 +1,4 @@
+import json
 import uuid
 import logging
 
@@ -233,6 +234,11 @@ class RecordHandler:
             'Type': record['type'],
         }
         if 'values' in record:
+            if record['type'] == 'TXT':
+                # Encode json escape.
+                encoded_record['ResourceRecords'] = [{'Value': json.dumps(value)}
+                                                     for value in record['values']]
+            else:
                 encoded_record['ResourceRecords'] = [{'Value': value} for value in record['values']]
 
         if 'ttl' in record:
@@ -280,6 +286,10 @@ class RecordHandler:
                 'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
                 'HostedZoneId': record['AliasTarget']['HostedZoneId']
             }
+        elif record['Type'] == 'TXT':
+            # Decode json escaped strings
+            decoded_record['values'] = [json.loads('[%s]' % value['Value'])[0]
+                                        for value in record.get('ResourceRecords', [])]
         else:
             decoded_record['values'] = [value['Value'] for value in
                                         record.get('ResourceRecords', [])]
