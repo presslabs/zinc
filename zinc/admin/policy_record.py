@@ -12,6 +12,11 @@ class PolicyRecordAdmin(admin.ModelAdmin):
     fields = ('name', 'zone', 'policy', 'in_sync',)
     readonly_fields = ('in_sync',)
 
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # editing an existing object
+            return self.readonly_fields + ('name',)
+        return self.readonly_fields
+
     def in_sync(self, obj):
         return not obj.dirty
     in_sync.boolean = True
