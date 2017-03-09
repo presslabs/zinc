@@ -2,11 +2,12 @@ from django.contrib import admin
 
 from zinc.models import PolicyRecord
 from zinc.admin.zone import aws_zone_link
+from zinc.admin.soft_delete import SoftDeleteAdmin
 
 
 @admin.register(PolicyRecord)
-class PolicyRecordAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'aws_link', 'in_sync')
+class PolicyRecordAdmin(SoftDeleteAdmin):
+    list_display = ('__str__', 'aws_link', 'in_sync', 'is_deleted')
     list_filter = ('zone', 'policy', 'dirty')
 
     fields = ('name', 'zone', 'policy', 'in_sync',)

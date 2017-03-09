@@ -353,6 +353,11 @@ class PolicyRecord(models.Model):
             }, zone.route53_zone.id)
         }
 
+    def soft_delete(self):
+        self.deleted = True
+        self.dirty = True
+        self.save(update_fields=['deleted', 'dirty'])
+
     @transaction.atomic
     def apply_record(self):
         # build the tree for this policy record.
