@@ -285,9 +285,12 @@ LATTICE_ROLES = list(map(lambda x: x.strip(),
                          os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
 LATTICE_ENV = os.getenv('LATTICE_ENV', 'production')
 
+ZINC_NS_CHECK_RESOLVERS = os.getenv('ZINC_NS_CHECK_RESOLVERS', ['8.8.8.8'])
+if isinstance(ZINC_NS_CHECK_RESOLVERS, str):
+    ZINC_NS_CHECK_RESOLVERS = ZINC_NS_CHECK_RESOLVERS.split(',')
+
 AWS_KEY = os.getenv('ZINC_AWS_KEY')
 AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
-
 
 # configure logging
 

@@ -9,7 +9,7 @@ class CouldNotResolve(Exception):
 
 def get_resolver():
     resolver = Resolver()
-    resolver.nameservers = getattr(settings, 'NS_RESOLVERS', ['8.8.8.8'])
+    resolver.nameservers = settings.ZINC_NS_CHECK_RESOLVERS
     return resolver
 
 
