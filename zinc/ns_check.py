@@ -23,4 +23,4 @@ def is_ns_propagated(zone, resolver=None):
         name_servers = set([str(ns) for ns in resolver.query(zone.root, 'NS')])
     except DNSException as e:
         raise CouldNotResolve(e)
-    return r53_name_servers == name_servers
+    return sorted(r53_name_servers) == sorted(name_servers)
