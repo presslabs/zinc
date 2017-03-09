@@ -5,7 +5,7 @@ from django.db import transaction
 from django.core.exceptions import SuspiciousOperation
 
 from zinc import route53
-from zinc.route53 import get_local_aws_regions, HealthCheck
+from zinc.route53 import get_local_aws_region_choices, HealthCheck
 from zinc.validators import validate_domain, validate_hostname
 from django_project.vendors import hashids
 from zinc import tasks
@@ -65,6 +65,7 @@ class Policy(models.Model):
 
     class Meta:
         verbose_name_plural = 'policies'
+        ordering = ('name',)
 
     # atomic isn't strictly required since it's a single statement that would run
     # in a transaction in autocommit mode on innodb, but it's better to be explicit
@@ -161,13 +162,17 @@ class Policy(models.Model):
 
 
 class PolicyMember(models.Model):
-    AWS_REGIONS = [(region, region) for region in get_local_aws_regions()]
+    AWS_REGIONS = get_local_aws_region_choices()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    region = models.CharField(choices=AWS_REGIONS, max_length=20)
+    region = models.CharField(choices=AWS_REGIONS, max_length=20,
+                              default='us-east-1')
     ip = models.ForeignKey(IP, on_delete=models.CASCADE, related_name='policy_members')
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
     weight = models.PositiveIntegerField(default=10)
+
+    class Meta:
+        ordering = ('region', 'ip__hostname')
 
     def save(self, *args, **kwargs):
         self.policy.mark_policy_records_dirty()
