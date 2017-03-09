@@ -49,3 +49,8 @@ def reconcile_policy_records(bind=True):
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def reconcile_healthchecks(bind=True):
     route53.HealthCheck.reconcile_for_ips(models.IP.objects.all())
+
+
+@shared_task(bind=True, ignore_result=True, default_retry_delay=60)
+def update_ns_propagated(bind=True):
+    models.Zone.update_ns_propagated()

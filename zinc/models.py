@@ -1,18 +1,17 @@
 import uuid
+from logging import getLogger
 
-from django.db import models
-from django.db import transaction
 from django.core.exceptions import SuspiciousOperation
+from django.db import models, transaction
 
-from zinc import route53
-from zinc.route53 import get_local_aws_region_choices, HealthCheck
-from zinc.validators import validate_domain, validate_hostname
-from django_project.vendors import hashids
-from zinc import tasks
 from django_project import POLICY_ROUTED
-
+from django_project.vendors import hashids
+from zinc import ns_check, route53, tasks
+from zinc.route53 import HealthCheck, get_local_aws_region_choices
+from zinc.validators import validate_domain, validate_hostname
 
 RECORD_PREFIX = '_zn'
+logger = getLogger(__name__)
 
 
 class IP(models.Model):
@@ -188,6 +187,7 @@ class Zone(models.Model):
                                   null=True, default=None)
     caller_reference = models.UUIDField(editable=False, null=True)
     deleted = models.BooleanField(default=False)
+    ns_propagated = models.BooleanField(default=False)
 
     def __init__(self, *args, **kwargs):
         self._route53_instance = None
@@ -323,6 +323,17 @@ class Zone(models.Model):
             policy_record.apply_record()
 
         self.commit()
+
+    @classmethod
+    def update_ns_propagated(cls):
+        resolver = ns_check.get_resolver()
+        for zone in cls.objects.order_by('ns_propagated').all():
+            try:
+                zone.ns_propagated = ns_check.is_ns_propagated(zone, resolver=resolver)
+            except ns_check.CouldNotResolve:
+                logger.warn('Failed to resolve nameservers for %s', zone.root)
+            else:
+                zone.save()
 
 
 class PolicyRecord(models.Model):

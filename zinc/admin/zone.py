@@ -17,9 +17,10 @@ def aws_zone_link(route53_zone_id):
 
 @admin.register(Zone)
 class ZoneAdmin(SoftDeleteAdmin):
-    list_display = ('root', 'aws_link', 'is_deleted')
-    fields = ('root', 'route53_id', 'caller_reference')
-    readonly_fields = ('route53_id', 'caller_reference')
+    list_filter = ('ns_propagated', 'deleted')
+    list_display = ('root', 'aws_link', 'ns_propagated', 'is_deleted')
+    fields = ('root', 'route53_id', 'caller_reference', 'ns_propagated')
+    readonly_fields = ('route53_id', 'caller_reference', 'ns_propagated')
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
