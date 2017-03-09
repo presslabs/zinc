@@ -84,6 +84,8 @@ def sync(lattice_client):
             else:
                 if ip_pk is not None:
                     lattice_ip_pks.add(ip_pk)
+    if not lattice_ip_pks:
+        raise AssertionError("Refusing to delete all IPs!")
     ips_to_remove = set(
         models.IP.objects.values_list('pk', flat=True)) - lattice_ip_pks
     for ip in models.IP.objects.filter(pk__in=ips_to_remove):
