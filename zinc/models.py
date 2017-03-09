@@ -322,7 +322,20 @@ class Zone(models.Model):
         for policy_record in policy_records:
             policy_record.apply_record()
 
+        self._delete_orphaned_managed_records(policies)
         self.commit()
+
+    def _delete_orphaned_managed_records(self, policies):
+        """Delete any managed record not belonging to one of the policies"""
+        pol_names = ['{}_{}'.format(RECORD_PREFIX, policy.name) for policy in policies]
+        for record in self.route53_zone.records().values():
+            name = record['name']
+            if name.startswith(RECORD_PREFIX):
+                for pol_name in pol_names:
+                    if name.startswith(pol_name):
+                        break
+                else:
+                    self.delete_record(record)
 
     @classmethod
     def update_ns_propagated(cls):

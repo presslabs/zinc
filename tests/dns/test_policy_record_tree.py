@@ -639,6 +639,9 @@ def test_tree_with_one_region(zone, boto_client):
 
 @pytest.mark.django_db
 def test_dangling_records(zone, boto_client):
+    """
+    Tests a dangling record in an existing policy tree gets removed.
+    """
     dangling_record = {
         'Name': '_zn_test1.us-east-1.' + zone.root,
         'Type': 'A',
@@ -670,3 +673,32 @@ def test_dangling_records(zone, boto_client):
 
     records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     assert dangling_record not in records['ResourceRecordSets']
+
+
+@pytest.mark.django_db
+def test_change_policy(zone, boto_client):
+    """
+    Tests that changing the policy for a policy_record doesn't leave dangling record behind
+    """
+    ip1 = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck()
+    policy1 = G(m.Policy, name='policy1')
+    policy2 = G(m.Policy, name='policy2')
+    # add each IP to both policies
+    G(m.PolicyMember, ip=ip1, policy=policy1, region='us-east-1', weight=10)
+    G(m.PolicyMember, ip=ip1, policy=policy2, region='us-east-1', weight=10)
+    G(m.PolicyMember, ip=ip2, policy=policy1, region='us-east-2', weight=10)
+    G(m.PolicyMember, ip=ip2, policy=policy2, region='us-east-2', weight=10)
+    # build a tree with policy1
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy1, name='record', dirty=True)
+    zone.build_tree()
+    # switch to policy2 and rebuild
+    policy_record.policy = policy2
+    policy_record.dirty = True
+    policy_record.save()
+    zone.build_tree()
+
+    records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
+    policy1_records = [record['Name'] for record in records['ResourceRecordSets']
+                       if record['Name'].startswith('_zn_policy1')]
+    assert policy1_records == []
