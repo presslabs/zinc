@@ -420,3 +420,29 @@ def test_forward_boto_errors(api_client, zone):
              "(Value contains spaces) encountered with 'trebuie sa crape'")
         ]
     }
+
+
+@pytest.mark.django_db
+def test_txt_record_escape(zone, api_client):
+    texts = sorted([
+        r'simple',
+        r'"duoble quoted"',
+        r"'single quoted'",
+        r'back\slash',
+        r'escaped \"double quote'
+    ])
+    zone.add_record({
+        'name': 'text',
+        'ttl': 300,
+        'type': 'TXT',
+        'values': texts,
+    })
+    zone.route53_zone.commit()
+    response = api_client.get(
+        '/zones/%s' % zone.id,
+    )
+
+    record = list(filter(lambda record: record['name'] == 'text',
+                  response.data['records']))[0]
+
+    assert sorted(record['values']) == texts
