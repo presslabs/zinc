@@ -241,6 +241,10 @@ CELERYBEAT_SCHEDULE = {
     #     # so it doesn't need to run frequently
     #     'schedule': 300
     # },
+    'update_ns_propagated': {
+        'task': 'zinc.tasks.update_ns_propagated',
+        'schedule': 300
+    },
 }
 
 CELERY_ACCEPT_CONTENT = ['json']

@@ -11,8 +11,8 @@ class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Zone
-        fields = ['root', 'url', 'id', 'route53_id', 'dirty']
-        read_only_fields = ['dirty']
+        fields = ['root', 'url', 'id', 'route53_id', 'dirty', 'ns_propagated']
+        read_only_fields = ['dirty', 'ns_propagated']
 
     @transaction.atomic
     def create(self, validated_data):
@@ -41,8 +41,8 @@ class ZoneDetailSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Zone
-        fields = ['root', 'url', 'records_url', 'records', 'route53_id', 'dirty']
-        read_only_fields = ['root', 'url', 'route53_id', 'dirty']
+        fields = ['root', 'url', 'records_url', 'records', 'route53_id', 'dirty', 'ns_propagated']
+        read_only_fields = ['root', 'url', 'route53_id', 'dirty', 'ns_propagated']
 
     def __init__(self, *args, **kwargs):
         super(ZoneDetailSerializer, self).__init__(*args, **kwargs)
