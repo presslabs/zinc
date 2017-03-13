@@ -211,6 +211,12 @@ class Zone(models.Model):
 
         return dirty
 
+    def clean(self):
+        # if the root is not a fqdn then add the dot at the end
+        # this will be called from admin
+        if not self.root.endswith('.'):
+            self.root += '.'
+
     def save(self, *args, **kwargs):
         if self.route53_id is not None:
             if self.route53_id.startswith('/hostedzone/'):
