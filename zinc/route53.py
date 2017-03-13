@@ -111,7 +111,7 @@ class Zone(object):
         self._cache_aws_records()
         entries = {}
 
-        for aws_record in self._aws_records:
+        for aws_record in self._aws_records or []:
             record = RecordHandler.decode(aws_record, self.root, self.id)
 
             if record:
@@ -139,9 +139,10 @@ class Zone(object):
         try:
             response = client.list_resource_record_sets(HostedZoneId=self.id)
         except ClientError as excp:
-            if excp.response['Error']['Code'] == 'NoSuchHostedZone':
-                self._aws_records = []
-                self._exists = False
+            if excp.response['Error']['Code'] != 'NoSuchHostedZone':
+                raise
+            self._aws_records = []
+            self._exists = False
         else:
             self._aws_records = response['ResourceRecordSets']
             self._exists = True
