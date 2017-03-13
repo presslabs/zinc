@@ -2,8 +2,8 @@ import collections.abc
 import uuid
 from logging import getLogger
 
-from django.core.exceptions import SuspiciousOperation
 from django.db import models, transaction
+from django.core.exceptions import SuspiciousOperation, ValidationError
 
 from django_project import POLICY_ROUTED
 from django_project.vendors import hashids
@@ -246,6 +246,7 @@ class Zone(models.Model):
                 if record.get('delete', False):
                     return None  # trying to delete a nonexisting POLICY_RECORD.
                 policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
+                policy_record.full_clean()
 
             policy_record.save()
             return policy_record.serialize(zone=self)
@@ -394,6 +395,12 @@ class PolicyRecord(models.Model):
         self.deleted = True
         self.dirty = True
         self.save(update_fields=['deleted', 'dirty'])
+
+    def clean(self):
+        zone_records = self.zone.route53_zone.records()
+        for record in zone_records.values():
+            if record['name'] == self.name and record['type'] == 'CNAME':
+                raise ValidationError({'name': "A CNAME record of the same name already exists."})
 
     @transaction.atomic
     def apply_record(self):

@@ -191,3 +191,44 @@ def test_policy_record_create_more_values(api_client, zone):
             'Only one value can be specified for POLICY_ROUTED records.'
         ]
     }
+
+
+@pytest.mark.django_db
+def test_create_policy_routed_if_cname_exists(zone, api_client, boto_client):
+    boto_client.change_resource_record_sets(
+        HostedZoneId=zone.route53_zone.id,
+        ChangeBatch={
+            'Comment': 'zinc-fixture',
+            'Changes': [
+                {
+                    'Action': 'CREATE',
+                    'ResourceRecordSet': {
+                        'Name': 'www.%s' % zone.root,
+                        'Type': 'CNAME',
+                        'TTL': 300,
+                        'ResourceRecords': [
+                            {
+                                'Value': 'google.com',
+                            }
+                        ]
+                    }
+                },
+            ]
+        }
+    )
+
+    policy = G(m.Policy)
+    region = get_local_aws_regions()[0]
+    region2 = get_local_aws_regions()[1]
+    ip = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=region, ip=ip)
+    G(m.PolicyMember, policy=policy, region=region2, ip=ip)
+
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': 'www',
+            'type': 'POLICY_ROUTED',
+            'values': [str(policy.id)]
+        })
+    assert response.data['name'] == ['A CNAME record of the same name already exists.']
