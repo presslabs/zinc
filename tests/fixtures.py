@@ -126,8 +126,11 @@ class Moto:
                     'TTL': 1300,
                     'ResourceRecords': [
                         {
-                            'Value': 'test_ns.presslabs.net',
-                        }
+                            'Value': 'test_ns1.presslabs.net',
+                        },
+                        {
+                            'Value': 'test_ns2.presslabs.net',
+                        },
                     ]
                 },
                 {
