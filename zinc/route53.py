@@ -107,19 +107,13 @@ class Zone(object):
         self._reset_change_batch()
         self._clear_cache()
 
-    def records(self, rfilter=None):
+    def records(self):
         self._cache_aws_records()
         entries = {}
-
         for aws_record in self._aws_records or []:
             record = RecordHandler.decode(aws_record, self.root, self.id)
-
             if record:
-                if rfilter and not rfilter(record):
-                    continue
-                else:
-                    entries[record['id']] = record
-
+                entries[record['id']] = record
         return entries
 
     @property
@@ -129,7 +123,10 @@ class Zone(object):
 
     @property
     def ns(self):
-        return self.records(lambda record: (record['type'] == 'NS' and record['name'] == '@'))
+        ns = [record for record in self.records().values()
+              if record['type'] == 'NS' and record['name'] == '@']
+        assert len(ns) == 1
+        return ns[0]
 
     def _cache_aws_records(self):
         if self._aws_records is not None:

@@ -333,6 +333,7 @@ class Zone(models.Model):
             except ns_check.CouldNotResolve:
                 logger.warn('Failed to resolve nameservers for %s', zone.root)
             else:
+                logger.info('ns_propagated %-5s %s', zone.ns_propagated, zone.root)
                 zone.save()
 
 
