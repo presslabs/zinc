@@ -241,7 +241,7 @@ def test_alias_records(api_client, zone):
         'type': 'A',
         'AliasTarget': {
             'HostedZoneId': zone.route53_zone.id,
-            'DNSName': 'test',
+            'DNSName': 'test.%s' % zone.root,
             'EvaluateTargetHealth': False
         },
     }
