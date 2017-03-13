@@ -244,7 +244,7 @@ class RecordHandler:
 
         if 'AliasTarget' in record:
             encoded_record['AliasTarget'] = {
-                'DNSName': cls._add_root(record['AliasTarget']['DNSName'], root),
+                'DNSName': record['AliasTarget']['DNSName'],
                 'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
                 'HostedZoneId': record['AliasTarget']['HostedZoneId'],
             }
@@ -280,7 +280,7 @@ class RecordHandler:
 
         if alias_record(record):
             decoded_record['AliasTarget'] = {
-                'DNSName': cls._strip_root(record['AliasTarget']['DNSName'], root),
+                'DNSName': record['AliasTarget']['DNSName'],
                 'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
                 'HostedZoneId': record['AliasTarget']['HostedZoneId']
             }

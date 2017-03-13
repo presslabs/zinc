@@ -140,7 +140,7 @@ class Policy(models.Model):
                 'type': 'A',
                 'AliasTarget': {
                     'HostedZoneId': zone.route53_zone.id,
-                    'DNSName': '{}_{}_{}'.format(RECORD_PREFIX, self.name, region),
+                    'DNSName': '{}_{}_{}.{}'.format(RECORD_PREFIX, self.name, region, zone.root),
                     'EvaluateTargetHealth': True  # len(regions) > 1
                 },
                 'Region': region,
@@ -216,6 +216,7 @@ class Zone(models.Model):
         # this will be called from admin
         if not self.root.endswith('.'):
             self.root += '.'
+        super().clean()
 
     def save(self, *args, **kwargs):
         if self.route53_id is not None:
@@ -308,8 +309,7 @@ class Zone(models.Model):
                 if self.policy_records.filter(name=record['name']).exists():
                     continue
                 # if the record is ALIAS then translate it to ALIAS type known by API
-                record['values'] = ['ALIAS {}.{}'.format(record['AliasTarget']['DNSName'],
-                                                         self.root)]
+                record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
             filtered_records.append(record)
 
         for record in self.get_policy_records():
@@ -420,7 +420,7 @@ class PolicyRecord(models.Model):
             'type': 'A',
             'AliasTarget': {
                 'HostedZoneId': self.zone.route53_zone.id,
-                'DNSName': '{}_{}'.format(RECORD_PREFIX, self.policy.name),
+                'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
                 'EvaluateTargetHealth': False
             },
         })
