@@ -4,6 +4,7 @@ from rest_framework import fields
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from botocore.exceptions import ClientError
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from zinc.models import RECORD_PREFIX
 from django_project import ZINC_RECORD_TYPES, POLICY_ROUTED
@@ -21,6 +22,8 @@ def interpret_client_error():
         elif 'AAAARRDATAIllegalIPv6Address' in error.response['Error']['Message']:
             raise ValidationError({'values': ["Value is not a valid IPv6 address."]})
         raise ValidationError({'non_field_error': [error.response['Error']['Message']]})
+    except DjangoValidationError as error:
+        raise ValidationError(error.message_dict)
 
 
 class RecordListSerializer(serializers.ListSerializer):
@@ -74,8 +77,8 @@ class RecordSerializer(serializers.Serializer):
     def create(self, validated_data):
         zone = self.context['zone']
         validated_data['id'] = self.get_id(validated_data)
-        record = zone.add_record(validated_data)
         with interpret_client_error():
+            record = zone.add_record(validated_data)
             zone.route53_zone.commit()
         return record
 
