@@ -4,7 +4,7 @@ from zinc import tasks
 
 
 class Command(BaseCommand):
-    help = 'Reconcile all ip healthchecks'
+    help = 'Reconcile all policy records'
 
     def handle(self, *args, **options):
         tasks.reconcile_policy_records.apply()

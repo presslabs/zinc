@@ -1,3 +1,4 @@
+import collections.abc
 import uuid
 from logging import getLogger
 
@@ -69,6 +70,9 @@ class Policy(models.Model):
         return self.name
 
     def change_trigger(self, field_names):
+        # if field_names is not a set-like object (eg. dict_keys) convert to set
+        if not isinstance(field_names, collections.abc.Set):
+            field_names = set(field_names)
         if field_names & self.dirty_trigger_fields:
             self.mark_policy_records_dirty()
 

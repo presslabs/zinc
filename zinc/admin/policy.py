@@ -50,5 +50,5 @@ class PolicyAdmin(admin.ModelAdmin):
     @transaction.atomic
     def save_model(self, request, obj, form, change):
         rv = super().save_model(request, obj, form, change)
-        obj.change_trigger(set(form.changed_data))
+        obj.change_trigger(form.changed_data)
         return rv
