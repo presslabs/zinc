@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db import transaction
 from django.db.models import Count, Case, When, Value, CharField
 
 from zinc.models import Policy, PolicyMember
@@ -45,3 +46,9 @@ class PolicyAdmin(admin.ModelAdmin):
         # get_queryset prefetches related policy members so iterating over
         # objects is ok because we are iterating over already fetched data
         return ', '.join(sorted({m.region for m in obj.members.all()}))
+
+    @transaction.atomic
+    def save_model(self, request, obj, form, change):
+        rv = super().save_model(request, obj, form, change)
+        obj.change_trigger(set(form.changed_data))
+        return rv
