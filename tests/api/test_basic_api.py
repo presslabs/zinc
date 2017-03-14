@@ -17,7 +17,7 @@ def test_header_pagination(api_client):
     assert page1.status_code == 200, page1
     assert 'rel="next"' in page1['Link'], 'Response is missing rel="next" link header {}'.format(page1['Link'])  # noqa
 
-    match = re.search(r'(http://.*); rel="next"', page1['Link'])
+    match = re.search(r'<(http://.*)>; rel="next"', page1['Link'])
     assert match, "Invalid link header: {}".format(page1['Link'])
 
     page2 = api_client.get(match.group(1))
