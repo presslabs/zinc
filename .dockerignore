@@ -8,6 +8,7 @@ venv
 .tox
 **/*.pyc
 .cache
+local_settings.py
 
 Dockerfile
 README.md
