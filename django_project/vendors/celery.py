@@ -3,7 +3,7 @@ import os
 import celery
 from django.conf import settings
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "zinc.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_project.settings")
 
 
 class Celery(celery.Celery):

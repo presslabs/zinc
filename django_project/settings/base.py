@@ -297,7 +297,6 @@ AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
 # configure logging
 
 LOGGING = DEFAULT_LOGGING.copy()
-LOGGING['handlers']['console']['filters'] = None  # Show messages on the console regardless of DEBUG setting  # noqa: E501
 LOGGING['loggers']['django']['level'] = os.getenv('ZINC_LOG_LEVEL', 'INFO')
 LOGGING['loggers']['zinc'] = {
     'handlers': ['console'],
