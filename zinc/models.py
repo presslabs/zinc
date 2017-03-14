@@ -388,6 +388,7 @@ class PolicyRecord(models.Model):
             'name': self.name,
             'type': POLICY_ROUTED,
             'values': [str(self.policy.id)],
+            'ttl': None,
             'dirty': self.dirty,
             'manage': False,
             'deleted': self.deleted,
@@ -407,6 +408,8 @@ class PolicyRecord(models.Model):
         for record in zone_records.values():
             if record['name'] == self.name and record['type'] == 'CNAME':
                 raise ValidationError({'name': "A CNAME record of the same name already exists."})
+
+        super().clean()
 
     @transaction.atomic
     def apply_record(self):

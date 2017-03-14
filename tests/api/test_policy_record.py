@@ -19,6 +19,7 @@ def get_policy_record(policy_record, dirty=False, managed=False):
         'name': policy_record.name,
         'type': 'POLICY_ROUTED',
         'values': [str(policy_record.policy.id)],
+        'ttl': None,
         'dirty': dirty,
         'managed': managed,
         'url': 'http://testserver/zones/{}/records/{}'.format(
@@ -194,7 +195,7 @@ def test_policy_record_create_more_values(api_client, zone):
 
 
 @pytest.mark.django_db
-def test_create_policy_routed_if_cname_exists(zone, api_client, boto_client):
+def test_create_policy_routed_if_cname_exists_should_fail(zone, api_client, boto_client):
     boto_client.change_resource_record_sets(
         HostedZoneId=zone.route53_zone.id,
         ChangeBatch={
@@ -231,4 +232,6 @@ def test_create_policy_routed_if_cname_exists(zone, api_client, boto_client):
             'type': 'POLICY_ROUTED',
             'values': [str(policy.id)]
         })
+    with pytest.raises(m.PolicyRecord.DoesNotExist):
+        m.PolicyRecord.objects.get(name='www', zone=zone)
     assert response.data['name'] == ['A CNAME record of the same name already exists.']
