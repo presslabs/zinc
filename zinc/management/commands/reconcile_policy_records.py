@@ -4,7 +4,7 @@ from zinc import tasks
 
 
 class Command(BaseCommand):
-    help = 'Reconcile all policy records'
+    help = 'Rebuild trees for any zone that has a dirty PolicyRecord'
 
     def handle(self, *args, **options):
         tasks.reconcile_policy_records.apply()
