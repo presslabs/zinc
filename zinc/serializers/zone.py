@@ -17,12 +17,16 @@ class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         zone = Zone.objects.create(**validated_data)
-        zone.full_clean()
         try:
             zone.route53_zone.create()
         except route53.ClientError as e:
             raise serializers.ValidationError(detail=str(e))
         return zone
+
+    def validate_root(self, value):
+        if not value.endswith('.'):
+            value += '.'
+        return value
 
 
 class ZoneDetailSerializer(serializers.HyperlinkedModelSerializer):

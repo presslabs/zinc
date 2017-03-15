@@ -95,3 +95,19 @@ def test_policy_record_create_more_values(api_client, zone):
             'Only one value can be specified for CNAME records.'
         ]
     }
+
+
+@pytest.mark.django_db
+def test_create_zone_no_fqdn(api_client, boto_client):
+    root = 'presslabs.com'
+    resp = api_client.post(
+        '/zones',
+        data={
+            'root': root,
+        }
+    )
+    root += '.'
+    assert resp.status_code == 201, resp.data
+    assert resp.data['root'] == root
+    _id = resp.data['id']
+    assert list(m.Zone.objects.all().values_list('id', 'root')) == [(_id, root)]
