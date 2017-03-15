@@ -294,7 +294,6 @@ class Zone(models.Model):
         # Translate policy records.
         for record_hash, record in records.items():
             record['id'] = record_hash
-            record['zone_id'] = self.id
             if record['name'].startswith(RECORD_PREFIX):
                 continue
             if ('AliasTarget' in record):
@@ -379,6 +378,7 @@ class PolicyRecord(models.Model):
     def serialize(self, zone):
         return {
             'name': self.name,
+            'fqdn': '{}.{}'.format(self.name, self.zone.root),
             'type': POLICY_ROUTED,
             'values': [str(self.policy.id)],
             'dirty': self.dirty,

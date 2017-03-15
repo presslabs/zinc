@@ -44,6 +44,7 @@ class RecordListSerializer(serializers.ListSerializer):
 
 class RecordSerializer(serializers.Serializer):
     name = fields.CharField(max_length=255)
+    fqdn = fields.SerializerMethodField(required=False)
     type = fields.ChoiceField(choices=ZINC_RECORD_TYPES)
     values = fields.ListField(child=fields.CharField())
     ttl = fields.IntegerField(allow_null=True, min_value=1, required=False)
@@ -54,6 +55,10 @@ class RecordSerializer(serializers.Serializer):
 
     class Meta:
         list_serializer_class = RecordListSerializer
+
+    def get_fqdn(self, obj):
+        zone = self.context['zone']
+        return '{}.{}'.format(obj['name'], zone.root)
 
     def get_id(self, obj):
         return hashids.encode_record(obj, self.context['zone'].route53_zone.id)
