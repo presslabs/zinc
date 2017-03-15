@@ -154,15 +154,18 @@ class Zone(object):
             return
         if not self.id:
             return
+        paginator = client.get_paginator('list_resource_record_sets')
+        records = []
         try:
-            response = client.list_resource_record_sets(HostedZoneId=self.id)
+            for page in paginator.paginate(HostedZoneId=self.id):
+                records.extend(page['ResourceRecordSets'])
         except ClientError as excp:
             if excp.response['Error']['Code'] != 'NoSuchHostedZone':
                 raise
             self._aws_records = []
             self._exists = False
         else:
-            self._aws_records = response['ResourceRecordSets']
+            self._aws_records = records
             self._exists = True
 
     def _clear_cache(self):
