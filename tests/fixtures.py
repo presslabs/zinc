@@ -107,6 +107,16 @@ def api_client():
     return client
 
 
+class FakePaginator:
+    def __init__(self, client, op_name):
+        self._client = client
+        self._op_name = op_name
+
+    def paginate(self, **kwargs):
+        """return a one element list, so we can pretent to paginate"""
+        return [getattr(self._client, self._op_name)(**kwargs)]
+
+
 class Moto:
     """"Mock boto"""
 
@@ -114,6 +124,9 @@ class Moto:
         self._zones = {}
         self._health_checks = {}
         self._health_checks_caller_reference = {}
+
+    def get_paginator(self, op_name):
+        return FakePaginator(self, op_name)
 
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
         # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
