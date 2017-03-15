@@ -1,9 +1,10 @@
 import collections.abc
+import json
 import uuid
 from logging import getLogger
 
-from django.db import models, transaction
 from django.core.exceptions import SuspiciousOperation, ValidationError
+from django.db import models, transaction
 
 from django_project import POLICY_ROUTED
 from django_project.vendors import hashids
@@ -191,6 +192,13 @@ class PolicyMember(models.Model):
         return '{} {} {}'.format(self.ip, self.region, self.weight)
 
 
+def validate_json(value):
+    try:
+        json.loads(value)
+    except json.JSONDecodeError:
+        raise ValidationError("Not valid json")
+
+
 class Zone(models.Model):
     root = models.CharField(max_length=255, validators=[validate_domain])
     route53_id = models.CharField(max_length=32, unique=True, editable=False,
@@ -198,6 +206,7 @@ class Zone(models.Model):
     caller_reference = models.UUIDField(editable=False, null=True)
     deleted = models.BooleanField(default=False)
     ns_propagated = models.BooleanField(default=False)
+    cached_ns_records = models.TextField(validators=[validate_json], default=None, null=True)
 
     def __init__(self, *args, **kwargs):
         self._route53_instance = None
@@ -358,6 +367,8 @@ class Zone(models.Model):
     @classmethod
     def update_ns_propagated(cls):
         resolver = ns_check.get_resolver()
+        # the order matters because we want unpropagated zones to be checked first
+        # to minimize the delay in tarnsitioning to propagated state
         for zone in cls.objects.order_by('ns_propagated').all():
             try:
                 zone.ns_propagated = ns_check.is_ns_propagated(zone, resolver=resolver)
