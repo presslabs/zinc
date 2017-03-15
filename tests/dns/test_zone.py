@@ -54,7 +54,7 @@ def test_delete_zone_alias_record(zone):
         'name': '_zn_something',
         'type': 'A',
         'AliasTarget': {
-            'DNSName': 'test',
+            'DNSName': 'test.%s' % zone.root,
             'HostedZoneId': zone.route53_zone.id,
             'EvaluateTargetHealth': False
         },
@@ -73,7 +73,7 @@ def test_delete_zone_alias_record_with_set_id(zone):
         'name': '_zn_something',
         'type': 'A',
         'AliasTarget': {
-            'DNSName': 'test',
+            'DNSName': 'test.%s' % zone.root,
             'HostedZoneId': zone.route53_zone.id,
             'EvaluateTargetHealth': False
         },
