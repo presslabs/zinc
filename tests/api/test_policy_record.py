@@ -17,6 +17,7 @@ def get_policy_record(policy_record, dirty=False, managed=False):
     return {
         'id': hash_policy_record(policy_record),
         'name': policy_record.name,
+        'fqdn': '{}.{}'.format(policy_record.name, policy_record.zone.root),
         'type': 'POLICY_ROUTED',
         'values': [str(policy_record.policy.id)],
         'ttl': None,

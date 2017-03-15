@@ -47,6 +47,7 @@ def get_test_record(zone):
     return {
         'id': hash_test_record(zone),
         'name': 'test',
+        'fqdn': 'test.%s' % zone.root,
         'ttl': 300,
         'type': 'A',
         'values': ['1.1.1.1'],
@@ -80,6 +81,7 @@ def get_record_from_base(record, zone, managed=False, dirty=False):
     keys = ['name', 'type', 'ttl', 'values']
     return {
         **{key: value for key, value in record.items() if key in keys},
+        'fqdn': '{}.{}'.format(record['name'], zone.root),
         'id': record_hash,
         'url': 'http://testserver/zones/%s/records/%s' % (zone.id, record_hash),
         'managed': managed,

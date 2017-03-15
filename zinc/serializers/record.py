@@ -47,6 +47,7 @@ class RecordListSerializer(serializers.ListSerializer):
 
 class RecordSerializer(serializers.Serializer):
     name = fields.CharField(max_length=255)
+    fqdn = fields.SerializerMethodField(required=False)
     type = fields.ChoiceField(choices=ZINC_RECORD_TYPES)
     values = fields.ListField(child=fields.CharField())
     ttl = fields.IntegerField(allow_null=True, min_value=1, required=False)
@@ -57,6 +58,10 @@ class RecordSerializer(serializers.Serializer):
 
     class Meta:
         list_serializer_class = RecordListSerializer
+
+    def get_fqdn(self, obj):
+        zone = self.context['zone']
+        return '{}.{}'.format(obj['name'], zone.root)
 
     def get_id(self, obj):
         return hashids.encode_record(obj, self.context['zone'].route53_zone.id)
@@ -107,6 +112,7 @@ class RecordSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
+        errors = {}
         # if is a delete then the data should be {'delete': True}
         if self.context['request'].method == 'DELETE':
             return {'delete': True}
@@ -114,22 +120,25 @@ class RecordSerializer(serializers.Serializer):
         # for PATCH type and name field can't be modified.
         if self.context['request'].method == 'PATCH':
             if 'type' in data or 'name' in data:
-                raise ValidationError("Can't update 'name' and 'type' fields. ")
-            return data
+                errors.update({'non_field_errors': ["Can't update 'name' and 'type' fields. "]})
+        else:
+            # POST method
+            # for POLICY_ROUTED the values should contain just one value
+            if data['type'] in ['CNAME', POLICY_ROUTED]:
+                if not len(data['values']) == 1:
+                    errors.update({
+                        'values': ('Only one value can be '
+                                   'specified for {} records.'.format(data['type']))
+                    })
+            else:
+                # for normal records ttl and values fields are required.
+                if not data.get('ttl', False):
+                    errors.update({'ttl': 'This field is required for {} '
+                                          'records.'.format(data.get('type'))})
+                if not data.get('values', False):
+                    errors.update({'values': 'This field is required.'})
 
-        # for POLICY_ROUTED the values should contain just one value
-        if data['type'] in ['CNAME', POLICY_ROUTED]:
-            if not len(data['values']) == 1:
-                raise ValidationError({'values': ('Only one value can be '
-                                                  'specified for {} records.'.format(data['type']))
-                                       })
-            return data
-
-        # for normal records ttl and values fields are required.
-        if not data.get('ttl', False):
-            raise ValidationError({'ttl': 'This field is required for {} '
-                                   'records.'.format(data.get('type'))})
-        if not data.get('values', False):
-            raise ValidationError({'values': 'This field is required.'})
+        if errors:
+            raise ValidationError(errors)
 
         return data
