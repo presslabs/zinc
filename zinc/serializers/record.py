@@ -131,10 +131,8 @@ class RecordSerializer(serializers.Serializer):
                                    'specified for {} records.'.format(data['type']))
                     })
             else:
-                # for normal records ttl and values fields are required.
-                if not data.get('ttl', False):
-                    errors.update({'ttl': 'This field is required for {} '
-                                          'records.'.format(data.get('type'))})
+                data.setdefault('ttl', 300)
+                # for normal records values is required.
                 if not data.get('values', False):
                     errors.update({'values': 'This field is required.'})
 

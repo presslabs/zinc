@@ -195,9 +195,8 @@ def test_add_record_without_ttl(api_client, zone):
         '/zones/%s/records' % zone.id,
         data=record
     )
-    assert response.data == {
-        'ttl': ['This field is required for A records.']
-    }
+    assert response.data.get('ttl') == 300
+    assert response.status_code == 201
 
 
 @pytest.mark.django_db
@@ -210,8 +209,8 @@ def test_add_record_without_ttl_and_values(api_client, zone):
         '/zones/%s/records' % zone.id,
         data=record
     )
+    assert response.status_code == 400
     assert response.data == {
-        'ttl': ['This field is required for A records.'],
         'values': ['This field is required.']
     }
 
