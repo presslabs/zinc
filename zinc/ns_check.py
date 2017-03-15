@@ -15,6 +15,8 @@ def get_resolver():
 
 
 def is_ns_propagated(zone, resolver=None):
+    if not zone.route53_zone.exists:
+        return False
     if resolver is None:
         resolver = get_resolver()
     r53_name_servers = set(zone.route53_zone.ns['values'])

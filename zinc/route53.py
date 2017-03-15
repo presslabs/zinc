@@ -144,6 +144,8 @@ class Zone(object):
 
     @property
     def ns(self):
+        if not self.exists:
+            return None
         ns = [record for record in self.records().values()
               if record['type'] == 'NS' and record['name'] == '@']
         assert len(ns) == 1
