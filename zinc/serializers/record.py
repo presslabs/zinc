@@ -109,6 +109,7 @@ class RecordSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
+        errors = {}
         # if is a delete then the data should be {'delete': True}
         if self.context['request'].method == 'DELETE':
             return {'delete': True}
@@ -116,22 +117,25 @@ class RecordSerializer(serializers.Serializer):
         # for PATCH type and name field can't be modified.
         if self.context['request'].method == 'PATCH':
             if 'type' in data or 'name' in data:
-                raise ValidationError("Can't update 'name' and 'type' fields. ")
-            return data
+                errors.update({'non_field_errors': ["Can't update 'name' and 'type' fields. "]})
+        else:
+            # POST method
+            # for POLICY_ROUTED the values should contain just one value
+            if data['type'] in ['CNAME', POLICY_ROUTED]:
+                if not len(data['values']) == 1:
+                    errors.update({
+                        'values': ('Only one value can be '
+                                   'specified for {} records.'.format(data['type']))
+                    })
+            else:
+                # for normal records ttl and values fields are required.
+                if not data.get('ttl', False):
+                    errors.update({'ttl': 'This field is required for {} '
+                                          'records.'.format(data.get('type'))})
+                if not data.get('values', False):
+                    errors.update({'values': 'This field is required.'})
 
-        # for POLICY_ROUTED the values should contain just one value
-        if data['type'] in ['CNAME', POLICY_ROUTED]:
-            if not len(data['values']) == 1:
-                raise ValidationError({'values': ('Only one value can be '
-                                                  'specified for {} records.'.format(data['type']))
-                                       })
-            return data
-
-        # for normal records ttl and values fields are required.
-        if not data.get('ttl', False):
-            raise ValidationError({'ttl': 'This field is required for {} '
-                                   'records.'.format(data.get('type'))})
-        if not data.get('values', False):
-            raise ValidationError({'values': 'This field is required.'})
+        if errors:
+            raise ValidationError(errors)
 
         return data
