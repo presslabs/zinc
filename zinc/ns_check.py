@@ -1,3 +1,5 @@
+import json
+
 from django.conf import settings
 
 from dns.resolver import Resolver
@@ -19,9 +21,17 @@ def is_ns_propagated(zone, resolver=None):
         return False
     if resolver is None:
         resolver = get_resolver()
-    r53_name_servers = set(zone.route53_zone.ns['values'])
     try:
-        name_servers = set([str(ns) for ns in resolver.query(zone.root, 'NS')])
+        name_servers = sorted([str(ns) for ns in resolver.query(zone.root, 'NS')])
     except DNSException as e:
         raise CouldNotResolve(e)
+    if zone.cached_ns_records:
+        r53_name_servers = json.loads(zone.cached_ns_records)
+        if r53_name_servers == name_servers:
+            return True
+    # in case the nameservers don't match we update the cached_ns_records and
+    # compare again
+    r53_name_servers = sorted(zone.route53_zone.ns['values'])
+    zone.cached_ns_records = json.dumps(r53_name_servers)
+    zone.save(update_fields=['cached_ns_records'])
     return r53_name_servers == name_servers
