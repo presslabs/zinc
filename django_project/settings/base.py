@@ -71,7 +71,7 @@ SOCIAL_AUTH_ADMIN_EMAILS = [
 ]
 SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = ['presslabs.com']
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
-    'https://www.googleapis.com/auth/plus.login'
+    'profile',
 ]
 
 SOCIAL_AUTH_PIPELINE = (
