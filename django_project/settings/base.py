@@ -287,6 +287,7 @@ LATTICE_ROLES = list(map(lambda x: x.strip(),
                          os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
 LATTICE_ENV = os.getenv('LATTICE_ENV', 'production')
 
+ZINC_DEFAULT_TTL = os.getenv('ZINC_DEFAULT_TTL', 300)
 ZINC_NS_CHECK_RESOLVERS = os.getenv('ZINC_NS_CHECK_RESOLVERS', ['8.8.8.8'])
 if isinstance(ZINC_NS_CHECK_RESOLVERS, str):
     ZINC_NS_CHECK_RESOLVERS = ZINC_NS_CHECK_RESOLVERS.split(',')
