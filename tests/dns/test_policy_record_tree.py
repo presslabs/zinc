@@ -28,32 +28,34 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
     zone = policy_record.zone
     policy = policy_record.policy
     policy_members = [pm for pm in policy_members if pm.policy == policy]
-    regions = set([pm.region for pm in policy_members if pm.weight > 0])
+    regions = set([pm.region for pm in policy_members])
     if len(regions) > 1:
         records_for_regions = [
             {
                 'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
                 'Type': 'A',
                 'AliasTarget': {
-                    'DNSName': '{}_{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
-                                                                region),
+                    'DNSName': '{}_{}_{}.test-zinc.net.'.format(
+                        m.RECORD_PREFIX, policy.name, region),
                     'EvaluateTargetHealth': len(regions) > 1,
                     'HostedZoneId': zone.route53_zone.id
                 },
                 'Region': region,
                 'SetIdentifier': region,
-            } for region in regions]
+            }
+            for region in regions]
         records_for_policy_members = [
             {
-                'Name': '{}_{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name,
-                                                         policy_member.region),
+                'Name': '{}_{}_{}.test-zinc.net.'.format(
+                    m.RECORD_PREFIX, policy.name, policy_member.region),
                 'Type': 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
                 'TTL': 30,
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
-            } for policy_member in policy_members if policy_member.weight > 0]
+            }
+            for policy_member in policy_members if policy_member.enabled]
 
     else:
         records_for_regions = []
@@ -66,25 +68,27 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
-            } for policy_member in policy_members if policy_member.weight > 0]
-
-    the_policy_record = [
-        {
-            'Name': ('{}.{}'.format(policy_record.name, zone.root)
-                     if policy_record.name != '@' else zone.root),
-            'Type': 'A',
-            'AliasTarget': {
-                'HostedZoneId': zone.route53_zone.id,
-                'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
-                'EvaluateTargetHealth': False
-            },
-        }
-    ] if len(regions) >= 1 or just_pr else []
+            }
+            for policy_member in policy_members if policy_member.enabled]
 
     if no_health:
         for record in records_for_policy_members:
             del record['HealthCheckId']
 
+    the_policy_record = []
+    if len(regions) >= 1 or just_pr:
+        the_policy_record = [
+            {
+                'Name': ('{}.{}'.format(policy_record.name, zone.root)
+                         if policy_record.name != '@' else zone.root),
+                'Type': 'A',
+                'AliasTarget': {
+                    'HostedZoneId': zone.route53_zone.id,
+                    'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
+                    'EvaluateTargetHealth': False
+                },
+            }
+        ]
     return records_for_regions + records_for_policy_members + the_policy_record
 
 
@@ -273,6 +277,7 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client)
 
 @pytest.mark.django_db
 def test_policy_record_tree_within_members(zone, boto_client):
+    # TODO: document the intention of this test
     policy = G(m.Policy)
     G(m.PolicyRecord, zone=zone, policy=policy)
 
@@ -421,8 +426,8 @@ def test_policy_record_with_ips_0_weight(zone, boto_client):
     regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
     policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=10),
-        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=10, enabled=True),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0, enabled=True),
     ]
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
@@ -436,20 +441,25 @@ def test_policy_record_with_ips_0_weight(zone, boto_client):
         },  # this is a ordinary record. should be not modified.
         # we expect to have the tree without the ip that has weight 0.
     ] + policy_members_to_list(policy_members, policy_record)
-
-    assert strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
-    ) == sorted(expected, key=sort_key)
+    expected = sorted(expected, key=sort_key)
+    actual = strip_ns_and_soa(
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root)
+    assert actual == expected
 
 
 @pytest.mark.django_db
-def test_policy_record_with_all_ips_0_weight(zone, boto_client):
+def test_policy_record_with_all_ips_disabled(zone, boto_client):
     policy = G(m.Policy)
     regions = get_local_aws_regions()
-    ip = create_ip_with_healthcheck()
+    ip1 = create_ip_with_healthcheck()
+    ip1.enabled = False
+    ip1.save()
+    ip2 = create_ip_with_healthcheck()
+    ip2.enabled = False
+    ip2.save()
 
-    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=0)
-    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip, weight=0)
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
+    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2)
 
     G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
