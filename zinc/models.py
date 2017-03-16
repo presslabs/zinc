@@ -152,7 +152,7 @@ class Policy(models.Model):
 
     def _build_tree(self, zone):
         # build the tree base for the provided zone
-        policy_members = self.members.exclude(weight=0).exclude(ip__enabled=False)
+        policy_members = self.members.exclude(enabled=False).exclude(ip__enabled=False)
         regions = set([pm.region for pm in policy_members])
         if len(regions) > 1:
             # Here is the case where are multiple regions
@@ -180,6 +180,7 @@ class PolicyMember(models.Model):
     ip = models.ForeignKey(IP, on_delete=models.CASCADE, related_name='policy_members')
     policy = models.ForeignKey(Policy, on_delete=models.CASCADE, related_name='members')
     weight = models.PositiveIntegerField(default=10)
+    enabled = models.BooleanField(default=True)
 
     class Meta:
         ordering = ('region', 'ip__hostname')
