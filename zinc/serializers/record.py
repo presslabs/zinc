@@ -5,6 +5,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from botocore.exceptions import ClientError
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.conf import settings
 
 from zinc.models import RECORD_PREFIX
 from django_project import ZINC_RECORD_TYPES, POLICY_ROUTED
@@ -131,10 +132,8 @@ class RecordSerializer(serializers.Serializer):
                                    'specified for {} records.'.format(data['type']))
                     })
             else:
-                # for normal records ttl and values fields are required.
-                if not data.get('ttl', False):
-                    errors.update({'ttl': 'This field is required for {} '
-                                          'records.'.format(data.get('type'))})
+                data.setdefault('ttl', settings.ZINC_DEFAULT_TTL)
+                # for normal records values is required.
                 if not data.get('values', False):
                     errors.update({'values': 'This field is required.'})
 
