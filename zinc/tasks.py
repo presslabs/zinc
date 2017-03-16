@@ -1,6 +1,7 @@
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from celery.utils.log import get_task_logger
+from django.conf import settings
 
 from zinc import models, route53
 
@@ -53,4 +54,4 @@ def reconcile_healthchecks(bind=True):
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def update_ns_propagated(bind=True):
-    models.Zone.update_ns_propagated()
+    models.Zone.update_ns_propagated(delay=settings.getattr('ZINC_NS_UPDATE_DELAY', 0.3))

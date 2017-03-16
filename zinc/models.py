@@ -366,13 +366,14 @@ class Zone(models.Model):
                     self.delete_record(record)
 
     @classmethod
-    def update_ns_propagated(cls):
+    def update_ns_propagated(cls, delay=0):
         resolver = ns_check.get_resolver()
         # the order matters because we want unpropagated zones to be checked first
         # to minimize the delay in tarnsitioning to propagated state
         for zone in cls.objects.order_by('ns_propagated').all():
             try:
-                zone.ns_propagated = ns_check.is_ns_propagated(zone, resolver=resolver)
+                zone.ns_propagated = ns_check.is_ns_propagated(
+                    zone, resolver=resolver, delay=delay)
             except ns_check.CouldNotResolve:
                 logger.warn('Failed to resolve nameservers for %s', zone.root)
             else:

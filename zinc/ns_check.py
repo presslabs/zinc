@@ -1,4 +1,5 @@
 import json
+import time
 
 from django.conf import settings
 
@@ -16,7 +17,7 @@ def get_resolver():
     return resolver
 
 
-def is_ns_propagated(zone, resolver=None):
+def is_ns_propagated(zone, resolver=None, delay=0):
     if not zone.route53_zone.exists:
         return False
     if resolver is None:
@@ -27,6 +28,8 @@ def is_ns_propagated(zone, resolver=None):
         raise CouldNotResolve(e)
     if zone.cached_ns_records:
         r53_name_servers = json.loads(zone.cached_ns_records)
+        if delay:
+            time.sleep(delay)
         if r53_name_servers == name_servers:
             return True
     # in case the nameservers don't match we update the cached_ns_records and
