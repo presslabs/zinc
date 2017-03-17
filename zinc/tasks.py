@@ -54,4 +54,4 @@ def reconcile_healthchecks(bind=True):
 
 @shared_task(bind=True, ignore_result=True, default_retry_delay=60)
 def update_ns_propagated(bind=True):
-    models.Zone.update_ns_propagated(delay=settings.getattr('ZINC_NS_UPDATE_DELAY', 0.3))
+    models.Zone.update_ns_propagated(delay=getattr(settings, 'ZINC_NS_UPDATE_DELAY', 0.3))
