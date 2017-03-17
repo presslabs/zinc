@@ -62,6 +62,8 @@ class RecordSerializer(serializers.Serializer):
 
     def get_fqdn(self, obj):
         zone = self.context['zone']
+        if obj['name'] == '@':
+            return zone.root
         return '{}.{}'.format(obj['name'], zone.root)
 
     def get_id(self, obj):
