@@ -744,7 +744,7 @@ def test_untouched_policy_not_deleted(zone, boto_client):
 
 
 @pytest.mark.django_db
-def test_delete_create_policy_record(zone, boto_client):
+def test_delete_policy_record(zone, boto_client):
     """
     Tests a policy record by deleting and creating immediate after. Issue #210
     """

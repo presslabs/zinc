@@ -257,6 +257,7 @@ class Zone(models.Model):
                 else:
                     # Update policy for this record.
                     policy_record.policy = policy
+                    policy_record.deleted = False  # clear deleted flag
                 policy_record.dirty = True
             except PolicyRecord.DoesNotExist:
                 # Policy don't exists so create one.
@@ -345,9 +346,6 @@ class Zone(models.Model):
         dirty_policies = set([policy_record.policy for policy_record in policy_records])
         for policy in dirty_policies:
             policy.apply_policy(self)
-
-        # apply policies
-        self.commit()
 
         for policy_record in policy_records:
             policy_record.apply_record()
