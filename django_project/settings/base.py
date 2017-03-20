@@ -221,27 +221,15 @@ CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:63
 CELERYBEAT_SCHEDULE = {
     'reconcile_policy_records': {
         'task': 'zinc.tasks.reconcile_policy_records',
-        'schedule': 30
+        'schedule': 10,
     },
-    # COMMENTED OUT, WILL BE MOVED TO A COMMAND
-    # 'reconcile_zones': {
-    #     'task': 'zinc.tasks.reconcile_zones',
-    #     'schedule': 300
-    # },
     'lattice_sync': {
         'task': 'lattice_sync.tasks.lattice_sync',
         'schedule': 30
     },
-    # COMMENTED OUT, WILL BE MOVED TO A COMMAND
-    # 'reconcile_healthchecks': {
-    #     'task': 'zinc.tasks.reconcile_healthchecks',
-    #     # these are already performed synchronously, reconcile handles transient AWS errors,
-    #     # so it doesn't need to run frequently
-    #     'schedule': 300
-    # },
     'update_ns_propagated': {
         'task': 'zinc.tasks.update_ns_propagated',
-        'schedule': 300
+        'schedule': 180
     },
 }
 
@@ -249,8 +237,10 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
-# HASHIDS
+# Distributed lock server
+LOCK_SERVER_URL = os.getenv('LOCK_SERVER_URL', 'redis://localhost:6379/2')
 
+# HASHIDS
 HASHIDS_MIN_LENGTH = 0
 
 REST_FRAMEWORK = {
