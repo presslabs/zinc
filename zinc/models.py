@@ -346,6 +346,9 @@ class Zone(models.Model):
         for policy in dirty_policies:
             policy.apply_policy(self)
 
+        # apply policies
+        self.commit()
+
         for policy_record in policy_records:
             policy_record.apply_record()
 
@@ -429,6 +432,8 @@ class PolicyRecord(models.Model):
         # build the tree for this policy record.
         if self.deleted:
             # if the zone is marked as deleted don't try to build the tree.
+            self.delete_record()
+            self.delete()
             return
 
         self.zone.add_record({
