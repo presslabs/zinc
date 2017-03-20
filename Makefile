@@ -7,11 +7,11 @@ full-test:
 lint:
 	py.test -v -n auto --capture=no --color=yes --flake8 -m 'flake8'
 run:
-	@echo "##########################################################################"
-	@echo "#                                                                        #"
-	@echo "# Run 'celery worker -A zinc -B' in order to start the background worker #"
-	@echo "#                                                                        #"
-	@echo "##########################################################################"
+	@echo "####################################################################################"
+	@echo "#                                                                                  #"
+	@echo "# Run 'celery worker -A django_project -B' in order to start the background worker #"
+	@echo "#                                                                                  #"
+	@echo "####################################################################################"
 	python ./manage.py runserver
 build:
 	@echo "There is nothing to build for this project"

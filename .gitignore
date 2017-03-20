@@ -102,3 +102,6 @@ secrets.yml
 
 # plaintext drone secrets
 .drone.sec.yml
+
+# celery stuff
+celerybeat.pid
