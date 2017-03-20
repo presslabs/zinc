@@ -64,4 +64,19 @@ def reconcile_healthchecks(bind=True):
 
 @shared_task(bind=True, ignore_result=True)
 def update_ns_propagated(bind=True):
-    models.Zone.update_ns_propagated(delay=getattr(settings, 'ZINC_NS_UPDATE_DELAY', 0.3))
+    redis_client = redis.from_url(settings.LOCK_SERVER_URL)
+
+    # make this lock timeout big enough to cover updating about 1000 zones
+    # ns_propagated flag and small enough to update the flag in an acceptable
+    # time frame. 5 minutes sound good at the moment.
+
+    lock = redis_client.lock('update_ns_propagated', timeout=300)
+    if not lock.acquire(blocking=False):
+        logger.info('Cannot aquire task lock. Probaly another task is running. Bailing out.')
+        return
+    try:
+        models.Zone.update_ns_propagated(delay=getattr(settings, 'ZINC_NS_UPDATE_DELAY', 0.3))
+    except:
+        logger.exception("Could not update ns_propagated flag")
+
+    lock.release()
