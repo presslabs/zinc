@@ -237,3 +237,35 @@ def test_create_policy_routed_if_cname_exists_should_fail(zone, api_client, boto
     with pytest.raises(m.PolicyRecord.DoesNotExist):
         m.PolicyRecord.objects.get(name='www', zone=zone)
     assert response.data['name'] == ['A CNAME record of the same name already exists.']
+
+
+@pytest.mark.django_db
+def test_delete_then_create_policy_record(zone, api_client):
+    policy = G(m.Policy)
+    ip = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=get_local_aws_regions()[0], ip=ip)
+
+    policy_record = G(m.PolicyRecord, policy=policy, zone=zone, name='www')
+    response = api_client.delete(
+        '/zones/%s/records/%s' % (zone.id, hash_policy_record(policy_record))
+    )
+
+    assert response.status_code == 204
+    pr = m.PolicyRecord.objects.get(id=policy_record.id)
+    assert pr.dirty is True
+    assert pr.deleted is True
+
+    response = api_client.post(
+        '/zones/%s/records' % (zone.id),
+        data={
+            'name': policy_record.name,  # same name
+            'type': 'POLICY_ROUTED',
+            'values': [str(policy.id)]
+        }
+    )  # this will be an update
+
+    assert response.status_code == 201
+    pr = m.PolicyRecord.objects.get(id=policy_record.id)
+    assert pr.id == policy_record.id
+    assert pr.dirty is True
+    assert pr.deleted is False

@@ -257,6 +257,7 @@ class Zone(models.Model):
                 else:
                     # Update policy for this record.
                     policy_record.policy = policy
+                    policy_record.deleted = False  # clear deleted flag
                 policy_record.dirty = True
             except PolicyRecord.DoesNotExist:
                 # Policy don't exists so create one.
@@ -429,6 +430,8 @@ class PolicyRecord(models.Model):
         # build the tree for this policy record.
         if self.deleted:
             # if the zone is marked as deleted don't try to build the tree.
+            self.delete_record()
+            self.delete()
             return
 
         self.zone.add_record({

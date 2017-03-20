@@ -741,3 +741,35 @@ def test_untouched_policy_not_deleted(zone, boto_client):
 
     # check policy1's records are still here
     assert policy_records == set(['_zn_policy1.test-zinc.net.', '_zn_policy2.test-zinc.net.'])
+
+
+@pytest.mark.django_db
+def test_delete_policy_record(zone, boto_client):
+    """
+    Tests a policy record by deleting and creating immediate after. Issue #210
+    """
+    ip1 = create_ip_with_healthcheck()
+    policy = G(m.Policy, name='policy')
+    G(m.PolicyMember, ip=ip1, policy=policy, region='us-east-1', weight=10)
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='www', dirty=True)
+
+    zone.build_tree()  # reconcile
+    policy_record.soft_delete()  # delete the record
+    zone.build_tree()  # reconcile
+
+    # assert the object is deleted.
+    with pytest.raises(m.PolicyRecord.DoesNotExist):
+        m.PolicyRecord.objects.get(id=policy_record.id)
+
+    # assert route53 should be empty
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },  # this is a ordinary record. should be not modified.
+    ]
+    assert strip_ns_and_soa(
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    ) == sorted(expected, key=sort_key)
