@@ -9,8 +9,6 @@ import botocore.retryhandler
 from botocore.exceptions import ClientError
 from django.conf import settings
 
-from django_project.vendors import hashids
-
 
 def delay_exponential(base, *a, **kwa):
     """
@@ -98,15 +96,14 @@ class Zone(object):
 
     def add_records(self, records):
         for record in records:
-            record.setdefault('id', hashids.encode_record(record, self.zone_record.route53_zone.id))
-            self.add_record_changes(record, key=record['id'])
+            self.add_record_changes(record, key=record.id)
 
     def add_record_changes(self, record, key=None):
-        rrs = RecordHandler.encode(record, self.root)
+        rrs = record.encode()
         if not key or key not in self.records():
             action = 'CREATE'
         else:
-            action = 'DELETE' if record.get('delete', False) else 'UPSERT'
+            action = 'DELETE' if record.deleted else 'UPSERT'
 
         self._change_batch.append({
             'Action': action,
@@ -132,9 +129,9 @@ class Zone(object):
         self._cache_aws_records()
         entries = {}
         for aws_record in self._aws_records or []:
-            record = RecordHandler.decode(aws_record, self.root, self.id)
+            record = Record.from_aws_record(aws_record, root=self.root, route53_id=self.id)
             if record:
-                entries[record['id']] = record
+                entries[record.record_hash] = record
         return entries
 
     @property
@@ -147,7 +144,7 @@ class Zone(object):
         if not self.exists:
             return None
         ns = [record for record in self.records().values()
-              if record['type'] == 'NS' and record['name'] == '@']
+              if record.type == 'NS' and record.name == '@']
         assert len(ns) == 1
         return ns[0]
 
@@ -242,48 +239,53 @@ class Zone(object):
                 logger.exception("Error while handling %s", zone_record.name)
 
 
-class RecordHandler:
-    @classmethod
-    def _add_root(cls, name, root):
-        return root if name == '@' else '{}.{}'.format(name, root)
+class Record:
+    _attr_mapping = dict([
+        ('name', 'Name'),
+        ('type', 'Type'),
+        ('managed', 'Managed'),
+        ('ttl', 'ttl'),
+        ('alias_target', 'AliasTarget'),
+        ('values', 'Values'),
+        ('weight', 'Weight'),
+        ('region', 'Region'),
+        ('set_identifier', 'SetIdentifier'),
+        ('health_check_id', 'HealthCheckId'),
+        ('traffic_policy_instance_id', 'TrafficPolicyInstanceId'),
+    ])
+    _r53_to_obj = {v: k for k, v in _attr_mapping.items()}
+
+    def __init__(self, name=None, type=None, alias_target=None, deleted=False, dirty=False,
+                 health_check_id=None, managed=False, region=None, set_identifier=None,
+                 traffic_policy_instance_id=None, ttl=None, values=None, weight=None,
+                 zone=None, zone_id=None, zone_root=None):
+        self.name = name
+        self.type = type
+        self.ttl = ttl
+        self.alias_target = alias_target
+        self.values = values
+        self.weight = weight
+        self.region = region
+        self.set_identifier = set_identifier
+        self.health_check_id = health_check_id
+        self.traffic_policy_instance_id = traffic_policy_instance_id
+        if zone is None:
+            self.zone_id = zone_id
+            self.zone_root = zone_root
+            assert self.zone_id is not None
+            assert self.zone_root is not None
+        else:
+            self.zone_id = zone.route53_id
+            self.zone_root = zone.root
+        self.deleted = deleted
+        self.dirty = dirty
+        self.managed = managed
+
+    def __repr__(self):
+        return "<Record id={} {}:{}>".format(self.id, self.type, self.name)
 
     @classmethod
-    def _strip_root(cls, name, root):
-        return '@' if name == root else name.replace('.' + root, '')
-
-    @classmethod
-    def encode(cls, record, root):
-        encoded_record = {
-            'Name': cls._add_root(record['name'], root),
-            'Type': record['type'],
-        }
-        if 'values' in record:
-            if record['type'] == 'TXT':
-                # Encode json escape.
-                encoded_record['ResourceRecords'] = [{'Value': json.dumps(value)}
-                                                     for value in record['values']]
-            else:
-                encoded_record['ResourceRecords'] = [{'Value': value} for value in record['values']]
-
-        if 'ttl' in record:
-            encoded_record['TTL'] = record['ttl']
-
-        if 'AliasTarget' in record:
-            encoded_record['AliasTarget'] = {
-                'DNSName': record['AliasTarget']['DNSName'],
-                'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
-                'HostedZoneId': record['AliasTarget']['HostedZoneId'],
-            }
-
-        for extra in ['Weight', 'Region', 'SetIdentifier',
-                      'HealthCheckId', 'TrafficPolicyInstanceId']:
-            if extra in record:
-                encoded_record[extra] = record[extra]
-
-        return encoded_record
-
-    @classmethod
-    def decode(cls, record, root, route53_id):
+    def from_aws_record(cls, record, root, route53_id):
         # Determine if a R53 DNS record is of type ALIAS
         def alias_record(record):
             return 'AliasTarget' in record.keys()
@@ -292,41 +294,84 @@ class RecordHandler:
         def root_ns_soa(record, root):
             return record['Name'] == root and record['Type'] in ['NS', 'SOA']
 
-        decoded_record = {
-            'name': cls._strip_root(record['Name'], root),
-            'type': record['Type'],
-            'managed': (
-                (record.get('SetIdentifier', False) and True) or
-                root_ns_soa(record, root) or (alias_record(record))
-            ),
-        }
+        kwargs = {}
+        for attr_name in ['weight', 'region', 'set_identifier', 'health_check_id',
+                          'traffic_policy_instance_id']:
+            kwargs[attr_name] = record.get(cls._attr_mapping[attr_name], None)
 
-        if 'TTL' in record:
-            decoded_record['ttl'] = record['TTL']
+        new = cls(zone_id=route53_id, zone_root=root, **kwargs)
+        new.name = _strip_root(record['Name'], root)
+        new.type = record['Type']
+        new.managed = ((record.get('SetIdentifier', False)) or
+                       root_ns_soa(record, root) or (alias_record(record)))
 
+        new.ttl = record.get('TTL')
         if alias_record(record):
-            decoded_record['AliasTarget'] = {
+            new.alias_target = {
                 'DNSName': record['AliasTarget']['DNSName'],
                 'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
                 'HostedZoneId': record['AliasTarget']['HostedZoneId']
             }
         elif record['Type'] == 'TXT':
             # Decode json escaped strings
-            decoded_record['values'] = [json.loads('[%s]' % value['Value'])[0]
-                                        for value in record.get('ResourceRecords', [])]
+            new.values = [json.loads('[%s]' % value['Value'])[0]
+                          for value in record.get('ResourceRecords', [])]
         else:
-            decoded_record['values'] = [value['Value'] for value in
-                                        record.get('ResourceRecords', [])]
+            new.values = [value['Value'] for value in
+                          record.get('ResourceRecords', [])]
+        return new
 
-        for extra in ['Weight', 'Region', 'SetIdentifier',
-                      'HealthCheckId', 'TrafficPolicyInstanceId']:
-            if extra in record:
-                decoded_record[extra] = record[extra]
+    @property
+    def record_hash(self):
+        from django_project.vendors.hashids import _encode
+        from django_project import get_record_type
+        zone_hash = _encode(self.zone_id)
+        record_hash = _encode(self.name, self.type, self.set_identifier)
+        return 'Z{zone}Z{type}Z{id}'.format(
+            zone=zone_hash, type=get_record_type(self.type), id=record_hash)
 
-        set_id = hashids.encode_record(decoded_record, route53_id)
-        decoded_record['id'] = set_id
+    @property
+    def id(self):
+        return self.record_hash
 
-        return decoded_record
+    def encode(self):
+        encoded_record = {
+            'Name': _add_root(self.name, self.zone_root),
+            'Type': self.type,
+        }
+        if self.values is not None:
+            if self.type == 'TXT':
+                # Encode json escape.
+                encoded_record['ResourceRecords'] = [{'Value': json.dumps(value)}
+                                                     for value in self.values]
+            else:
+                encoded_record['ResourceRecords'] = [{'Value': value} for value in self.values]
+
+        if self.ttl is not None:
+            encoded_record['TTL'] = self.ttl
+
+        if self.alias_target is not None:
+            encoded_record['AliasTarget'] = {
+                'DNSName': self.alias_target['DNSName'],
+                'EvaluateTargetHealth': self.alias_target['EvaluateTargetHealth'],
+                'HostedZoneId': self.alias_target['HostedZoneId'],
+            }
+
+        for attr_name in ['Weight', 'Region', 'SetIdentifier',
+                          'HealthCheckId', 'TrafficPolicyInstanceId']:
+            value = getattr(self, self._r53_to_obj[attr_name])
+            if value is not None:
+                encoded_record[attr_name] = value
+
+        return encoded_record
+
+
+def _strip_root(name, root):
+    return '@' if name == root else name.replace('.' + root, '')
+
+
+def _add_root(name, root):
+    return root if name == '@' else '{}.{}'.format(name, root)
 
 
 class HealthCheck:

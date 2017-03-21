@@ -20,7 +20,7 @@ def _encode(*args):
     return hashids.encode(_set_id)
 
 
-def encode_record(record, zone_id=''):
+def encode_record(record, zone_id):
     zone_hash = _encode(zone_id)
     type_key = 'Type'
     name_key = 'Name'

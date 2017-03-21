@@ -3,14 +3,19 @@ from django_dynamic_fixture import G
 from django_project.vendors import hashids
 from django_project import POLICY_ROUTED
 from zinc import models as m
+from zinc import route53
+
+
+def is_ns_or_soa(record):
+    if isinstance(record, route53.Record):
+        return (record.type in ('NS', 'SOA') and record.name == '@')
+    else:
+        return (record['type'] in ('NS', 'SOA') and record['name'] == '@')
 
 
 def strip_ns_and_soa(records):
     """The NS and SOA records are managed by AWS, so we won't care about them in tests"""
-    return [
-        dict(record) for record in records
-        if not (record['type'] in ('NS', 'SOA') and record['name'] == '@')
-    ]
+    return [dict(record) for record in records if not is_ns_or_soa(record)]
 
 
 def hash_test_record(zone):
@@ -21,6 +26,12 @@ def hash_test_record(zone):
 
 
 def hash_policy_record(policy_record):
+    assert policy_record.serialize().record_hash == hashids.encode_record({
+        'name': policy_record.name,
+        'type': POLICY_ROUTED,
+    }, policy_record.zone.route53_zone.id)
+
+    return policy_record.serialize().record_hash
     return hashids.encode_record({
         'name': policy_record.name,
         'type': POLICY_ROUTED,
@@ -76,7 +87,7 @@ def create_ip_with_healthcheck():
     return ip
 
 
-def get_record_from_base(record, zone, managed=False, dirty=False):
+def record_data_to_response(record, zone, managed=False, dirty=False):
     record_hash = hash_record(record, zone)
     keys = ['name', 'type', 'ttl', 'values']
     return {
@@ -87,3 +98,23 @@ def get_record_from_base(record, zone, managed=False, dirty=False):
         'managed': managed,
         'dirty': dirty
     }
+
+
+def record_to_response(record, zone, managed=False, dirty=False):
+    record_hash = record.record_hash
+    keys = ['name', 'type', 'ttl', 'values']
+    return {
+        **{key: getattr(record, key) for key in keys},
+        'fqdn': '{}.{}'.format(record.name, zone.root),
+        'id': record_hash,
+        'url': 'http://testserver/zones/%s/records/%s' % (zone.id, record_hash),
+        'managed': managed,
+        'dirty': dirty
+    }
+
+
+def get_record_from_base(record, *a, **kwa):
+    if isinstance(record, route53.Record):
+        return record_to_response(record, *a, **kwa)
+    else:
+        return record_data_to_response(record, *a, **kwa)
