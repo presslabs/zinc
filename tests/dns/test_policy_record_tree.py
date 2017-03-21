@@ -358,18 +358,18 @@ def test_policy_record_deletion(zone, boto_client):
 
     zone.build_tree()
 
-    expected = [
-        {
+    expected = sorted(
+        ([{
             'Name': 'test.test-zinc.net.',
             'ResourceRecords': [{'Value': '1.1.1.1'}],
             'TTL': 300,
             'Type': 'A'
-        },
-    ] + policy_members_to_list(policy_members, policy_record)
-
+        }] + policy_members_to_list(policy_members, policy_record)),
+        key=sort_key,
+    )
     assert strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
-    ) == sorted(expected, key=sort_key)
+    ) == expected
 
     policy_record.delete_record()
 

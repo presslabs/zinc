@@ -7,7 +7,6 @@ from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.db import models, transaction
 
 from django_project import POLICY_ROUTED
-from django_project.vendors import hashids
 from zinc import ns_check, route53, tasks
 from zinc.route53 import HealthCheck, get_local_aws_region_choices
 from zinc.validators import validate_domain, validate_hostname
@@ -102,51 +101,53 @@ class Policy(models.Model):
 
     def _remove_tree(self, zone):
         to_delete_records = []
-        for _, record in zone.route53_zone.records().items():
-            if record['name'].startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
-                record['delete'] = True
+        for record in zone.route53_zone.records().values():
+            if record.name.startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
+                record.deleted = True
                 to_delete_records.append(record)
         zone.records = to_delete_records
 
-    def _build_weighted_tree(self, policy_members, region_suffixed=True):
+    def _build_weighted_tree(self, policy_members, zone, region_suffixed=True):
         # Build simple tree
         records = []
         for policy_member in policy_members:
-            health_check = {}
+            health_check_kwa = {}
             if policy_member.ip.healthcheck_id:
-                health_check['HealthCheckId'] = str(policy_member.ip.healthcheck_id)
-            record = {
-                'ttl': 30,
-                'type': 'A',
-                'values': [policy_member.ip.ip],
-                'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
-                'Weight': policy_member.weight,
-                **health_check
-            }
+                health_check_kwa['health_check_id'] = str(policy_member.ip.healthcheck_id)
+            record = route53.Record(
+                ttl=30,
+                type='A',
+                values=[policy_member.ip.ip],
+                set_identifier='{}-{}'.format(str(policy_member.id), policy_member.region),
+                weight=policy_member.weight,
+                zone=zone,
+                **health_check_kwa,
+            )
             if region_suffixed:
-                record['name'] = '{}_{}_{}'.format(RECORD_PREFIX, self.name, policy_member.region)
+                record.name = '{}_{}_{}'.format(RECORD_PREFIX, self.name, policy_member.region)
             else:
-                record['name'] = '{}_{}'.format(RECORD_PREFIX, self.name)
+                record.name = '{}_{}'.format(RECORD_PREFIX, self.name)
             records.append(record)
 
         return records
 
     def _build_lbr_tree(self, zone, policy_members):
         # Build latency based routed tree
-        records = self._build_weighted_tree(policy_members)
+        records = self._build_weighted_tree(policy_members, zone=zone)
         regions = set([pm.region for pm in policy_members])
         for region in regions:
-            record = {
-                'name': '{}_{}'.format(RECORD_PREFIX, self.name),
-                'type': 'A',
-                'AliasTarget': {
+            record = route53.Record(
+                name='{}_{}'.format(RECORD_PREFIX, self.name),
+                type='A',
+                alias_target={
                     'HostedZoneId': zone.route53_zone.id,
                     'DNSName': '{}_{}_{}.{}'.format(RECORD_PREFIX, self.name, region, zone.root),
                     'EvaluateTargetHealth': True  # len(regions) > 1
                 },
-                'Region': region,
-                'SetIdentifier': region,
-            }
+                region=region,
+                set_identifier=region,
+                zone=zone,
+            )
             records.append(record)
         return records
 
@@ -159,7 +160,7 @@ class Policy(models.Model):
             records = self._build_lbr_tree(zone, policy_members)
         elif len(regions) == 1:
             # Case with a single region
-            records = self._build_weighted_tree(policy_members, region_suffixed=False)
+            records = self._build_weighted_tree(policy_members, region_suffixed=False, zone=zone)
         else:
             # no policy record applied
             # should raise an error or log this
@@ -241,17 +242,17 @@ class Zone(models.Model):
         # Add record if is POLICY_ROUTED then create one and add it.
         # else add to aws zone.
         # Return record hash or policy record id.
-        if record['type'] == POLICY_ROUTED:
+        if record.type == POLICY_ROUTED:
             try:
-                policy = Policy.objects.get(id=record['values'][0])
+                policy = Policy.objects.get(id=record.values[0])
             except Policy.DoesNotExist:
                 # Policy don't exists. Return 400
                 raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
-                    record['values'][0]))
+                    record.values[0]))
             try:
                 # update the policy record. Or delete or update policy.
-                policy_record = self.policy_records.get(name=record['name'])
-                if record.get('delete', False):
+                policy_record = self.policy_records.get(name=record.name)
+                if record.deleted:
                     # The record will be deleted
                     policy_record.deleted = True
                 else:
@@ -261,13 +262,13 @@ class Zone(models.Model):
                 policy_record.dirty = True
             except PolicyRecord.DoesNotExist:
                 # Policy don't exists so create one.
-                if record.get('delete', False):
+                if record.deleted:
                     return None  # trying to delete a nonexisting POLICY_RECORD.
-                policy_record = PolicyRecord(name=record['name'], policy=policy, zone=self)
+                policy_record = PolicyRecord(name=record.name, policy=policy, zone=self)
                 policy_record.full_clean()
 
             policy_record.save()
-            return policy_record.serialize(zone=self)
+            return policy_record.serialize()
         else:
             # This is a normal record. Forward it to route53 utils.
             self.route53_zone.add_records([record])
@@ -277,19 +278,20 @@ class Zone(models.Model):
         records = self.route53_zone.records()
         if record_hash not in records:
             # trying to delete a nonexistent record. skip
+            # raise Exception("cocos")
             return
         to_delete_record = records[record_hash]
-        to_delete_record['delete'] = True
+        to_delete_record.deleted = True
         self.route53_zone.add_records([to_delete_record])
 
     def delete_record(self, record):
-        self.delete_record_by_hash(hashids.encode_record(record, self.route53_zone.id))
+        self.delete_record_by_hash(record.record_hash)
 
     def get_policy_records(self):
         # return a list with Policy records
         records = []
         for policy_record in self.policy_records.all():
-            records.append(policy_record.serialize(zone=self))
+            records.append(policy_record.serialize())
 
         return records
 
@@ -312,18 +314,18 @@ class Zone(models.Model):
         # Hide all records that starts with the RECORD_PREFIX.
         # Translate policy records.
         for record_hash, record in records.items():
-            record['id'] = record_hash
-            if record['name'].startswith(RECORD_PREFIX):
+            # record.id = record_hash
+            if record.name.startswith(RECORD_PREFIX):
                 continue
-            if ('AliasTarget' in record):
-                if self.policy_records.filter(name=record['name']).exists():
+            if record.alias_target is not None:
+                if self.policy_records.filter(name=record.name).exists():
                     continue
                 # if the record is ALIAS then translate it to ALIAS type known by API
-                record['values'] = ['ALIAS {}'.format(record['AliasTarget']['DNSName'])]
+                record.values = ['ALIAS {}'.format(record.alias_target['DNSName'])]
             filtered_records.append(record)
 
         for record in self.get_policy_records():
-            record['zone_id'] = self.id
+            record.zone_id = self.route53_id
             filtered_records.append(record)
 
         return filtered_records
@@ -358,7 +360,7 @@ class Zone(models.Model):
         policies = set([pr.policy for pr in self.policy_records.select_related('policy')])
         pol_names = ['{}_{}'.format(RECORD_PREFIX, policy.name) for policy in policies]
         for record in self.route53_zone.records().values():
-            name = record['name']
+            name = record.name
             if name.startswith(RECORD_PREFIX):
                 for pol_name in pol_names:
                     if name.startswith(pol_name):
@@ -397,21 +399,23 @@ class PolicyRecord(models.Model):
     def __str__(self):
         return '{}.{}'.format(self.name, self.zone.root)
 
-    def serialize(self, zone):
-        return {
-            'name': self.name,
-            'fqdn': '{}.{}'.format(self.name, self.zone.root),
-            'type': POLICY_ROUTED,
-            'values': [str(self.policy.id)],
-            'ttl': None,
-            'dirty': self.dirty,
-            'manage': False,
-            'deleted': self.deleted,
-            'id': hashids.encode_record({
-                'name': self.name,
-                'type': POLICY_ROUTED
-            }, zone.route53_zone.id)
-        }
+    def serialize(self):
+        assert self.zone is not None
+        return route53.Record(
+            name=self.name,
+            # 'fqdn': '{}.{}'.format(self.name, self.zone.root),
+            type=POLICY_ROUTED,
+            values=[str(self.policy.id)],
+            ttl=None,
+            dirty=self.dirty,
+            managed=False,
+            deleted=self.deleted,
+            # 'id': hashids.encode_record({
+            #     'name': self.name,
+            #     'type': POLICY_ROUTED
+            # }, zone.route53_zone.id
+            zone=self.zone,
+        )
 
     def soft_delete(self):
         self.deleted = True
@@ -421,7 +425,7 @@ class PolicyRecord(models.Model):
     def clean(self):
         zone_records = self.zone.route53_zone.records()
         for record in zone_records.values():
-            if record['name'] == self.name and record['type'] == 'CNAME':
+            if record.name == self.name and record.type == 'CNAME':
                 raise ValidationError({'name': "A CNAME record of the same name already exists."})
 
         super().clean()
@@ -435,25 +439,32 @@ class PolicyRecord(models.Model):
             self.delete()
             return
 
-        self.zone.add_record({
-            'name': self.name,
-            'type': 'A',
-            'AliasTarget': {
-                'HostedZoneId': self.zone.route53_zone.id,
-                'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
-                'EvaluateTargetHealth': False
-            },
-        })
+        self.zone.add_record(
+            route53.Record(
+                name=self.name,
+                type='A',
+                alias_target={
+                    'HostedZoneId': self.zone.route53_zone.id,
+                    'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
+                    'EvaluateTargetHealth': False
+                },
+                zone=self.zone,
+            )
+        )
 
         self.dirty = False  # mark as clean
         self.save()
 
+    def _top_level_record(self):
+        return route53.Record(
+            name=self.name,
+            type='A',
+            alias_target={},
+            zone=self.zone,
+        )
+
     def delete_record(self):
         # delete the tree.
-        self.zone.delete_record({
-            'name': self.name,
-            'type': 'A',
-            'AliasTarget': {},
-        })
+        self.zone.delete_record_by_hash(self._top_level_record().record_hash)
         self.policy.delete_policy(self.zone)
         self.zone.commit()

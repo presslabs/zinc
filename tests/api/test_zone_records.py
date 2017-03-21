@@ -9,6 +9,7 @@ from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from tests.utils import (strip_ns_and_soa, hash_test_record, aws_strip_ns_and_soa, aws_sort_key,
                          get_test_record, record_to_aws, get_record_from_base)
 from zinc import models as m
+from zinc import route53
 
 
 @pytest.mark.django_db
@@ -50,24 +51,23 @@ def test_create_record(api_client, zone, boto_client):
 def test_update_record_values(api_client, zone, boto_client):
     G(m.Zone)
 
-    record = {
+    record_data = {
         'values': ['1.2.3.4']
     }
     response = api_client.patch(
         '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
-        data=record
-    )
+        data=record_data)
 
     assert response.data == {
         **get_test_record(zone),
-        **record
+        **record_data
     }
     assert aws_strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
         record_to_aws({
             **get_test_record(zone),
-            **record
+            **record_data
         }, zone.root)
     ], key=aws_sort_key)
 
@@ -76,24 +76,24 @@ def test_update_record_values(api_client, zone, boto_client):
 def test_update_record_ttl(api_client, zone, boto_client):
     G(m.Zone)
 
-    record = {
+    record_data = {
         'ttl': 580
     }
     response = api_client.patch(
         '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
-        data=record
+        data=record_data
     )
 
     assert response.data == {
         **get_test_record(zone),
-        **record
+        **record_data
     }
     assert aws_strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
         record_to_aws({
             **get_test_record(zone),
-            **record
+            **record_data
         }, zone.root)
     ], key=aws_sort_key)
 
@@ -115,15 +115,18 @@ def test_update_record_type(api_client, zone):
 
 
 @pytest.mark.django_db
+def test_hash_test_record(zone):
+    assert hash_test_record(zone)[-16:] == 'Z1ZOrpXqQazJdzbN'
+
+
+@pytest.mark.django_db
 def test_update_record_name(api_client, zone):
     G(m.Zone)
-
-    record = {
-        'name': 'CNAME'
-    }
     response = api_client.patch(
         '/zones/{}/records/{}'.format(zone.id, hash_test_record(zone)),
-        data=record
+        data={
+            'name': 'CNAME'
+        }
     )
     assert response.data == {
         'non_field_errors': ["Can't update 'name' and 'type' fields. "]
@@ -146,12 +149,13 @@ def test_record_deletion(api_client, zone, boto_client):
 
 @pytest.mark.django_db
 def test_delete_nonexistent_records(api_client, zone):
-    record2 = {
-        'name': 'detest',
-        'ttl': 400,
-        'type': 'NS',
-        'values': ['ns.test.com', 'ns2.test.com']
-    }
+    record2 = route53.Record(
+        name='detest',
+        ttl=400,
+        type='NS',
+        values=['ns.test.com', 'ns2.test.com'],
+        zone=zone,
+    )
     zone.records = [record2]
     zone.route53_zone.commit()
     response = api_client.delete(
@@ -234,12 +238,14 @@ def test_add_record_invalid_ttl(api_client, zone):
 
 @pytest.mark.django_db
 def test_hidden_records(api_client, zone):
-    zone.add_record({
-        'name': '{}_ceva'.format(m.RECORD_PREFIX),
-        'ttl': 300,
-        'type': 'A',
-        'values': ['1.2.3.4']
-    })
+    """Tests any record starting with RECORD_PREFIX is hidden by the api"""
+    zone.add_record(route53.Record(
+        name='{}_ceva'.format(m.RECORD_PREFIX),
+        ttl=300,
+        type='A',
+        values=['1.2.3.4'],
+        zone=zone,
+    ))
     zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
@@ -251,15 +257,16 @@ def test_hidden_records(api_client, zone):
 
 @pytest.mark.django_db
 def test_alias_records(api_client, zone):
-    alias_record = {
-        'name': 'ceva',
-        'type': 'A',
-        'AliasTarget': {
+    alias_record = route53.Record(
+        name='ceva',
+        type='A',
+        alias_target={
             'HostedZoneId': zone.route53_zone.id,
             'DNSName': 'test.%s' % zone.root,
             'EvaluateTargetHealth': False
         },
-    }
+        zone=zone,
+    )
     zone.add_record(alias_record)
     zone.route53_zone.commit()
     response = api_client.get(
@@ -297,7 +304,8 @@ def test_validation_prefix(api_client, zone):
 
 def get_ns(records):
     for record in records:
-        if record['type'] == 'NS':
+        if record.type == 'NS':
+            # TODO: this is probably wrong if you have other NS records for zone delegation
             return record
 
 
@@ -305,7 +313,7 @@ def get_ns(records):
 def test_remove_a_managed_record(api_client, zone):
     ns = get_ns(zone.records)
     response = api_client.delete(
-        '/zones/%s/records/%s' % (zone.id, ns['id'])
+        '/zones/%s/records/%s' % (zone.id, ns.id)
     )
 
     assert response.status_code == 400
@@ -446,12 +454,13 @@ def test_txt_record_escape(zone, api_client):
         r'back\slash',
         r'escaped \"double quote'
     ])
-    zone.add_record({
-        'name': 'text',
-        'ttl': 300,
-        'type': 'TXT',
-        'values': texts,
-    })
+    zone.add_record(route53.Record(
+        name='text',
+        ttl=300,
+        type='TXT',
+        values=texts,
+        zone=zone,
+    ))
     zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,

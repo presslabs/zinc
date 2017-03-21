@@ -6,36 +6,37 @@ import pytest
 from zinc import models, route53
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import hash_test_record
-from django_project.vendors.hashids import encode_record
 
 regions = route53.get_local_aws_regions()
 
 
 @pytest.mark.django_db
 def test_add_zone_record(zone):
-    record = {
-        'name': 'goo',
-        'type': 'CNAME',
-        'values': ['google.com'],
-        'ttl': 300,
-    }
+    record = route53.Record(
+        name='goo',
+        type='CNAME',
+        values=['google.com'],
+        ttl=300,
+        zone_id=zone.route53_id,
+        zone_root=zone.root,
+    )
     zone.add_record(record)
     zone.route53_zone.commit()
 
-    assert encode_record(record, zone.route53_zone.id) in [r['id'] for r in zone.records]
+    assert record.record_hash in [r.id for r in zone.records]
 
 
 @pytest.mark.django_db
 def test_delete_zone_record(zone):
     record_hash = hash_test_record(zone)
     for r in zone.records:
-        if r['id'] == record_hash:
+        if r.id == record_hash:
             record = r
 
     zone.delete_record(record)
     zone.route53_zone.commit()
 
-    assert record_hash not in [r['id'] for r in zone.records]
+    assert record_hash not in [r.id for r in zone.records]
 
 
 @pytest.mark.django_db
@@ -50,16 +51,18 @@ def test_delete_zone_record_by_hash(zone):
 
 @pytest.mark.django_db
 def test_delete_zone_alias_record(zone):
-    record = {
-        'name': '_zn_something',
-        'type': 'A',
-        'AliasTarget': {
+    record = route53.Record(
+        name='something',
+        type='A',
+        alias_target={
             'DNSName': 'test.%s' % zone.root,
             'HostedZoneId': zone.route53_zone.id,
             'EvaluateTargetHealth': False
         },
-    }
+        zone=zone,
+    )
     record_hash = zone.add_record(record)
+    zone.route53_zone.commit()
 
     zone.delete_record(record)
     zone.route53_zone.commit()
@@ -69,17 +72,18 @@ def test_delete_zone_alias_record(zone):
 
 @pytest.mark.django_db
 def test_delete_zone_alias_record_with_set_id(zone):
-    record = {
-        'name': '_zn_something',
-        'type': 'A',
-        'AliasTarget': {
+    record = route53.Record(
+        name='_zn_something',
+        type='A',
+        alias_target={
             'DNSName': 'test.%s' % zone.root,
             'HostedZoneId': zone.route53_zone.id,
             'EvaluateTargetHealth': False
         },
-        'SetIdentifier': 'set_id',
-        'Region': regions[0]
-    }
+        set_identifier='set_id',
+        region=regions[0],
+        zone=zone,
+    )
     record_hash = zone.add_record(record)
     zone.route53_zone.commit()
 

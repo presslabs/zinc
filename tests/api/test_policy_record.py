@@ -42,10 +42,12 @@ def test_policy_record_get(api_client, zone):
         '/zones/%s' % zone.id
     )
 
-    assert strip_ns_and_soa(response.data['records']) == [
+    response_data = strip_ns_and_soa(response.data['records'])
+    expected = [
         get_test_record(zone),
         get_policy_record(policy_record),
     ]
+    assert response_data == expected
 
 
 @pytest.mark.django_db

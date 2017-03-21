@@ -8,8 +8,8 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 
 from zinc.models import RECORD_PREFIX
+from zinc import route53
 from django_project import ZINC_RECORD_TYPES, POLICY_ROUTED
-from django_project.vendors import hashids
 from django_project import ALLOWED_RECORD_TYPES
 
 
@@ -36,11 +36,12 @@ class RecordListSerializer(serializers.ListSerializer):
         self.context['zone'] = zone
 
         # return all zone records
-        records = zone.records
-        for record in records:
-            record['zone'] = zone
+        # records = [r.encode() for r in zone.records]
+        # print(records)
+        # for record in records:
+        #     record['zone'] = zone
 
-        return super(RecordListSerializer, self).to_representation(records)
+        return super(RecordListSerializer, self).to_representation(zone.records)
 
     def update(self, instnace, validated_data):
         raise NotImplementedError('Can not update records this way. Use records/ endpoint.')
@@ -62,12 +63,13 @@ class RecordSerializer(serializers.Serializer):
 
     def get_fqdn(self, obj):
         zone = self.context['zone']
-        if obj['name'] == '@':
+        if obj.name == '@':
             return zone.root
-        return '{}.{}'.format(obj['name'], zone.root)
+        return '{}.{}'.format(obj.name, zone.root)
 
     def get_id(self, obj):
-        return hashids.encode_record(obj, self.context['zone'].route53_zone.id)
+        # assert isinstance(obj.zone_id, str)
+        return obj.record_hash
 
     def get_url(self, obj):
         # compute the url for record
@@ -77,23 +79,29 @@ class RecordSerializer(serializers.Serializer):
         return request.build_absolute_uri('/zones/%s/records/%s' % (zone.id, record_id))
 
     def get_managed(self, obj):
-        return obj.get('managed', False)
+        return obj.managed
 
     def get_dirty(self, obj):
-        return obj.get('dirty', False)
+        return obj.dirty
+
+    def to_representation(self, obj):
+        rv = super().to_representation(obj)
+        return rv
 
     def create(self, validated_data):
         zone = self.context['zone']
-        validated_data['id'] = self.get_id(validated_data)
+        obj = route53.Record(zone=zone, **validated_data)
         with interpret_client_error():
-            record = zone.add_record(validated_data)
+            record = zone.add_record(obj)
             zone.route53_zone.commit()
         return record
 
     def update(self, obj, validated_data):
         zone = self.context['zone']
-        obj.update(validated_data)
-        if obj.get('managed'):
+        for attr, value in validated_data.items():
+            setattr(obj, attr, value)
+        # obj.update(validated_data)
+        if obj.managed:
             raise ValidationError("Can't change a managed record.")
         record = zone.add_record(obj)
         with interpret_client_error():
@@ -116,9 +124,10 @@ class RecordSerializer(serializers.Serializer):
 
     def validate(self, data):
         errors = {}
-        # if is a delete then the data should be {'delete': True}
+        # TODO: this stinks! we need a cleaner approach here
+        # if is a delete then the data should be {'deleted': True}
         if self.context['request'].method == 'DELETE':
-            return {'delete': True}
+            return {'deleted': True}
 
         # for PATCH type and name field can't be modified.
         if self.context['request'].method == 'PATCH':
