@@ -35,12 +35,6 @@ class RecordListSerializer(serializers.ListSerializer):
         # pass to RecordSerializer zone in the context.
         self.context['zone'] = zone
 
-        # return all zone records
-        # records = [r.encode() for r in zone.records]
-        # print(records)
-        # for record in records:
-        #     record['zone'] = zone
-
         return super(RecordListSerializer, self).to_representation(zone.records)
 
     def update(self, instnace, validated_data):
@@ -90,7 +84,7 @@ class RecordSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         zone = self.context['zone']
-        obj = route53.Record(zone=zone, **validated_data)
+        obj = route53.Record(zone=zone.route53_zone, **validated_data)
         with interpret_client_error():
             record = zone.add_record(obj)
             zone.route53_zone.commit()

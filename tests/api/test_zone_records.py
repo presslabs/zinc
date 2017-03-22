@@ -154,7 +154,7 @@ def test_delete_nonexistent_records(api_client, zone):
         ttl=400,
         type='NS',
         values=['ns.test.com', 'ns2.test.com'],
-        zone=zone,
+        zone=zone.route53_zone,
     )
     zone.records = [record2]
     zone.route53_zone.commit()
@@ -244,7 +244,7 @@ def test_hidden_records(api_client, zone):
         ttl=300,
         type='A',
         values=['1.2.3.4'],
-        zone=zone,
+        zone=zone.route53_zone,
     ))
     zone.route53_zone.commit()
     response = api_client.get(
@@ -265,7 +265,7 @@ def test_alias_records(api_client, zone):
             'DNSName': 'test.%s' % zone.root,
             'EvaluateTargetHealth': False
         },
-        zone=zone,
+        zone=zone.route53_zone,
     )
     zone.add_record(alias_record)
     zone.route53_zone.commit()
@@ -459,7 +459,7 @@ def test_txt_record_escape(zone, api_client):
         ttl=300,
         type='TXT',
         values=texts,
-        zone=zone,
+        zone=zone.route53_zone,
     ))
     zone.route53_zone.commit()
     response = api_client.get(

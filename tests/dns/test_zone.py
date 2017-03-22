@@ -17,8 +17,7 @@ def test_add_zone_record(zone):
         type='CNAME',
         values=['google.com'],
         ttl=300,
-        zone_id=zone.route53_id,
-        zone_root=zone.root,
+        zone=zone.route53_zone,
     )
     zone.add_record(record)
     zone.route53_zone.commit()
@@ -59,7 +58,7 @@ def test_delete_zone_alias_record(zone):
             'HostedZoneId': zone.route53_zone.id,
             'EvaluateTargetHealth': False
         },
-        zone=zone,
+        zone=zone.route53_zone,
     )
     record_saved = zone.add_record(record)
     zone.commit()
@@ -83,7 +82,7 @@ def test_delete_zone_alias_record_with_set_id(zone):
         },
         set_identifier='set_id',
         region=regions[0],
-        zone=zone,
+        zone=zone.route53_zone,
     )
     record_hash = zone.add_record(record)
     zone.route53_zone.commit()

@@ -129,7 +129,7 @@ class Zone(object):
         self._cache_aws_records()
         entries = {}
         for aws_record in self._aws_records or []:
-            record = Record.from_aws_record(aws_record, root=self.root, route53_id=self.id)
+            record = Record.from_aws_record(aws_record, zone=self)
             if record:
                 entries[record.record_hash] = record
         return entries
@@ -258,7 +258,7 @@ class Record:
     def __init__(self, name=None, type=None, alias_target=None, deleted=False, dirty=False,
                  health_check_id=None, managed=False, region=None, set_identifier=None,
                  traffic_policy_instance_id=None, ttl=None, values=None, weight=None,
-                 zone=None, zone_id=None, zone_root=None):
+                 zone=None):
         self.name = name
         self.type = type
         self.ttl = ttl
@@ -269,12 +269,8 @@ class Record:
         self.set_identifier = set_identifier
         self.health_check_id = health_check_id
         self.traffic_policy_instance_id = traffic_policy_instance_id
-        if zone is None:
-            self.zone_id = zone_id
-            self.zone_root = zone_root
-        else:
-            self.zone_id = zone.route53_id
-            self.zone_root = zone.root
+        self.zone_id = zone.id
+        self.zone_root = zone.root
         assert self.zone_id is not None
         assert self.zone_root is not None
         self.deleted = deleted
@@ -293,7 +289,7 @@ class Record:
         return root if name == '@' else '{}.{}'.format(name, root)
 
     @classmethod
-    def from_aws_record(cls, record, root, route53_id):
+    def from_aws_record(cls, record, zone):
         # Determine if a R53 DNS record is of type ALIAS
         def alias_record(record):
             return 'AliasTarget' in record.keys()
@@ -307,11 +303,11 @@ class Record:
                           'traffic_policy_instance_id']:
             kwargs[attr_name] = record.get(cls._obj_to_r53[attr_name], None)
 
-        new = cls(zone_id=route53_id, zone_root=root, **kwargs)
-        new.name = cls._strip_root(record['Name'], root)
+        new = cls(zone=zone, **kwargs)
+        new.name = cls._strip_root(record['Name'], zone.root)
         new.type = record['Type']
         new.managed = ((record.get('SetIdentifier', False)) or
-                       root_ns_soa(record, root) or (alias_record(record)))
+                       root_ns_soa(record, zone.root) or (alias_record(record)))
 
         new.ttl = record.get('TTL')
         if alias_record(record):
