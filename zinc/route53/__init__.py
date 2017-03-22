@@ -132,7 +132,7 @@ class Zone(object):
         for aws_record in self._aws_records or []:
             record = Record.from_aws_record(aws_record, zone=self)
             if record:
-                entries[record.record_hash] = record
+                entries[record.id] = record
         return entries
 
     @property

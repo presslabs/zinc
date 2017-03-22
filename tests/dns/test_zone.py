@@ -22,7 +22,7 @@ def test_add_zone_record(zone):
     zone.add_record(record)
     zone.route53_zone.commit()
 
-    assert record.record_hash in [r.id for r in zone.records]
+    assert record.id in [r.id for r in zone.records]
 
 
 @pytest.mark.django_db

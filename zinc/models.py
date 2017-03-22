@@ -287,7 +287,7 @@ class Zone(models.Model):
         self.route53_zone.add_records([to_delete_record])
 
     def delete_record(self, record):
-        self.delete_record_by_hash(record.record_hash)
+        self.delete_record_by_hash(record.id)
 
     def get_policy_records(self):
         # return a list with Policy records
@@ -462,6 +462,6 @@ class PolicyRecord(models.Model):
 
     def delete_record(self):
         # delete the tree.
-        self.zone.delete_record_by_hash(self._top_level_record().record_hash)
+        self.zone.delete_record_by_hash(self._top_level_record().id)
         self.policy.delete_policy(self.zone)
         self.zone.commit()

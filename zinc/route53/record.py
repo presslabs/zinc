@@ -130,15 +130,11 @@ class Record:
         return new
 
     @property
-    def record_hash(self):
+    def id(self):
         zone_hash = _encode(self.zone_id)
         record_hash = _encode(self.name, self.type, self.set_identifier)
         return 'Z{zone}Z{type}Z{id}'.format(
             zone=zone_hash, type=get_record_type(self.type), id=record_hash)
-
-    @property
-    def id(self):
-        return self.record_hash
 
     def encode(self):
         encoded_record = {

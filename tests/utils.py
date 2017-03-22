@@ -21,15 +21,15 @@ def hash_test_record(zone):
         name='test',
         type='A',
         zone=zone.route53_zone,
-    ).record_hash
+    ).id
 
 
 def hash_policy_record(policy_record):
-    return policy_record.serialize().record_hash
+    return policy_record.serialize().id
 
 
 def hash_record_dict(record, zone):
-    return route53.Record(zone=zone.route53_zone, **record).record_hash
+    return route53.Record(zone=zone.route53_zone, **record).id
 
 
 def aws_sort_key(record):
@@ -91,7 +91,7 @@ def record_data_to_response(record, zone, managed=False, dirty=False):
 
 
 def record_to_response(record, zone, managed=False, dirty=False):
-    record_hash = record.record_hash
+    record_hash = record.id
     keys = ['name', 'type', 'ttl', 'values']
     return {
         **{key: getattr(record, key) for key in keys},
