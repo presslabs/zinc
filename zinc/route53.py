@@ -272,11 +272,11 @@ class Record:
         if zone is None:
             self.zone_id = zone_id
             self.zone_root = zone_root
-            assert self.zone_id is not None
-            assert self.zone_root is not None
         else:
             self.zone_id = zone.route53_id
             self.zone_root = zone.root
+        assert self.zone_id is not None
+        assert self.zone_root is not None
         self.deleted = deleted
         self.dirty = dirty
         self.managed = managed
