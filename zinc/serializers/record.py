@@ -9,8 +9,7 @@ from django.conf import settings
 
 from zinc.models import RECORD_PREFIX
 from zinc import route53
-from django_project import ZINC_RECORD_TYPES, POLICY_ROUTED
-from django_project import ALLOWED_RECORD_TYPES
+from zinc.route53.record import ZINC_RECORD_TYPES, POLICY_ROUTED, ALLOWED_RECORD_TYPES
 
 
 @contextmanager

@@ -6,9 +6,9 @@ from logging import getLogger
 from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.db import models, transaction
 
-from django_project import POLICY_ROUTED
 from zinc import ns_check, route53, tasks
 from zinc.route53 import HealthCheck, get_local_aws_region_choices
+from zinc.route53.record import POLICY_ROUTED
 from zinc.validators import validate_domain, validate_hostname
 
 RECORD_PREFIX = '_zn'
