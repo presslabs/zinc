@@ -61,13 +61,14 @@ def test_delete_zone_alias_record(zone):
         },
         zone=zone,
     )
-    record_hash = zone.add_record(record)
-    zone.route53_zone.commit()
+    record_saved = zone.add_record(record)
+    zone.commit()
+    assert record_saved.id in [r.id for r in zone.records]
 
     zone.delete_record(record)
     zone.route53_zone.commit()
 
-    assert record_hash not in zone.records
+    assert record_saved.id not in [r.id for r in zone.records]
 
 
 @pytest.mark.django_db
