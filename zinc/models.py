@@ -114,6 +114,7 @@ class Policy(models.Model):
             health_check_kwa = {}
             if policy_member.ip.healthcheck_id:
                 health_check_kwa['health_check_id'] = str(policy_member.ip.healthcheck_id)
+            assert zone is not None
             record = route53.Record(
                 ttl=30,
                 type='A',
@@ -403,17 +404,12 @@ class PolicyRecord(models.Model):
         assert self.zone is not None
         return route53.Record(
             name=self.name,
-            # 'fqdn': '{}.{}'.format(self.name, self.zone.root),
             type=POLICY_ROUTED,
             values=[str(self.policy.id)],
             ttl=None,
             dirty=self.dirty,
             managed=False,
             deleted=self.deleted,
-            # 'id': hashids.encode_record({
-            #     'name': self.name,
-            #     'type': POLICY_ROUTED
-            # }, zone.route53_zone.id
             zone=self.zone,
         )
 
