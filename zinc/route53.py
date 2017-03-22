@@ -284,6 +284,14 @@ class Record:
     def __repr__(self):
         return "<Record id={} {}:{}>".format(self.id, self.type, self.name)
 
+    @staticmethod
+    def _strip_root(name, root):
+        return '@' if name == root else name.replace('.' + root, '')
+
+    @staticmethod
+    def _add_root(name, root):
+        return root if name == '@' else '{}.{}'.format(name, root)
+
     @classmethod
     def from_aws_record(cls, record, root, route53_id):
         # Determine if a R53 DNS record is of type ALIAS
@@ -300,7 +308,7 @@ class Record:
             kwargs[attr_name] = record.get(cls._attr_mapping[attr_name], None)
 
         new = cls(zone_id=route53_id, zone_root=root, **kwargs)
-        new.name = _strip_root(record['Name'], root)
+        new.name = cls._strip_root(record['Name'], root)
         new.type = record['Type']
         new.managed = ((record.get('SetIdentifier', False)) or
                        root_ns_soa(record, root) or (alias_record(record)))
@@ -336,7 +344,7 @@ class Record:
 
     def encode(self):
         encoded_record = {
-            'Name': _add_root(self.name, self.zone_root),
+            'Name': self._add_root(self.name, self.zone_root),
             'Type': self.type,
         }
         if self.values is not None:
@@ -364,14 +372,6 @@ class Record:
                 encoded_record[attr_name] = value
 
         return encoded_record
-
-
-def _strip_root(name, root):
-    return '@' if name == root else name.replace('.' + root, '')
-
-
-def _add_root(name, root):
-    return root if name == '@' else '{}.{}'.format(name, root)
 
 
 class HealthCheck:
