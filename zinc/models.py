@@ -141,7 +141,7 @@ class Policy(models.Model):
                 name='{}_{}'.format(RECORD_PREFIX, self.name),
                 type='A',
                 alias_target={
-                    'HostedZoneId': zone.route53_zone.id,
+                    'HostedZoneId': zone.id,
                     'DNSName': '{}_{}_{}.{}'.format(RECORD_PREFIX, self.name, region, zone.root),
                     'EvaluateTargetHealth': True  # len(regions) > 1
                 },
@@ -158,10 +158,11 @@ class Policy(models.Model):
         regions = set([pm.region for pm in policy_members])
         if len(regions) > 1:
             # Here is the case where are multiple regions
-            records = self._build_lbr_tree(zone, policy_members)
+            records = self._build_lbr_tree(zone.route53_zone, policy_members)
         elif len(regions) == 1:
             # Case with a single region
-            records = self._build_weighted_tree(policy_members, region_suffixed=False, zone=zone)
+            records = self._build_weighted_tree(
+                policy_members, region_suffixed=False, zone=zone.route53_zone)
         else:
             # no policy record applied
             # should raise an error or log this
@@ -410,7 +411,7 @@ class PolicyRecord(models.Model):
             dirty=self.dirty,
             managed=False,
             deleted=self.deleted,
-            zone=self.zone,
+            zone=self.zone.route53_zone,
         )
 
     def soft_delete(self):
@@ -444,7 +445,7 @@ class PolicyRecord(models.Model):
                     'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
                     'EvaluateTargetHealth': False
                 },
-                zone=self.zone,
+                zone=self.zone.route53_zone,
             )
         )
 
@@ -456,7 +457,7 @@ class PolicyRecord(models.Model):
             name=self.name,
             type='A',
             alias_target={},
-            zone=self.zone,
+            zone=self.zone.route53_zone,
         )
 
     def delete_record(self):
