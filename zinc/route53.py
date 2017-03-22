@@ -240,7 +240,7 @@ class Zone(object):
 
 
 class Record:
-    _attr_mapping = dict([
+    _obj_to_r53 = dict([
         ('name', 'Name'),
         ('type', 'Type'),
         ('managed', 'Managed'),
@@ -253,7 +253,7 @@ class Record:
         ('health_check_id', 'HealthCheckId'),
         ('traffic_policy_instance_id', 'TrafficPolicyInstanceId'),
     ])
-    _r53_to_obj = {v: k for k, v in _attr_mapping.items()}
+    _r53_to_obj = {v: k for k, v in _obj_to_r53.items()}
 
     def __init__(self, name=None, type=None, alias_target=None, deleted=False, dirty=False,
                  health_check_id=None, managed=False, region=None, set_identifier=None,
@@ -305,7 +305,7 @@ class Record:
         kwargs = {}
         for attr_name in ['weight', 'region', 'set_identifier', 'health_check_id',
                           'traffic_policy_instance_id']:
-            kwargs[attr_name] = record.get(cls._attr_mapping[attr_name], None)
+            kwargs[attr_name] = record.get(cls._obj_to_r53[attr_name], None)
 
         new = cls(zone_id=route53_id, zone_root=root, **kwargs)
         new.name = cls._strip_root(record['Name'], root)
