@@ -1,7 +1,5 @@
 from django_dynamic_fixture import G
 
-from django_project.vendors import hashids
-from django_project import POLICY_ROUTED
 from zinc import models as m
 from zinc import route53
 
@@ -19,27 +17,19 @@ def strip_ns_and_soa(records):
 
 
 def hash_test_record(zone):
-    return hashids.encode_record({
-        'name': 'test',
-        'type': 'A'
-    }, zone.route53_zone.id)
+    return route53.Record(
+        name='test',
+        type='A',
+        zone=zone
+    ).record_hash
 
 
 def hash_policy_record(policy_record):
-    assert policy_record.serialize().record_hash == hashids.encode_record({
-        'name': policy_record.name,
-        'type': POLICY_ROUTED,
-    }, policy_record.zone.route53_zone.id)
-
     return policy_record.serialize().record_hash
-    return hashids.encode_record({
-        'name': policy_record.name,
-        'type': POLICY_ROUTED,
-    }, policy_record.zone.route53_zone.id)
 
 
-def hash_record(record, zone):
-    return hashids.encode_record(record, zone.route53_zone.id)
+def hash_record_dict(record, zone):
+    return route53.Record(zone=zone, **record).record_hash
 
 
 def aws_sort_key(record):
@@ -88,7 +78,7 @@ def create_ip_with_healthcheck():
 
 
 def record_data_to_response(record, zone, managed=False, dirty=False):
-    record_hash = hash_record(record, zone)
+    record_hash = hash_record_dict(record, zone)
     keys = ['name', 'type', 'ttl', 'values']
     return {
         **{key: value for key, value in record.items() if key in keys},
