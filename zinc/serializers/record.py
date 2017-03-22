@@ -62,7 +62,7 @@ class RecordSerializer(serializers.Serializer):
 
     def get_id(self, obj):
         # assert isinstance(obj.zone_id, str)
-        return obj.record_hash
+        return obj.id
 
     def get_url(self, obj):
         # compute the url for record
