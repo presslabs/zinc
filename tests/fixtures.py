@@ -284,13 +284,13 @@ class Moto:
 @pytest.fixture(
     params=[
         Moto,
-        lambda: CleanupClient(route53.client),
+        lambda: CleanupClient(route53.client.get_client()),
     ],
     ids=['fake_boto', 'with_aws']
 )
 def boto_client(request):
     client = request.param()
-    patcher = patch('zinc.route53.client', client)
+    patcher = patch('zinc.route53.client._client', client)
     patcher.start()
 
     def cleanup():
