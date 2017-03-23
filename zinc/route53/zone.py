@@ -30,9 +30,9 @@ class Zone(object):
         for record in records:
             self.add_record_changes(record, key=record.id)
 
-    def add_record_changes(self, record, key=None):
+    def add_record_changes(self, record, key):
         rrs = record.encode()
-        if not key or key not in self.records():
+        if key not in self.records():
             action = 'CREATE'
         else:
             action = 'DELETE' if record.deleted else 'UPSERT'

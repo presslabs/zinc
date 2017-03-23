@@ -11,6 +11,7 @@ HASHIDS_ALPHABET = getattr(settings, 'HASHIDS_ALPHABET',
 hashids = Hashids(salt=HASHIDS_SALT,
                   alphabet=HASHIDS_ALPHABET)
 
+RECORD_PREFIX = '_zn'
 
 POLICY_ROUTED = 'POLICY_ROUTED'
 
@@ -166,3 +167,18 @@ class Record:
                 encoded_record[attr_name] = value
 
         return encoded_record
+
+    @property
+    def is_alias(self):
+        return self.alias_target is not None
+
+    @property
+    def is_policy_record(self):
+        return self.type == POLICY_ROUTED
+
+    @property
+    def is_hidden(self):
+        return self.name.startswith(RECORD_PREFIX)
+
+    def is_member_of(self, policy):
+        return self.name.startswith('{}_{}'.format(RECORD_PREFIX, policy.name))
