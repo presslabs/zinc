@@ -8,10 +8,10 @@ from django.db import models, transaction
 
 from zinc import ns_check, route53, tasks
 from zinc.route53 import HealthCheck, get_local_aws_region_choices
-from zinc.route53.record import POLICY_ROUTED
+from zinc.route53.record import POLICY_ROUTED, RECORD_PREFIX
 from zinc.validators import validate_domain, validate_hostname
 
-RECORD_PREFIX = '_zn'
+
 logger = getLogger(__name__)
 
 
@@ -102,7 +102,7 @@ class Policy(models.Model):
     def _remove_tree(self, zone):
         to_delete_records = []
         for record in zone.route53_zone.records().values():
-            if record.name.startswith('{}_{}'.format(RECORD_PREFIX, self.name)):
+            if record.is_member_of(policy=self):
                 record.deleted = True
                 to_delete_records.append(record)
         zone.records = to_delete_records
@@ -124,6 +124,8 @@ class Policy(models.Model):
                 zone=zone,
                 **health_check_kwa,
             )
+            # TODO: maybe we should have a specialized subclass for PolicyRecords
+            # and this logic should be moved there
             if region_suffixed:
                 record.name = '{}_{}_{}'.format(RECORD_PREFIX, self.name, policy_member.region)
             else:
@@ -244,7 +246,7 @@ class Zone(models.Model):
         # Add record if is POLICY_ROUTED then create one and add it.
         # else add to aws zone.
         # Return record hash or policy record id.
-        if record.type == POLICY_ROUTED:
+        if record.is_policy_record:
             try:
                 policy = Policy.objects.get(id=record.values[0])
             except Policy.DoesNotExist:
@@ -317,13 +319,14 @@ class Zone(models.Model):
         # Translate policy records.
         for record_hash, record in records.items():
             # record.id = record_hash
-            if record.name.startswith(RECORD_PREFIX):
+            if record.is_hidden:
                 continue
-            if record.alias_target is not None:
+            if record.is_alias:
                 if self.policy_records.filter(name=record.name).exists():
                     continue
                 # if the record is ALIAS then translate it to ALIAS type known by API
                 record.values = ['ALIAS {}'.format(record.alias_target['DNSName'])]
+                # TODO: the values should really not be mutated at listing time.
             filtered_records.append(record)
 
         for record in self.get_policy_records():
