@@ -137,7 +137,7 @@ class Record:
         return 'Z{zone}Z{type}Z{id}'.format(
             zone=zone_hash, type=get_record_type(self.type), id=record_hash)
 
-    def encode(self):
+    def to_aws(self):
         encoded_record = {
             'Name': self._add_root(self.name, self.zone_root),
             'Type': self.type,

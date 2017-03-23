@@ -87,7 +87,7 @@ class Policy(models.Model):
         # first delete the existing policy
         self._remove_tree(zone)
         records, _ = self._build_tree(zone)
-        zone.records = records
+        zone.update_records(records)
         zone.commit()
 
     @transaction.atomic
@@ -105,7 +105,7 @@ class Policy(models.Model):
             if record.is_member_of(policy=self):
                 record.deleted = True
                 to_delete_records.append(record)
-        zone.records = to_delete_records
+        zone.update_records(to_delete_records)
 
     def _build_weighted_tree(self, policy_members, zone, region_suffixed=True):
         # Build simple tree
@@ -335,8 +335,7 @@ class Zone(models.Model):
 
         return filtered_records
 
-    @records.setter
-    def records(self, records):
+    def update_records(self, records):
         for record in records:
             self.add_record(record)
 

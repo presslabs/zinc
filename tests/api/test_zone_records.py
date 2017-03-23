@@ -156,7 +156,7 @@ def test_delete_nonexistent_records(api_client, zone):
         values=['ns.test.com', 'ns2.test.com'],
         zone=zone.route53_zone,
     )
-    zone.records = [record2]
+    zone.update_records([record2])
     zone.route53_zone.commit()
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
