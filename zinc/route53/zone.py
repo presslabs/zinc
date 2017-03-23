@@ -31,7 +31,7 @@ class Zone(object):
             self.add_record_changes(record, key=record.id)
 
     def add_record_changes(self, record, key):
-        rrs = record.encode()
+        rrs = record.to_aws()
         if key not in self.records():
             action = 'CREATE'
         else:
