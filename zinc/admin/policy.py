@@ -6,10 +6,15 @@ from zinc.models import Policy, PolicyMember
 
 
 class PolicyMemberInline(admin.TabularInline):
+    readonly_fields = ('ip_enabled',)
     model = PolicyMember
     extra = 1
     verbose_name = 'member'
     verbose_name_plural = 'members'
+
+    def ip_enabled(self, obj):
+        return obj.ip.enabled
+    ip_enabled.boolean = True
 
 
 @admin.register(Policy)

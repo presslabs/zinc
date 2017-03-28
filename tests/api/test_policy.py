@@ -12,6 +12,7 @@ def policy_member_to_dict(record):
         'region': record.region,
         'ip': record.ip.ip,
         'weight': record.weight,
+        'enabled': record.enabled and record.ip.enabled
     }
 
 
