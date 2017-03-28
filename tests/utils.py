@@ -58,7 +58,7 @@ def get_test_record(zone):
     }
 
 
-def record_to_aws(record, zone_root):
+def record_data_to_aws(record, zone_root):
     rrs = {
         'Name': '{}.{}'.format(record['name'], zone_root),
         'TTL': record['ttl'],

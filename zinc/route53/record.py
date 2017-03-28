@@ -68,7 +68,7 @@ class Record:
         self.type = type
         self.ttl = ttl
         self.alias_target = alias_target
-        self.values = values
+        self._values = values
         self.weight = weight
         self.region = region
         self.set_identifier = set_identifier
@@ -83,7 +83,20 @@ class Record:
         self.managed = managed
 
     def __repr__(self):
-        return "<Record id={} {}:{}>".format(self.id, self.type, self.name)
+        return "<Record id={} {}:{} {}>".format(self.id, self.type, self.name, self.values)
+
+    @property
+    def values(self):
+        if self.is_alias:
+            if 'DNSName' in self.alias_target:
+                return ['ALIAS {}'.format(self.alias_target['DNSName'])]
+        else:
+            return self._values
+
+    @values.setter
+    def values(self, value):
+        assert not self.is_alias
+        self._values = value
 
     @staticmethod
     def _strip_root(name, root):
@@ -96,7 +109,7 @@ class Record:
     @classmethod
     def from_aws_record(cls, record, zone):
         # Determine if a R53 DNS record is of type ALIAS
-        def alias_record(record):
+        def is_alias_record(record):
             return 'AliasTarget' in record.keys()
 
         # Determine if a record is the NS or SOA record of the root domain
@@ -112,10 +125,10 @@ class Record:
         new.name = cls._strip_root(record['Name'], zone.root)
         new.type = record['Type']
         new.managed = ((record.get('SetIdentifier', False)) or
-                       root_ns_soa(record, zone.root) or (alias_record(record)))
+                       root_ns_soa(record, zone.root) or (is_alias_record(record)))
 
         new.ttl = record.get('TTL')
-        if alias_record(record):
+        if is_alias_record(record):
             new.alias_target = {
                 'DNSName': record['AliasTarget']['DNSName'],
                 'EvaluateTargetHealth': record['AliasTarget']['EvaluateTargetHealth'],
@@ -142,23 +155,21 @@ class Record:
             'Name': self._add_root(self.name, self.zone_root),
             'Type': self.type,
         }
-        if self.values is not None:
+        if not self.is_alias:
             if self.type == 'TXT':
                 # Encode json escape.
                 encoded_record['ResourceRecords'] = [{'Value': json.dumps(value)}
                                                      for value in self.values]
             else:
                 encoded_record['ResourceRecords'] = [{'Value': value} for value in self.values]
-
-        if self.ttl is not None:
-            encoded_record['TTL'] = self.ttl
-
-        if self.alias_target is not None:
+        else:
             encoded_record['AliasTarget'] = {
                 'DNSName': self.alias_target['DNSName'],
                 'EvaluateTargetHealth': self.alias_target['EvaluateTargetHealth'],
                 'HostedZoneId': self.alias_target['HostedZoneId'],
             }
+        if self.ttl is not None:
+            encoded_record['TTL'] = self.ttl
 
         for attr_name in ['Weight', 'Region', 'SetIdentifier',
                           'HealthCheckId', 'TrafficPolicyInstanceId']:
@@ -174,11 +185,85 @@ class Record:
 
     @property
     def is_policy_record(self):
+        # assert self.type != POLICY_ROUTED
         return self.type == POLICY_ROUTED
 
     @property
     def is_hidden(self):
-        return self.name.startswith(RECORD_PREFIX)
+        return self.name.startswith(RECORD_PREFIX)  # or (
+            # self.is_alias and self.alias_target['DNSName'].startswith(RECORD_PREFIX))
 
     def is_member_of(self, policy):
         return self.name.startswith('{}_{}'.format(RECORD_PREFIX, policy.name))
+
+
+class PolicyRecord(Record):
+    def __init__(self, policy_record, zone, type=POLICY_ROUTED):
+        self.policy_record = policy_record
+        self.policy = policy_record.policy
+        self.zone = zone
+        super().__init__(
+            name=self.policy_record.name,
+            zone=zone,
+            alias_target={
+                'HostedZoneId': zone.id,
+                'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, zone.root),
+                'EvaluateTargetHealth': False
+            },
+            type=POLICY_ROUTED,
+            values=[str(self.policy.id)],
+            deleted=self.policy_record.deleted,
+        )
+
+    def reconcile(self):
+        # create the top level alias
+        if self.deleted:
+            # if the zone is marked as deleted don't try to build the tree.
+            self.zone.add_records([self])
+            self.zone.commit()
+            self.policy_record.delete()
+        else:
+            self.zone.add_records([self])
+            self.policy_record.dirty = False  # mark as clean
+            self.zone.commit()
+            self.policy_record.save()
+
+    @property
+    def is_policy_record(self):
+        return True
+
+    def _top_level_record(self):
+        return Record(
+            name=self.name,
+            type='A',
+            alias_target={
+                'HostedZoneId': self.zone.id,
+                'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
+                'EvaluateTargetHealth': False
+            },
+            zone=self.zone,
+        )
+
+    def to_aws(self):
+        return self._top_level_record().to_aws()
+
+    # @property
+    # def id(self):
+    #     return self._top_level_record().id
+
+# class CachingFactory:
+#     def __init__(self, klass, key=('name', 'type')):
+#         self._registry = {}
+#         self._klass = klass
+
+#     def get(self, *constructor_args, cache_key=None):
+#         if cache_key is None:
+#             cache_key = constructor_args
+#         obj = self._registry.get(cache_key)
+#         if obj is None:
+#             obj = self._klass(*constructor_args)
+#             self._registry[cache_key] = obj
+#         return obj
+
+#     def __call__(self, key, constructor_args=None):
+#         return self.get(key, constructor_args)

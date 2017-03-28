@@ -31,12 +31,14 @@ def get_policy_record(policy_record, dirty=False, managed=False):
 
 
 @pytest.mark.django_db
-def test_policy_record_get(api_client, zone):
+def test_policy_record_get(api_client, zone, boto_client):
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    policy_record.apply_record()
+    zone.reconcile()
 
     response = api_client.get(
         '/zones/%s' % zone.id
@@ -114,22 +116,21 @@ def test_policy_record_get_more_than_one(api_client, zone):
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
-    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    policy_record.apply_record()
-
-    policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy, name='www')
-    policy_record_2.apply_record()
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@', dirty=True)
+    policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy, name='www', dirty=True)
+    zone.reconcile()
 
     response = api_client.get(
         '/zones/%s' % zone.id
     )
 
     result = strip_ns_and_soa(response.data['records'])
-    assert result == [
+    expected = [
         get_test_record(zone),
         get_policy_record(policy_record),
         get_policy_record(policy_record_2),
     ]
+    assert result == expected
 
 
 @pytest.mark.django_db

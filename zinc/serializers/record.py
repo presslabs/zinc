@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 
-from zinc.models import RECORD_PREFIX
+from zinc.models import RECORD_PREFIX, PolicyRecord
 from zinc import route53
 from zinc.route53.record import ZINC_RECORD_TYPES, POLICY_ROUTED, ALLOWED_RECORD_TYPES
 
@@ -78,11 +78,16 @@ class RecordSerializer(serializers.Serializer):
         return obj.dirty
 
     def to_representation(self, obj):
+        assert obj.values if obj.is_alias else True
         rv = super().to_representation(obj)
         return rv
 
     def create(self, validated_data):
         zone = self.context['zone']
+        # if validated_data['type'] == POLICY_ROUTED:
+        #     record_model = PolicyRecord.objects.create(**validated_data)
+        #     obj = route53.PolicyRecord(policy_record=record_model, zone=zone.route53_zone)
+        # else:
         obj = route53.Record(zone=zone.route53_zone, **validated_data)
         with interpret_client_error():
             record = zone.add_record(obj)
