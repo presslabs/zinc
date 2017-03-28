@@ -6,7 +6,11 @@ from mock import patch, call
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck
 from zinc import models as m
-from zinc.route53 import get_local_aws_regions
+
+from zinc import route53
+
+
+regions = route53.get_local_aws_regions()
 
 
 def sort_key(record):
@@ -96,7 +100,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
 def test_policy_member_to_list_helper():
     zone = G(m.Zone, route53_id='Fake')
     policy = G(m.Policy)
-    region = get_local_aws_regions()[0]
+    region = regions[0]
     policy_members = [
         G(m.PolicyMember, policy=policy, region=region),
     ]
@@ -128,8 +132,8 @@ def test_policy_member_to_list_helper():
 def test_policy_member_to_list_helper_two_regions():
     zone = G(m.Zone, route53_id='Fake')
     policy = G(m.Policy)
-    region = get_local_aws_regions()[0]
-    region2 = get_local_aws_regions()[1]
+    region = regions[0]
+    region2 = regions[1]
     policy_members = [
         G(m.PolicyMember, policy=policy, region=region),
         G(m.PolicyMember, policy=policy, region=region2),
@@ -192,8 +196,8 @@ def test_policy_member_to_list_helper_two_regions():
 @pytest.mark.django_db
 def test_policy_record_tree_builder(zone, boto_client):
     policy = G(m.Policy)
-    region = get_local_aws_regions()[0]
-    region2 = get_local_aws_regions()[1]
+    region = regions[0]
+    region2 = regions[1]
     ip = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=region, ip=ip),
@@ -201,9 +205,8 @@ def test_policy_record_tree_builder(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
-    policy.apply_policy(zone)
-    policy_record.apply_record()
-    zone.route53_zone.commit()
+    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    policy_record.r53_policy_record.reconcile()
 
     expected = [
         {
@@ -213,16 +216,16 @@ def test_policy_record_tree_builder(zone, boto_client):
             'Type': 'A',
         },
     ] + policy_members_to_list(policy_members, policy_record)
-
-    assert strip_ns_and_soa(
+    expected = sorted(expected, key=sort_key)
+    result = strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
-    ) == sorted(expected, key=sort_key)
+    )
+    assert result == expected
 
 
 @pytest.mark.django_db
 def test_policy_record_tree_with_multiple_regions(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
@@ -230,7 +233,7 @@ def test_policy_record_tree_with_multiple_regions(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
-    zone.build_tree()
+    zone.reconcile()
 
     expected = [
         {
@@ -248,7 +251,6 @@ def test_policy_record_tree_with_multiple_regions(zone, boto_client):
 @pytest.mark.django_db
 def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
@@ -260,7 +262,7 @@ def test_policy_record_tree_with_multiple_regions_and_members(zone, boto_client)
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
-    zone.build_tree()
+    zone.reconcile()
 
     expected = [
         {
@@ -282,7 +284,7 @@ def test_policy_record_tree_within_members(zone, boto_client):
     G(m.PolicyRecord, zone=zone, policy=policy)
 
     with pytest.raises(Exception) as exc:
-        zone.build_tree()
+        zone.reconcile()
 
     assert "Policy can't be applied" in str(exc)
     expected = [
@@ -302,7 +304,6 @@ def test_policy_record_tree_within_members(zone, boto_client):
 @pytest.mark.django_db
 def test_policy_record_tree_with_two_trees(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
     ip2 = create_ip_with_healthcheck()
     policy_members = [
@@ -317,7 +318,7 @@ def test_policy_record_tree_with_two_trees(zone, boto_client):
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record2 = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
 
-    zone.build_tree()
+    zone.reconcile()
 
     expected = [
         {
@@ -348,7 +349,7 @@ def test_policy_record_tree_with_two_trees(zone, boto_client):
 @pytest.mark.django_db
 def test_policy_record_deletion(zone, boto_client):
     policy = G(m.Policy)
-    region = get_local_aws_regions()[0]
+    region = regions[0]
     ip = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=region, ip=ip),
@@ -356,7 +357,7 @@ def test_policy_record_deletion(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
-    zone.build_tree()
+    zone.reconcile()
 
     expected = sorted(
         ([{
@@ -387,7 +388,6 @@ def test_policy_record_deletion(zone, boto_client):
 @pytest.mark.django_db
 def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
     ip2 = create_ip_with_healthcheck()
     policy_members = [
@@ -402,7 +402,7 @@ def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record_to_delete = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
 
-    zone.build_tree()
+    zone.reconcile()
 
     policy_record_to_delete.delete_record()
     expected = [
@@ -423,7 +423,6 @@ def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
 @pytest.mark.django_db
 def test_policy_record_with_ips_0_weight(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
     policy_members = [
         G(m.PolicyMember, policy=policy, region=regions[0], ip=ip, weight=10, enabled=True),
@@ -431,7 +430,7 @@ def test_policy_record_with_ips_0_weight(zone, boto_client):
     ]
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    zone.build_tree()
+    zone.reconcile()
     expected = [
         {
             'Name': 'test.test-zinc.net.',
@@ -450,7 +449,6 @@ def test_policy_record_with_ips_0_weight(zone, boto_client):
 @pytest.mark.django_db
 def test_policy_record_with_all_ips_disabled(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip1 = create_ip_with_healthcheck()
     ip1.enabled = False
     ip1.save()
@@ -464,7 +462,7 @@ def test_policy_record_with_all_ips_disabled(zone, boto_client):
     G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
     with pytest.raises(Exception) as exc:
-        zone.build_tree()
+        zone.reconcile()
     assert "Policy can't be applied" in str(exc)
     expected = [
         {
@@ -482,7 +480,6 @@ def test_policy_record_with_all_ips_disabled(zone, boto_client):
 @pytest.mark.django_db
 def test_apply_policy_on_zone(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
 
     policy_members = [
@@ -492,7 +489,7 @@ def test_apply_policy_on_zone(zone, boto_client):
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy, name='www')
 
-    zone.build_tree()
+    zone.reconcile()
 
     expected = [
         {
@@ -508,10 +505,10 @@ def test_apply_policy_on_zone(zone, boto_client):
     assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)
 
 
+@pytest.mark.xfail
 @pytest.mark.django_db
 def test_apply_policy_is_not_duplicated(zone):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
 
     G(m.PolicyMember, policy=policy, region=regions[0])
     G(m.PolicyMember, policy=policy, region=regions[1])
@@ -521,15 +518,15 @@ def test_apply_policy_is_not_duplicated(zone):
 
     with patch('zinc.models.Policy.apply_policy') as apply_policy:
         with patch('zinc.models.PolicyRecord.apply_record'):
-            zone.build_tree()
+            zone.reconcile()
             apply_policy.assert_called_once_with(zone)
 
 
+@pytest.mark.xfail
 @pytest.mark.django_db
 def test_apply_policy_ensure_both_policies_are_applied(zone):
     policy = G(m.Policy)
     policy_2 = G(m.Policy)
-    regions = get_local_aws_regions()
 
     G(m.PolicyMember, policy=policy, region=regions[0])
     G(m.PolicyMember, policy=policy_2, region=regions[1])
@@ -539,7 +536,7 @@ def test_apply_policy_ensure_both_policies_are_applied(zone):
 
     with patch('zinc.models.Policy.apply_policy') as apply_policy:
         with patch('zinc.models.PolicyRecord.apply_record'):
-            zone.build_tree()
+            zone.reconcile()
             # assert called 2 times, because 2 policies.
             calls = [call(zone), call(zone)]
             apply_policy.assert_has_calls(calls)
@@ -548,7 +545,6 @@ def test_apply_policy_ensure_both_policies_are_applied(zone):
 @pytest.mark.django_db
 def test_modifying_a_policy_member_in_policy_all_policy_members_get_dirty(zone):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = create_ip_with_healthcheck()
 
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip)
@@ -559,7 +555,7 @@ def test_modifying_a_policy_member_in_policy_all_policy_members_get_dirty(zone):
         G(m.PolicyRecord, zone=zone, policy=policy, name='www')
     ]
 
-    zone.build_tree()
+    zone.reconcile()
     policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
     assert policy_records_from_db == set([(record.id, False) for record in policy_records])
 
@@ -573,7 +569,6 @@ def test_modifying_a_policy_member_in_policy_all_policy_members_get_dirty(zone):
 @pytest.mark.django_db
 def test_changing_an_disabled(zone):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
 
     ip = G(m.IP, healthcheck_id=None)
     ip2 = G(m.IP, healthcheck_id=None)
@@ -585,7 +580,7 @@ def test_changing_an_disabled(zone):
         G(m.PolicyRecord, zone=zone, policy=policy, name='@', dirty=False),
         G(m.PolicyRecord, zone=zone, policy=policy, name='www', dirty=False)
     ]
-    zone.build_tree()
+    zone.reconcile()
     policy_records_from_db = set(m.PolicyRecord.objects.all().values_list('id', 'dirty'))
     assert policy_records_from_db == set([(record.id, False) for record in policy_records])
 
@@ -594,7 +589,6 @@ def test_changing_an_disabled(zone):
 def test_ip_mark_policy_records_dirty(zone):
     policy1 = G(m.Policy)
     policy2 = G(m.Policy)
-    regions = get_local_aws_regions()
 
     ip1 = create_ip_with_healthcheck()
     ip2 = create_ip_with_healthcheck()
@@ -621,7 +615,6 @@ def test_ip_mark_policy_records_dirty(zone):
 @pytest.mark.django_db
 def test_tree_with_one_region(zone, boto_client):
     policy = G(m.Policy)
-    regions = get_local_aws_regions()
     ip = G(m.IP, healthcheck_id=None)
     ip2 = G(m.IP, healthcheck_id=None)
 
@@ -632,7 +625,7 @@ def test_tree_with_one_region(zone, boto_client):
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
 
-    zone.build_tree()
+    zone.reconcile()
 
     expected = [
         {
@@ -678,8 +671,7 @@ def test_dangling_records(zone, boto_client):
     policy = G(m.Policy, name='test1')
     G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
     G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=False)
-    policy.apply_policy(zone)
-    zone.route53_zone.commit()
+    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
 
     records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     assert dangling_record not in records['ResourceRecordSets']
@@ -701,12 +693,12 @@ def test_change_policy(zone, boto_client):
     G(m.PolicyMember, ip=ip2, policy=policy2, region='us-east-2', weight=10)
     # build a tree with policy1
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy1, name='record', dirty=True)
-    zone.build_tree()
+    zone.reconcile()
     # switch to policy2 and rebuild
     policy_record.policy = policy2
     policy_record.dirty = True
     policy_record.save()
-    zone.build_tree()
+    zone.reconcile()
 
     records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     policy1_records = [record['Name'] for record in records['ResourceRecordSets']
@@ -729,11 +721,11 @@ def test_untouched_policy_not_deleted(zone, boto_client):
 
     # build a tree with policy1
     G(m.PolicyRecord, zone=zone, policy=policy1, name='policy_record1', dirty=True)
-    zone.build_tree()
+    zone.reconcile()
 
     # add another policy record
     G(m.PolicyRecord, zone=zone, policy=policy2, name='policy_record2', dirty=True)
-    zone.build_tree()
+    zone.reconcile()
 
     records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     policy_records = set([record['Name'] for record in records['ResourceRecordSets']
@@ -753,23 +745,98 @@ def test_delete_policy_record(zone, boto_client):
     G(m.PolicyMember, ip=ip1, policy=policy, region='us-east-1', weight=10)
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='www', dirty=True)
 
-    zone.build_tree()  # reconcile
+    zone.reconcile()  # reconcile
     policy_record.soft_delete()  # delete the record
-    zone.build_tree()  # reconcile
+    zone.reconcile()  # reconcile
 
     # assert the object is deleted.
-    with pytest.raises(m.PolicyRecord.DoesNotExist):
-        m.PolicyRecord.objects.get(id=policy_record.id)
+    assert not m.PolicyRecord.objects.filter(id=policy_record.id).exists()
 
     # assert route53 should be empty
-    expected = [
+    expected = sorted([
         {
             'Name': 'test.test-zinc.net.',
             'ResourceRecords': [{'Value': '1.1.1.1'}],
             'TTL': 300,
             'Type': 'A'
         },  # this is a ordinary record. should be not modified.
-    ]
-    assert strip_ns_and_soa(
+    ], key=sort_key)
+    result = strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
-    ) == sorted(expected, key=sort_key)
+    )
+    assert result == expected
+
+
+@pytest.mark.django_db
+def test_r53_policy_record_aws_records(zone, boto_client):
+    """
+    Tests a PolicyRecord loads it's records correctly from AWS
+    """
+    zone.add_record(
+        route53.Record(
+            name='_zn_pol1',
+            alias_target={
+                'DNSName': '_zn_pol1.us-east-1.{}'.format(zone.root),
+                'HostedZoneId': zone.route53_zone.id,
+                'EvaluateTargetHealth': False
+            },
+            type='A',
+            ttl=300,
+            zone=zone.route53_zone,
+        ))
+    zone.add_record(route53.Record(
+        name='_zn_pol1.us-east-1',
+        values=['1.2.3.4'],
+        type='A',
+        zone=zone.route53_zone))
+    zone.commit()
+    policy = G(m.Policy, name='pol1')
+    policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
+    policy = route53.Policy(zone=zone.route53_zone, policy=policy_record.policy)
+    assert [r.name for r in policy.aws_records.values()] == ['_zn_pol1', '_zn_pol1.us-east-1']
+
+
+@pytest.mark.django_db
+def test_r53_policy_record_expected_aws_records(zone, boto_client):
+    """
+    Tests a PolicyRecord loads it's records correctly from AWS
+    """
+    policy = G(m.Policy, name='pol1')
+    policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
+
+    ip1 = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy_record.policy, region=regions[0], ip=ip1)
+    G(m.PolicyMember, policy=policy_record.policy, region=regions[1], ip=ip1)
+    # pol_factory = route53.CachingFactory(route53.Policy)
+    r53_policy = route53.Policy(zone=zone.route53_zone, policy=policy)
+    assert [(r.name, r.values) for r in r53_policy.desired_records.values()] == [
+        ('_zn_pol1_us-east-1', [ip1.ip]),
+        ('_zn_pol1_us-east-2', [ip1.ip]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
+        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
+    ]
+
+
+@pytest.mark.django_db
+def test_r53_policy_reconcile(zone, boto_client):
+    policy = G(m.Policy, name='pol1')
+    policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
+
+    ip1 = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy_record.policy, region=regions[0], ip=ip1)
+    G(m.PolicyMember, policy=policy_record.policy, region=regions[1], ip=ip1)
+    # pol_factory = route53.CachingFactory(route53.Policy)
+    r53_policy = route53.Policy(zone=zone.route53_zone, policy=policy)
+    r53_policy.reconcile()
+
+    raw_aws_records = [route53.Record.from_aws_record(r, zone=zone)
+                       for r in strip_ns_and_soa(boto_client.list_resource_record_sets(
+                               HostedZoneId=zone.route53_id), zone.root)]
+    # only look at the hidden records (the ones part of the policy tree)
+    records = [(r.name, r.values) for r in raw_aws_records if r.is_hidden]
+    assert records == [
+        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
+        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
+        ('_zn_pol1_us-east-1', [ip1.ip]),
+        ('_zn_pol1_us-east-2', [ip1.ip]),
+    ]

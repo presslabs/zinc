@@ -1,9 +1,11 @@
+from collections import OrderedDict
 import uuid
 import logging
 
 from botocore.exceptions import ClientError
 
-from .record import Record
+from .record import Record, PolicyRecord
+from .policy import Policy
 from .client import get_client
 
 logger = logging.getLogger(__name__)
@@ -28,18 +30,20 @@ class Zone(object):
 
     def add_records(self, records):
         for record in records:
-            self.add_record_changes(record, key=record.id)
+            self._add_record_changes(record)
 
-    def add_record_changes(self, record, key):
-        rrs = record.to_aws()
-        if key not in self.records():
-            action = 'CREATE'
+    def _add_record_changes(self, record):
+        if record.deleted:
+            action = 'DELETE'
         else:
-            action = 'DELETE' if record.deleted else 'UPSERT'
+            if record.id not in self.records():
+                action = 'CREATE'
+            else:
+                action = 'UPSERT'
 
         self._change_batch.append({
             'Action': action,
-            'ResourceRecordSet': rrs
+            'ResourceRecordSet': record.to_aws()
         })
 
     def _reset_change_batch(self):
@@ -59,7 +63,7 @@ class Zone(object):
 
     def records(self):
         self._cache_aws_records()
-        entries = {}
+        entries = OrderedDict()
         for aws_record in self._aws_records or []:
             record = Record.from_aws_record(aws_record, zone=self)
             if record:
@@ -93,8 +97,7 @@ class Zone(object):
         except ClientError as excp:
             if excp.response['Error']['Code'] != 'NoSuchHostedZone':
                 raise
-            self._aws_records = []
-            self._exists = False
+            self._clear_cache()
         else:
             self._aws_records = records
             self._exists = True
@@ -144,7 +147,10 @@ class Zone(object):
         self.zone_record.route53_id = zone['HostedZone']['Id']
         self.zone_record.save()
 
-    def reconcile(self):
+    def _reconcile_zone(self):
+        """
+        Handles zone creation/deletion.
+        """
         if self.zone_record.deleted:
             self.delete()
         elif self.zone_record.route53_id is None:
@@ -160,6 +166,40 @@ class Zone(object):
                 self.zone_record.caller_reference = None
                 self.zone_record.save()
                 self.create()
+
+    def _reconcile_policy_records(self):
+        """
+        Reconcile policy records for this zone.
+        """
+        with self.zone_record.lock_dirty_policy_records() as dirty_policy_records:
+            dirty_policies = set([policy_record.policy for policy_record in dirty_policy_records])
+            for policy in dirty_policies:
+                r53_policy = Policy(policy=policy, zone=self)
+                r53_policy.reconcile()
+
+            for policy_record in dirty_policy_records:
+                policy_record.r53_policy_record.reconcile()
+
+            self._delete_orphaned_managed_records()
+
+    def _delete_orphaned_managed_records(self):
+        """Delete any managed record not belonging to one of the zone's policies"""
+        policies = set([
+            pr.policy for pr in self.zone_record.policy_records.select_related('policy')])
+        for record in self.records().values():
+            if record.is_hidden:
+                for policy in policies:
+                    if record.is_member_of(policy):
+                        break
+                else:
+                    record.deleted = True
+                    self.add_records([record])
+
+    def reconcile(self):
+        self._reconcile_zone()
+        self._reconcile_policy_records()
+        self.commit()
+        self._clear_cache()
 
     @classmethod
     def reconcile_multiple(cls, zones):

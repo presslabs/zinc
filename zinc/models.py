@@ -1,7 +1,9 @@
 import collections.abc
+import contextlib
 import json
 import uuid
 from logging import getLogger
+import warnings
 
 from django.core.exceptions import SuspiciousOperation, ValidationError
 from django.db import models, transaction
@@ -82,13 +84,13 @@ class Policy(models.Model):
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
 
-    @transaction.atomic
-    def apply_policy(self, zone):
-        # first delete the existing policy
-        self._remove_tree(zone)
-        records, _ = self._build_tree(zone)
-        zone.update_records(records)
-        zone.commit()
+    # @transaction.atomic
+    # def apply_policy(self, zone):
+    #     # first delete the existing policy
+    #     self._remove_tree(zone)
+    #     records, _ = self._build_tree(zone)
+    #     zone.update_records(records)
+    #     zone.commit()
 
     @transaction.atomic
     def delete_policy(self, zone):
@@ -106,74 +108,6 @@ class Policy(models.Model):
                 record.deleted = True
                 to_delete_records.append(record)
         zone.update_records(to_delete_records)
-
-    def _build_weighted_tree(self, policy_members, zone, region_suffixed=True):
-        # Build simple tree
-        records = []
-        for policy_member in policy_members:
-            health_check_kwa = {}
-            if policy_member.ip.healthcheck_id:
-                health_check_kwa['health_check_id'] = str(policy_member.ip.healthcheck_id)
-            assert zone is not None
-            record = route53.Record(
-                ttl=30,
-                type='A',
-                values=[policy_member.ip.ip],
-                set_identifier='{}-{}'.format(str(policy_member.id), policy_member.region),
-                weight=policy_member.weight,
-                zone=zone,
-                **health_check_kwa,
-            )
-            # TODO: maybe we should have a specialized subclass for PolicyRecords
-            # and this logic should be moved there
-            if region_suffixed:
-                record.name = '{}_{}_{}'.format(RECORD_PREFIX, self.name, policy_member.region)
-            else:
-                record.name = '{}_{}'.format(RECORD_PREFIX, self.name)
-            records.append(record)
-
-        return records
-
-    def _build_lbr_tree(self, zone, policy_members):
-        # Build latency based routed tree
-        records = self._build_weighted_tree(policy_members, zone=zone)
-        regions = set([pm.region for pm in policy_members])
-        for region in regions:
-            record = route53.Record(
-                name='{}_{}'.format(RECORD_PREFIX, self.name),
-                type='A',
-                alias_target={
-                    'HostedZoneId': zone.id,
-                    'DNSName': '{}_{}_{}.{}'.format(RECORD_PREFIX, self.name, region, zone.root),
-                    'EvaluateTargetHealth': True  # len(regions) > 1
-                },
-                region=region,
-                set_identifier=region,
-                zone=zone,
-            )
-            records.append(record)
-        return records
-
-    def _build_tree(self, zone):
-        # build the tree base for the provided zone
-        policy_members = self.members.exclude(enabled=False).exclude(ip__enabled=False)
-        regions = set([pm.region for pm in policy_members])
-        if len(regions) > 1:
-            # Here is the case where are multiple regions
-            records = self._build_lbr_tree(zone.route53_zone, policy_members)
-        elif len(regions) == 1:
-            # Case with a single region
-            records = self._build_weighted_tree(
-                policy_members, region_suffixed=False, zone=zone.route53_zone)
-        else:
-            # no policy record applied
-            # should raise an error or log this
-            raise Exception(
-                "Policy can't be applied. zone: '{}'; policy: '{}'".format(
-                    zone, self
-                )
-            )
-        return records, regions
 
 
 class PolicyMember(models.Model):
@@ -247,43 +181,44 @@ class Zone(models.Model):
         # else add to aws zone.
         # Return record hash or policy record id.
         if record.is_policy_record:
-            try:
-                policy = Policy.objects.get(id=record.values[0])
-            except Policy.DoesNotExist:
-                # Policy don't exists. Return 400
-                raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
-                    record.values[0]))
-            try:
-                # update the policy record. Or delete or update policy.
-                policy_record = self.policy_records.get(name=record.name)
-                if record.deleted:
-                    # The record will be deleted
-                    policy_record.deleted = True
-                else:
-                    # Update policy for this record.
-                    policy_record.policy = policy
-                    policy_record.deleted = False  # clear deleted flag
-                policy_record.dirty = True
-            except PolicyRecord.DoesNotExist:
-                # Policy don't exists so create one.
-                if record.deleted:
-                    return None  # trying to delete a nonexisting POLICY_RECORD.
-                policy_record = PolicyRecord(name=record.name, policy=policy, zone=self)
-                policy_record.full_clean()
-
-            policy_record.save()
-            return policy_record.serialize()
+            return self.upsert_policy_record(record)
         else:
-            # This is a normal record. Forward it to route53 utils.
             self.route53_zone.add_records([record])
             return record
+
+    def upsert_policy_record(self, record):
+        try:
+            policy = Policy.objects.get(id=record.values[0])
+        except Policy.DoesNotExist:
+            # Policy don't exists. Return 400
+            raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
+                record.values[0]))
+        try:
+            # update the policy record. Or delete or update policy.
+            policy_record = self.policy_records.get(name=record.name)
+            if record.deleted:
+                # The record will be deleted
+                policy_record.deleted = True
+            else:
+                # Update policy for this record.
+                policy_record.policy = policy
+                policy_record.deleted = False  # clear deleted flag
+            policy_record.dirty = True
+        except PolicyRecord.DoesNotExist:
+            # Policy don't exists so create one.
+            if record.deleted:
+                return None  # trying to delete a nonexisting POLICY_RECORD.
+            policy_record = PolicyRecord(name=record.name, policy=policy, zone=self)
+            policy_record.full_clean()
+
+        policy_record.save()
+        return policy_record.serialize()
 
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
         if record_hash not in records:
             # trying to delete a nonexistent record. skip
-            # raise Exception("cocos")
-            return
+            raise Exception("cocos")
         to_delete_record = records[record_hash]
         to_delete_record.deleted = True
         self.route53_zone.add_records([to_delete_record])
@@ -314,30 +249,24 @@ class Zone(models.Model):
     def records(self):
         records = self.route53_zone.records()
         filtered_records = []
+        policy_records = self.get_policy_records()
 
-        # Hide all records that starts with the RECORD_PREFIX.
-        # Translate policy records.
-        for record_hash, record in records.items():
-            # record.id = record_hash
+        for record in records.values():
             if record.is_hidden:
                 continue
-            if record.is_alias:
-                if self.policy_records.filter(name=record.name).exists():
-                    continue
-                # if the record is ALIAS then translate it to ALIAS type known by API
-                record.values = ['ALIAS {}'.format(record.alias_target['DNSName'])]
-                # TODO: the values should really not be mutated at listing time.
+            if record.is_alias and any(((record.name == pr.name) for pr in policy_records)):
+                continue
             filtered_records.append(record)
 
-        for record in self.get_policy_records():
-            record.zone_id = self.route53_id
+        # Add policy records.
+        for record in policy_records:
+            # record.zone_id = self.route53_id
             filtered_records.append(record)
 
         return filtered_records
 
     def update_records(self, records):
-        for record in records:
-            self.add_record(record)
+        self.route53_zone.add_records(records)
 
     def __str__(self):
         return '{} ({})'.format(self.root, self.route53_id)
@@ -345,19 +274,30 @@ class Zone(models.Model):
     def reconcile(self):
         self.route53_zone.reconcile()
 
+    @contextlib.contextmanager
     @transaction.atomic
-    def build_tree(self):
+    def lock_dirty_policy_records(self):
         policy_records = self.policy_records.select_for_update() \
                              .select_related('policy').filter(dirty=True)
-        dirty_policies = set([policy_record.policy for policy_record in policy_records])
-        for policy in dirty_policies:
-            policy.apply_policy(self)
+        yield policy_records
 
-        for policy_record in policy_records:
-            policy_record.apply_record()
+    # @transaction.atomic
+    # def build_tree(self):
+    #     self.route53_zone._reconcile_policy_records()
+    #     policy_records = self.policy_records.select_for_update() \
+    #                          .select_related('policy').filter(dirty=True)
+    #     # dirty_policies = set([policy_record.policy for policy_record in policy_records])
+    #     # for policy in dirty_policies:
+    #     #     r53_policy = route53.Policy(policy=policy, zone=self.route53_zone)
+    #     #     r53_policy.reconcile()
+    #     #     # policy.apply_policy(self)
 
-        self._delete_orphaned_managed_records()
-        self.commit()
+    #     for policy_record in policy_records:
+    #         # policy_record.apply_record()
+    #         policy_record.r53_policy_record.reconcile()
+
+    #     self._delete_orphaned_managed_records()
+    #     self.commit()
 
     def _delete_orphaned_managed_records(self):
         """Delete any managed record not belonging to one of the zone's policies"""
@@ -400,11 +340,16 @@ class PolicyRecord(models.Model):
     class Meta:
         unique_together = ('name', 'zone')
 
+    def __init__(self, *a, **kwa):
+        super().__init__(*a, **kwa)
+        self._r53_policy_record = None
+
     def __str__(self):
         return '{}.{}'.format(self.name, self.zone.root)
 
     def serialize(self):
         assert self.zone is not None
+        # return route53.PolicyRecord(policy_record=self, zone=self.zone.route53_zone)
         return route53.Record(
             name=self.name,
             type=POLICY_ROUTED,
@@ -429,6 +374,13 @@ class PolicyRecord(models.Model):
 
         super().clean()
 
+    @property
+    def r53_policy_record(self):
+        if self._r53_policy_record is None:
+            self._r53_policy_record = route53.PolicyRecord(
+                policy_record=self, zone=self.zone.route53_zone)
+        return self._r53_policy_record
+
     @transaction.atomic
     def apply_record(self):
         # build the tree for this policy record.
@@ -438,32 +390,14 @@ class PolicyRecord(models.Model):
             self.delete()
             return
 
-        self.zone.add_record(
-            route53.Record(
-                name=self.name,
-                type='A',
-                alias_target={
-                    'HostedZoneId': self.zone.route53_zone.id,
-                    'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
-                    'EvaluateTargetHealth': False
-                },
-                zone=self.zone.route53_zone,
-            )
-        )
+        self.zone.route53_zone.add_records([self.r53_policy_record])
 
         self.dirty = False  # mark as clean
         self.save()
 
-    def _top_level_record(self):
-        return route53.Record(
-            name=self.name,
-            type='A',
-            alias_target={},
-            zone=self.zone.route53_zone,
-        )
-
     def delete_record(self):
         # delete the tree.
-        self.zone.delete_record_by_hash(self._top_level_record().id)
+        self.r53_policy_record.deleted = True
+        self.zone.route53_zone.add_records([self.r53_policy_record])
         self.policy.delete_policy(self.zone)
         self.zone.commit()

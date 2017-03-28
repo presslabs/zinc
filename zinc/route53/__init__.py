@@ -1,6 +1,7 @@
 from boto3.session import Session
 
-from .record import Record  # noqa: F401
+from .record import Record, PolicyRecord  # noqa: F401
+from .policy import Policy  # noqa: F401
 from .zone import Zone  # noqa: F401
 from .health_check import HealthCheck  # noqa: F401
 

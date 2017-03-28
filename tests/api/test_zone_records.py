@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 
 from tests.fixtures import api_client, boto_client, zone  # noqa: F401
 from tests.utils import (strip_ns_and_soa, hash_test_record, aws_strip_ns_and_soa, aws_sort_key,
-                         get_test_record, record_to_aws, get_record_from_base)
+                         get_test_record, record_data_to_aws, get_record_from_base)
 from zinc import models as m
 from zinc import route53
 
@@ -42,8 +42,8 @@ def test_create_record(api_client, zone, boto_client):
     assert aws_strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
-        record_to_aws(record, zone.root),
-        record_to_aws(get_test_record(zone), zone.root)
+        record_data_to_aws(record, zone.root),
+        record_data_to_aws(get_test_record(zone), zone.root)
     ], key=aws_sort_key)
 
 
@@ -65,7 +65,7 @@ def test_update_record_values(api_client, zone, boto_client):
     assert aws_strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
-        record_to_aws({
+        record_data_to_aws({
             **get_test_record(zone),
             **record_data
         }, zone.root)
@@ -91,7 +91,7 @@ def test_update_record_ttl(api_client, zone, boto_client):
     assert aws_strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
     ) == sorted([
-        record_to_aws({
+        record_data_to_aws({
             **get_test_record(zone),
             **record_data
         }, zone.root)
@@ -258,7 +258,7 @@ def test_hidden_records(api_client, zone):
 @pytest.mark.django_db
 def test_alias_records(api_client, zone):
     alias_record = route53.Record(
-        name='ceva',
+        name='alias',
         type='A',
         alias_target={
             'HostedZoneId': zone.route53_zone.id,
@@ -276,12 +276,13 @@ def test_alias_records(api_client, zone):
     def sort_key(record):
         return record['name']
 
-    assert sorted(strip_ns_and_soa(response.data['records']), key=sort_key) == sorted([
+    rec_dict = get_record_from_base(alias_record, zone, managed=True)
+
+    response_data = sorted(strip_ns_and_soa(response.data['records']), key=sort_key)
+    assert response_data[0]['values'] == ['ALIAS test.test-zinc.net.']
+    assert response_data == sorted([
+        rec_dict,
         get_test_record(zone),
-        {
-            **get_record_from_base(alias_record, zone, managed=True),
-            'values': ['ALIAS test.%s' % zone.root]
-        }
     ], key=sort_key)
 
 
