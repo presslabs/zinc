@@ -16,7 +16,7 @@ class Policy:
     @property
     def aws_records(self):
         '''What we have in AWS'''
-        return OrderedDict([
+        return dict([
             (r_id, record) for (r_id, record) in self.zone.records().items()
             if record.is_member_of(self)
         ])
@@ -101,7 +101,8 @@ class Policy:
             to_delete.append(record)
         self.zone.add_records(to_delete)
         to_create = []
-        for missing_rec_id in desired_record_ids - aws_record_ids:
-            to_create.append(self.desired_records[missing_rec_id])
+        for rec_id in desired_record_ids:
+            if rec_id not in aws_record_ids:
+                to_create.append(self.desired_records[rec_id])
         self.zone.add_records(to_create)
         self.zone.commit()

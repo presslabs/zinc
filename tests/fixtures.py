@@ -246,17 +246,65 @@ class Moto:
             return
         records.pop(f_index)
 
+    def _check_alias_target_valid(self, records, change, changes):
+        record = change['ResourceRecordSet']
+        target = record.get('AliasTarget')
+        if target is None:
+            return
+        if (target['DNSName'], record['Type']) not in [(r['Name'], r['Type']) for r in records]:
+            from pprint import pprint
+            pprint(changes)
+            pprint(records)
+            raise botocore.exceptions.ClientError(
+                error_response={
+                    'Error': {
+                        'Code': 'InvalidChangeBatch',
+                        'Message': ('{} Alias target doesn\'t exist {}, type {}.'.format(
+                            record['Name'], target['DNSName'], record['Type'])),
+                        'Type': 'Sender'
+                    },
+                },
+                operation_name='list_resource_record_sets',
+            )
+
+    def _check_already_exists(self, records, change, changes):
+        def get_key(record):
+            return (record['Name'],
+                    record['Type'],
+                    record.get('AliasTarget', {}).get('DNSName'))
+        record = change['ResourceRecordSet']
+        existing = [get_key(r) for r in records]
+        if get_key(record) in existing:
+            # from pprint import pprint
+            # pprint(changes)
+            # pprint(records)
+            raise botocore.exceptions.ClientError(
+                error_response={
+                    'Error': {
+                        'Code': 'InvalidChangeBatch',
+                        'Message': ('{} type {} already exists.'.format(
+                            record['Name'], record['Type'])),
+                        'Type': 'Sender'
+                    },
+                },
+                operation_name='list_resource_record_sets',
+            )
+
     def change_resource_record_sets(self, HostedZoneId, ChangeBatch):
         zone = self._zones[HostedZoneId]
         records = zone.setdefault('ResourceRecordSets', [])
 
-        for change in ChangeBatch['Changes']:
+        changes = ChangeBatch['Changes']
+        for change in changes:
             if change['Action'] == 'DELETE':
                 self._remove_record(records, change['ResourceRecordSet'])
             elif change['Action'] == 'UPSERT':
                 self._remove_record(records, change['ResourceRecordSet'])
+                self._check_alias_target_valid(records, change, changes)
                 records.append(change['ResourceRecordSet'])
             elif change['Action'] == 'CREATE':
+                self._check_alias_target_valid(records, change, changes)
+                # self._check_already_exists(records, change, changes)
                 records.append(change['ResourceRecordSet'])
             else:
                 raise AssertionError(change['Action'])

@@ -766,12 +766,20 @@ def test_delete_policy_record(zone, boto_client):
     )
     assert result == expected
 
-
 @pytest.mark.django_db
 def test_r53_policy_record_aws_records(zone, boto_client):
     """
     Tests a PolicyRecord loads it's records correctly from AWS
     """
+    zone.add_record(route53.Record(
+        name='_zn_pol1.us-east-1',
+        values=['1.2.3.4'],
+        type='A',
+        zone=zone.route53_zone,
+        ttl=30,
+        set_identifier='foo',
+        weight=10,
+    ))
     zone.add_record(
         route53.Record(
             name='_zn_pol1',
@@ -781,19 +789,14 @@ def test_r53_policy_record_aws_records(zone, boto_client):
                 'EvaluateTargetHealth': False
             },
             type='A',
-            ttl=300,
             zone=zone.route53_zone,
         ))
-    zone.add_record(route53.Record(
-        name='_zn_pol1.us-east-1',
-        values=['1.2.3.4'],
-        type='A',
-        zone=zone.route53_zone))
     zone.commit()
     policy = G(m.Policy, name='pol1')
     policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
     policy = route53.Policy(zone=zone.route53_zone, policy=policy_record.policy)
-    assert [r.name for r in policy.aws_records.values()] == ['_zn_pol1', '_zn_pol1.us-east-1']
+    assert set([r.name for r in policy.aws_records.values()]) == set([
+        '_zn_pol1', '_zn_pol1.us-east-1'])
 
 
 @pytest.mark.django_db
