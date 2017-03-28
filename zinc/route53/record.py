@@ -66,8 +66,9 @@ class Record:
                  zone=None):
         self.name = name
         self.type = type
-        self.ttl = ttl
         self.alias_target = alias_target
+        assert alias_target is None or ttl is None
+        self.ttl = ttl
         self._values = values
         self.weight = weight
         self.region = region
@@ -247,9 +248,9 @@ class PolicyRecord(Record):
     def to_aws(self):
         return self._top_level_record().to_aws()
 
-    # @property
-    # def id(self):
-    #     return self._top_level_record().id
+    @property
+    def id(self):
+        return self._top_level_record().id
 
 # class CachingFactory:
 #     def __init__(self, klass, key=('name', 'type')):
