@@ -150,10 +150,6 @@ class Zone(models.Model):
     def commit(self):
         self.route53_zone.commit()
 
-    def add_record(self, record):
-        self.route53_zone.add_records([record])
-        return record
-
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
         to_delete_record = records[record_hash]

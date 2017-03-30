@@ -774,7 +774,7 @@ def test_r53_policy_record_aws_records(zone, boto_client):
     """
     Tests a PolicyRecord loads it's records correctly from AWS
     """
-    zone.add_record(route53.Record(
+    route53.Record(
         name='_zn_pol1.us-east-1',
         values=['1.2.3.4'],
         type='A',
@@ -782,18 +782,18 @@ def test_r53_policy_record_aws_records(zone, boto_client):
         ttl=30,
         set_identifier='foo',
         weight=10,
-    ))
-    zone.add_record(
-        route53.Record(
-            name='_zn_pol1',
-            alias_target={
-                'DNSName': '_zn_pol1.us-east-1.{}'.format(zone.root),
-                'HostedZoneId': zone.route53_zone.id,
-                'EvaluateTargetHealth': False
-            },
-            type='A',
-            zone=zone.route53_zone,
-        ))
+    ).save()
+
+    route53.Record(
+        name='_zn_pol1',
+        alias_target={
+            'DNSName': '_zn_pol1.us-east-1.{}'.format(zone.root),
+            'HostedZoneId': zone.route53_zone.id,
+            'EvaluateTargetHealth': False
+        },
+        type='A',
+        zone=zone.route53_zone,
+    ).save()
     zone.commit()
     policy = G(m.Policy, name='pol1')
     policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)

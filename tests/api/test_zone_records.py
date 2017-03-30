@@ -239,13 +239,13 @@ def test_add_record_invalid_ttl(api_client, zone):
 @pytest.mark.django_db
 def test_hidden_records(api_client, zone):
     """Tests any record starting with RECORD_PREFIX is hidden by the api"""
-    zone.add_record(route53.Record(
+    route53.Record(
         name='{}_ceva'.format(m.RECORD_PREFIX),
         ttl=300,
         type='A',
         values=['1.2.3.4'],
         zone=zone.route53_zone,
-    ))
+    ).save()
     zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
@@ -267,7 +267,7 @@ def test_alias_records(api_client, zone):
         },
         zone=zone.route53_zone,
     )
-    zone.add_record(alias_record)
+    alias_record.save()
     zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
@@ -455,13 +455,13 @@ def test_txt_record_escape(zone, api_client):
         r'back\slash',
         r'escaped \"double quote'
     ])
-    zone.add_record(route53.Record(
+    route53.Record(
         name='text',
         ttl=300,
         type='TXT',
         values=texts,
         zone=zone.route53_zone,
-    ))
+    ).save()
     zone.route53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
