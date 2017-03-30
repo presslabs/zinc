@@ -3,14 +3,13 @@ import contextlib
 import json
 import uuid
 from logging import getLogger
-import warnings
 
-from django.core.exceptions import SuspiciousOperation, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
 from zinc import ns_check, route53, tasks
 from zinc.route53 import HealthCheck, get_local_aws_region_choices
-from zinc.route53.record import POLICY_ROUTED, RECORD_PREFIX
+from zinc.route53.record import RECORD_PREFIX
 from zinc.validators import validate_domain, validate_hostname
 
 
@@ -83,14 +82,6 @@ class Policy(models.Model):
     @transaction.atomic
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
-
-    # @transaction.atomic
-    # def apply_policy(self, zone):
-    #     # first delete the existing policy
-    #     self._remove_tree(zone)
-    #     records, _ = self._build_tree(zone)
-    #     zone.update_records(records)
-    #     zone.commit()
 
     @transaction.atomic
     def delete_policy(self, zone):
@@ -177,48 +168,11 @@ class Zone(models.Model):
         self.route53_zone.commit()
 
     def add_record(self, record):
-        # Add record if is POLICY_ROUTED then create one and add it.
-        # else add to aws zone.
-        # Return record hash or policy record id.
-        if record.is_policy_record:
-            return self.upsert_policy_record(record)
-        else:
-            self.route53_zone.add_records([record])
-            return record
-
-    def upsert_policy_record(self, record):
-        try:
-            policy = Policy.objects.get(id=record.values[0])
-        except Policy.DoesNotExist:
-            # Policy don't exists. Return 400
-            raise SuspiciousOperation('Policy \'{}\'  does not exists.'.format(
-                record.values[0]))
-        try:
-            # update the policy record. Or delete or update policy.
-            policy_record = self.policy_records.get(name=record.name)
-            if record.deleted:
-                # The record will be deleted
-                policy_record.deleted = True
-            else:
-                # Update policy for this record.
-                policy_record.policy = policy
-                policy_record.deleted = False  # clear deleted flag
-            policy_record.dirty = True
-        except PolicyRecord.DoesNotExist:
-            # Policy don't exists so create one.
-            if record.deleted:
-                return None  # trying to delete a nonexisting POLICY_RECORD.
-            policy_record = PolicyRecord(name=record.name, policy=policy, zone=self)
-            policy_record.full_clean()
-
-        policy_record.save()
-        return policy_record.serialize()
+        self.route53_zone.add_records([record])
+        return record
 
     def delete_record_by_hash(self, record_hash):
         records = self.route53_zone.records()
-        if record_hash not in records:
-            # trying to delete a nonexistent record. skip
-            raise Exception("cocos")
         to_delete_record = records[record_hash]
         to_delete_record.deleted = True
         self.route53_zone.add_records([to_delete_record])
@@ -260,7 +214,6 @@ class Zone(models.Model):
 
         # Add policy records.
         for record in policy_records:
-            # record.zone_id = self.route53_id
             filtered_records.append(record)
 
         return filtered_records
@@ -280,24 +233,6 @@ class Zone(models.Model):
         policy_records = self.policy_records.select_for_update() \
                              .select_related('policy').filter(dirty=True)
         yield policy_records
-
-    # @transaction.atomic
-    # def build_tree(self):
-    #     self.route53_zone._reconcile_policy_records()
-    #     policy_records = self.policy_records.select_for_update() \
-    #                          .select_related('policy').filter(dirty=True)
-    #     # dirty_policies = set([policy_record.policy for policy_record in policy_records])
-    #     # for policy in dirty_policies:
-    #     #     r53_policy = route53.Policy(policy=policy, zone=self.route53_zone)
-    #     #     r53_policy.reconcile()
-    #     #     # policy.apply_policy(self)
-
-    #     for policy_record in policy_records:
-    #         # policy_record.apply_record()
-    #         policy_record.r53_policy_record.reconcile()
-
-    #     self._delete_orphaned_managed_records()
-    #     self.commit()
 
     def _delete_orphaned_managed_records(self):
         """Delete any managed record not belonging to one of the zone's policies"""
@@ -349,17 +284,11 @@ class PolicyRecord(models.Model):
 
     def serialize(self):
         assert self.zone is not None
-        # return route53.PolicyRecord(policy_record=self, zone=self.zone.route53_zone)
-        return route53.Record(
-            name=self.name,
-            type=POLICY_ROUTED,
-            values=[str(self.policy.id)],
-            ttl=None,
-            dirty=self.dirty,
-            managed=False,
-            deleted=self.deleted,
-            zone=self.zone.route53_zone,
-        )
+        record = route53.PolicyRecord(policy_record=self, zone=self.zone.route53_zone)
+        record.dirty = self.dirty
+        record.managed = False
+        record.deleted = self.deleted
+        return record
 
     def soft_delete(self):
         self.deleted = True
@@ -401,3 +330,17 @@ class PolicyRecord(models.Model):
         self.zone.route53_zone.add_records([self.r53_policy_record])
         self.policy.delete_policy(self.zone)
         self.zone.commit()
+
+    @classmethod
+    def new_or_deleted(cls, name, zone):
+        # if the record hasn't been reconciled yet (still exists in the DB), we want to reuse it
+        # to avoid violating the unique together constraint on name and zone
+        # TODO: if we add deleted to that constraint and make it null-able, we can keep the DB
+        # sane and simplify the system. Reusing the record like this opens up the possibility
+        # of running into concurrency issues.
+        try:
+            model = cls.objects.get(deleted=True, name=name, zone=zone)
+            model.deleted = False
+            return model
+        except cls.DoesNotExist:
+            return cls(name=name, zone=zone)

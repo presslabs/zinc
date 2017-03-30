@@ -3,6 +3,10 @@ import hashlib
 
 from hashids import Hashids
 from django.conf import settings
+from django.core.exceptions import SuspiciousOperation
+
+from zinc import models
+
 
 HASHIDS_SALT = getattr(settings, 'SECRET_KEY', '')
 HASHIDS_MIN_LENGTH = getattr(settings, 'HASHIDS_MIN_LENGTH', 7)
@@ -44,7 +48,7 @@ def _encode(*args):
     return hashids.encode(_set_id)
 
 
-class Record:
+class BaseRecord:
     _obj_to_r53 = dict([
         ('name', 'Name'),
         ('type', 'Type'),
@@ -60,12 +64,11 @@ class Record:
     ])
     _r53_to_obj = {v: k for k, v in _obj_to_r53.items()}
 
-    def __init__(self, name=None, type=None, alias_target=None, deleted=False, dirty=False,
+    def __init__(self, name=None, alias_target=None, deleted=False, dirty=False,
                  health_check_id=None, managed=False, region=None, set_identifier=None,
                  traffic_policy_instance_id=None, ttl=None, values=None, weight=None,
                  zone=None):
         self.name = name
-        self.type = type
         self.alias_target = alias_target
         assert alias_target is None or ttl is None
         self.ttl = ttl
@@ -75,6 +78,7 @@ class Record:
         self.set_identifier = set_identifier
         self.health_check_id = health_check_id
         self.traffic_policy_instance_id = traffic_policy_instance_id
+        self.zone = zone
         self.zone_id = zone.id
         self.zone_root = zone.root
         assert self.zone_id is not None
@@ -84,7 +88,8 @@ class Record:
         self.managed = managed
 
     def __repr__(self):
-        return "<Record id={} {}:{} {}>".format(self.id, self.type, self.name, self.values)
+        return "<{} id={} {}:{} {}>".format(
+            type(self).__name__, self.id, self.type, self.name, self.values)
 
     @property
     def values(self):
@@ -185,24 +190,35 @@ class Record:
         return self.alias_target is not None
 
     @property
-    def is_policy_record(self):
-        # assert self.type != POLICY_ROUTED
-        return self.type == POLICY_ROUTED
-
-    @property
     def is_hidden(self):
-        return self.name.startswith(RECORD_PREFIX)  # or (
-            # self.is_alias and self.alias_target['DNSName'].startswith(RECORD_PREFIX))
+        return self.name.startswith(RECORD_PREFIX)
 
     def is_member_of(self, policy):
         return self.name.startswith('{}_{}'.format(RECORD_PREFIX, policy.name))
 
+    def save(self):
+        self.zone.add_records([self])
 
-class PolicyRecord(Record):
-    def __init__(self, policy_record, zone, type=POLICY_ROUTED):
+
+class Record(BaseRecord):
+    def __init__(self, type=None, **kwa):
+        super().__init__(**kwa)
+        self.type = type
+
+
+class PolicyRecord(BaseRecord):
+    def __init__(self, zone, policy_record=None, policy=None, dirty=None, deleted=None):
+        if policy is None:
+            policy = policy_record.policy
+        if dirty is None:
+            dirty = policy_record.dirty
+        if deleted is None:
+            deleted = policy_record.deleted
+
         self.policy_record = policy_record
-        self.policy = policy_record.policy
+        self.policy = policy
         self.zone = zone
+
         super().__init__(
             name=self.policy_record.name,
             zone=zone,
@@ -211,15 +227,26 @@ class PolicyRecord(Record):
                 'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, zone.root),
                 'EvaluateTargetHealth': False
             },
-            type=POLICY_ROUTED,
-            values=[str(self.policy.id)],
-            deleted=self.policy_record.deleted,
+            deleted=deleted,
+            dirty=dirty,
         )
 
-    def reconcile(self):
-        # create the top level alias
+    def save(self):
         if self.deleted:
-            # if the zone is marked as deleted don't try to build the tree.
+            # The record will be deleted
+            self.policy_record.deleted = True
+            self.policy_record.dirty = True
+        else:
+            # Update policy for this record.
+            self.policy_record.policy = self.policy
+            self.policy_record.deleted = False  # clear deleted flag
+            self.policy_record.dirty = True
+        self.policy_record.full_clean()
+        self.policy_record.save()
+
+    def reconcile(self):
+        # upsert or delete the top level alias
+        if self.deleted:
             self.zone.add_records([self])
             self.zone.commit()
             self.policy_record.delete()
@@ -228,10 +255,6 @@ class PolicyRecord(Record):
             self.policy_record.dirty = False  # mark as clean
             self.zone.commit()
             self.policy_record.save()
-
-    @property
-    def is_policy_record(self):
-        return True
 
     def _top_level_record(self):
         return Record(
@@ -252,19 +275,38 @@ class PolicyRecord(Record):
     def id(self):
         return self._top_level_record().id
 
-# class CachingFactory:
-#     def __init__(self, klass, key=('name', 'type')):
-#         self._registry = {}
-#         self._klass = klass
+    @property
+    def values(self):
+        return [str(self.policy.id)]
 
-#     def get(self, *constructor_args, cache_key=None):
-#         if cache_key is None:
-#             cache_key = constructor_args
-#         obj = self._registry.get(cache_key)
-#         if obj is None:
-#             obj = self._klass(*constructor_args)
-#             self._registry[cache_key] = obj
-#         return obj
+    @values.setter
+    def values(self, values):
+        (pol_id, ) = values
+        policy = models.Policy.objects.get(id=pol_id)
+        self.policy = policy
 
-#     def __call__(self, key, constructor_args=None):
-#         return self.get(key, constructor_args)
+    @property
+    def type(self):
+        return POLICY_ROUTED
+
+
+def record_factory(zone, **validated_data):
+    record_type = validated_data.pop('type')
+    if record_type == POLICY_ROUTED:
+        assert len(validated_data['values']) == 1
+        policy_id = validated_data['values'][0]
+        try:
+            policy = models.Policy.objects.get(id=policy_id)
+        except models.Policy.DoesNotExist:
+            raise SuspiciousOperation("Policy {}  does not exists.".format(
+                policy_id))
+        record_model = models.PolicyRecord.new_or_deleted(name=validated_data['name'], zone=zone)
+        obj = PolicyRecord(
+            policy_record=record_model,
+            zone=zone.route53_zone,
+            policy=policy,
+            dirty=True,
+        )
+    else:
+        obj = Record(zone=zone.route53_zone, type=record_type, **validated_data)
+    return obj
