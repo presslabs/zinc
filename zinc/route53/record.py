@@ -5,7 +5,7 @@ from hashids import Hashids
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 
-from zinc import models
+from zinc import models, route53
 
 
 HASHIDS_SALT = getattr(settings, 'SECRET_KEY', '')
@@ -238,7 +238,7 @@ class PolicyRecord(BaseRecord):
             self.policy_record.dirty = True
         else:
             # Update policy for this record.
-            self.policy_record.policy = self.policy
+            self.policy_record.policy_id = self.policy.id
             self.policy_record.deleted = False  # clear deleted flag
             self.policy_record.dirty = True
         self.policy_record.full_clean()
@@ -282,7 +282,7 @@ class PolicyRecord(BaseRecord):
     @values.setter
     def values(self, values):
         (pol_id, ) = values
-        policy = models.Policy.objects.get(id=pol_id)
+        policy = route53.Policy(policy=models.Policy.objects.get(id=pol_id), zone=self.zone)
         self.policy = policy
 
     @property

@@ -184,8 +184,9 @@ class Zone(object):
 
     def _delete_orphaned_managed_records(self):
         """Delete any managed record not belonging to one of the zone's policies"""
-        policies = set([
-            pr.policy for pr in self.zone_record.policy_records.select_related('policy')])
+        active_policy_records = self.zone_record.policy_records.select_related('policy') \
+                                                               .exclude(deleted=True)
+        policies = set([pr.policy for pr in active_policy_records])
         for record in self.records().values():
             if record.is_hidden:
                 for policy in policies:

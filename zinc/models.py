@@ -83,23 +83,6 @@ class Policy(models.Model):
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
 
-    @transaction.atomic
-    def delete_policy(self, zone):
-        # If the policy is in used by another record then don't delete it.
-        policy_records = zone.policy_records.filter(policy=self)
-        if len(policy_records) > 1:
-            return
-        self._remove_tree(zone)
-        zone.commit()
-
-    def _remove_tree(self, zone):
-        to_delete_records = []
-        for record in zone.route53_zone.records().values():
-            if record.is_member_of(policy=self):
-                record.deleted = True
-                to_delete_records.append(record)
-        zone.update_records(to_delete_records)
-
 
 class PolicyMember(models.Model):
     AWS_REGIONS = get_local_aws_region_choices()
@@ -323,13 +306,6 @@ class PolicyRecord(models.Model):
 
         self.dirty = False  # mark as clean
         self.save()
-
-    def delete_record(self):
-        # delete the tree.
-        self.r53_policy_record.deleted = True
-        self.zone.route53_zone.add_records([self.r53_policy_record])
-        self.policy.delete_policy(self.zone)
-        self.zone.commit()
 
     @classmethod
     def new_or_deleted(cls, name, zone):

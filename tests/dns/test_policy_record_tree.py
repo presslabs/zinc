@@ -372,7 +372,8 @@ def test_policy_record_deletion(zone, boto_client):
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == expected
 
-    policy_record.delete_record()
+    policy_record.soft_delete()
+    zone.reconcile()
 
     rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     assert strip_ns_and_soa(rrsets, zone.root) == [
@@ -404,7 +405,8 @@ def test_policy_record_tree_deletion_with_two_trees(zone, boto_client):
 
     zone.reconcile()
 
-    policy_record_to_delete.delete_record()
+    policy_record_to_delete.soft_delete()
+    zone.reconcile()
     expected = [
         {
             'Name': 'test.test-zinc.net.',
