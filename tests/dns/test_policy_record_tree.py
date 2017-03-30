@@ -1,7 +1,7 @@
 # pylint: disable=no-member,protected-access,redefined-outer-name
 import pytest
 from django_dynamic_fixture import G
-from mock import patch, call
+from mock import patch
 
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck
@@ -302,18 +302,18 @@ def test_policy_record_tree_within_members(zone, boto_client):
 
 
 @pytest.mark.django_db
-def test_policy_record_tree_with_two_trees(zone, boto_client):
+def test_multiple_policy_records_same_policy(zone, boto_client):
+    """
+    Tests having multiple PolicyRecords in a zone using the same policy.
+    """
     policy = G(m.Policy)
-    ip = create_ip_with_healthcheck()
+    ip1 = create_ip_with_healthcheck()
     ip2 = create_ip_with_healthcheck()
-    policy_members = [
-        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2),
-        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip2),
-        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip2),
-        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
-        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
-        G(m.PolicyMember, policy=policy, region=regions[1], ip=ip),
-    ]
+    policy_members = []
+    # add every ip as a member of the policy twice (once for each region)
+    for ip in [ip1, ip2]:
+        for region in regions[0:2]:
+            policy_members.append(G(m.PolicyMember, policy=policy, region=region, ip=ip))
 
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     policy_record2 = G(m.PolicyRecord, zone=zone, policy=policy, name='cdn')
@@ -344,6 +344,46 @@ def test_policy_record_tree_with_two_trees(zone, boto_client):
     assert strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
     ) == sorted(expected, key=sort_key)
+
+
+@pytest.mark.django_db
+def test_multiple_policies(zone, boto_client):
+    """
+    Tests having multiple policies in a zone.
+    """
+    policy1 = G(m.Policy)
+    policy2 = G(m.Policy)
+    ip1 = create_ip_with_healthcheck()
+    ip2 = create_ip_with_healthcheck()
+    policy_members_1 = []
+    policy_members_2 = []
+    # add every ip as a member of each policy twice (for each region)
+    for ip in [ip1, ip2]:
+        for region in regions[0:2]:
+            policy_members_1.append(G(m.PolicyMember, policy=policy1, region=region, ip=ip))
+            policy_members_2.append(G(m.PolicyMember, policy=policy2, region=region, ip=ip))
+
+    policy_record_1 = G(m.PolicyRecord, zone=zone, policy=policy1, name='@')
+    policy_record_2 = G(m.PolicyRecord, zone=zone, policy=policy2, name='cdn')
+
+    zone.reconcile()
+
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A'
+        },
+        # this is a ordinary record. should be not modified.
+        # we expect to have a policy tree for each policy
+    ] + policy_members_to_list(policy_members_1, policy_record_1) + \
+        policy_members_to_list(policy_members_2, policy_record_2)
+    expected = sorted(expected, key=sort_key)
+    results = strip_ns_and_soa(
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    )
+    assert results == expected
 
 
 @pytest.mark.django_db
@@ -507,7 +547,6 @@ def test_apply_policy_on_zone(zone, boto_client):
     assert strip_ns_and_soa(rrsets, zone.root) == sorted(expected, key=sort_key)
 
 
-@pytest.mark.xfail
 @pytest.mark.django_db
 def test_apply_policy_is_not_duplicated(zone):
     policy = G(m.Policy)
@@ -518,30 +557,9 @@ def test_apply_policy_is_not_duplicated(zone):
     G(m.PolicyRecord, zone=zone, policy=policy, name='@')
     G(m.PolicyRecord, zone=zone, policy=policy, name='www')
 
-    with patch('zinc.models.Policy.apply_policy') as apply_policy:
-        with patch('zinc.models.PolicyRecord.apply_record'):
-            zone.reconcile()
-            apply_policy.assert_called_once_with(zone)
-
-
-@pytest.mark.xfail
-@pytest.mark.django_db
-def test_apply_policy_ensure_both_policies_are_applied(zone):
-    policy = G(m.Policy)
-    policy_2 = G(m.Policy)
-
-    G(m.PolicyMember, policy=policy, region=regions[0])
-    G(m.PolicyMember, policy=policy_2, region=regions[1])
-
-    G(m.PolicyRecord, zone=zone, policy=policy, name='@')
-    G(m.PolicyRecord, zone=zone, policy=policy_2, name='www')
-
-    with patch('zinc.models.Policy.apply_policy') as apply_policy:
-        with patch('zinc.models.PolicyRecord.apply_record'):
-            zone.reconcile()
-            # assert called 2 times, because 2 policies.
-            calls = [call(zone), call(zone)]
-            apply_policy.assert_has_calls(calls)
+    with patch('zinc.route53.Policy.reconcile') as policy_reconcile:
+        zone.reconcile()
+        policy_reconcile.assert_called_once()
 
 
 @pytest.mark.django_db
