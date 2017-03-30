@@ -31,6 +31,21 @@ class ZoneViewset(mixins.CreateModelMixin,
         zone.soft_delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+from functools import wraps
+def memoized_property(method):
+    """
+    Caches a method's return value on the instance.
+    """
+    @property
+    @wraps(method)
+    def caching_wrapper(self):
+        cache_key = "__cached_" + method.__name__
+        if not hasattr(self, cache_key):
+            return_value = method(self)
+            setattr(self, cache_key, return_value)
+        return getattr(self, cache_key)
+    return caching_wrapper
+
 
 class RecordDetail(RetrieveUpdateDestroyAPIView):
     queryset = models.Zone.objects.filter(deleted=False)
@@ -39,21 +54,23 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
     allowed_methods = ['GET', 'DELETE', 'PATCH']
 
     def get_object(self):
-        queryset = self.get_queryset()
-        zone = get_object_or_404(queryset, id=self.kwargs['zone_id'])
+        zone = self.zone
 
         for record in zone.records:
+            print(record, record.id == self.kwargs['record_id'])
             if record.id == self.kwargs['record_id']:
                 return record
         raise NotFound(detail='Record not found.')
 
-    def get_zone(self):
+    @memoized_property
+    def zone(self):
         zone_id = self.kwargs.get('zone_id')
         if zone_id is not None:
-            return get_object_or_404(models.Zone, id=zone_id)
+            queryset = self.get_queryset()
+            return get_object_or_404(queryset, id=zone_id)
 
     def get_serializer_context(self):
-        zone = self.get_zone()
+        zone = self.zone
         context = super(RecordDetail, self).get_serializer_context()
         context['zone'] = zone
         return context

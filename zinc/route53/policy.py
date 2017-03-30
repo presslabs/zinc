@@ -14,6 +14,10 @@ class Policy:
         return self.policy.name
 
     @property
+    def id(self):
+        return self.policy.id
+
+    @property
     def aws_records(self):
         '''What we have in AWS'''
         return dict([

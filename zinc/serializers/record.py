@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 
-from zinc.models import RECORD_PREFIX, PolicyRecord
+from zinc.models import RECORD_PREFIX
 from zinc import route53
 from zinc.route53.record import ZINC_RECORD_TYPES, POLICY_ROUTED, ALLOWED_RECORD_TYPES
 
@@ -61,7 +61,6 @@ class RecordSerializer(serializers.Serializer):
         return '{}.{}'.format(obj.name, zone.root)
 
     def get_id(self, obj):
-        # assert isinstance(obj.zone_id, str)
         return obj.id
 
     def get_url(self, obj):
@@ -84,27 +83,22 @@ class RecordSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         zone = self.context['zone']
-        # if validated_data['type'] == POLICY_ROUTED:
-        #     record_model = PolicyRecord.objects.create(**validated_data)
-        #     obj = route53.PolicyRecord(policy_record=record_model, zone=zone.route53_zone)
-        # else:
-        obj = route53.Record(zone=zone.route53_zone, **validated_data)
+        obj = route53.record_factory(zone=zone, **validated_data)
         with interpret_client_error():
-            record = zone.add_record(obj)
+            obj.save()
             zone.route53_zone.commit()
-        return record
+        return obj
 
     def update(self, obj, validated_data):
         zone = self.context['zone']
-        for attr, value in validated_data.items():
-            setattr(obj, attr, value)
-        # obj.update(validated_data)
         if obj.managed:
             raise ValidationError("Can't change a managed record.")
-        record = zone.add_record(obj)
+        for attr, value in validated_data.items():
+            setattr(obj, attr, value)
+        obj.save()
         with interpret_client_error():
-            zone.route53_zone.commit()
-        return record
+            zone.commit()
+        return obj
 
     def validate_type(self, value):
         if value not in ALLOWED_RECORD_TYPES:

@@ -85,7 +85,6 @@ def test_policy_record_update_policy(api_client, zone):
             'values': [str(new_policy.id)],
         }
     )
-
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
     assert pr.dirty is True
     assert pr.id == policy_record.id
