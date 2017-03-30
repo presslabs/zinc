@@ -110,3 +110,9 @@ class Policy:
                 to_create.append(self.desired_records[rec_id])
         self.zone.add_records(to_create)
         self.zone.commit()
+
+    def remove(self):
+        records = list(self.aws_records.values())
+        for record in records:
+            record.deleted = True
+        self.zone.add_records(records)
