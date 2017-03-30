@@ -4,7 +4,7 @@ import logging
 
 from botocore.exceptions import ClientError
 
-from .record import Record, PolicyRecord
+from .record import Record
 from .policy import Policy
 from .client import get_client
 

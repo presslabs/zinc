@@ -768,6 +768,7 @@ def test_delete_policy_record(zone, boto_client):
     )
     assert result == expected
 
+
 @pytest.mark.django_db
 def test_r53_policy_record_aws_records(zone, boto_client):
     """
@@ -834,9 +835,11 @@ def test_r53_policy_reconcile(zone, boto_client):
     r53_policy = route53.Policy(zone=zone.route53_zone, policy=policy)
     r53_policy.reconcile()
 
-    raw_aws_records = [route53.Record.from_aws_record(r, zone=zone)
-                       for r in strip_ns_and_soa(boto_client.list_resource_record_sets(
-                               HostedZoneId=zone.route53_id), zone.root)]
+    raw_aws_records = [
+        route53.Record.from_aws_record(r, zone=zone)
+        for r in strip_ns_and_soa(
+            boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id),
+            zone.root)]
     # only look at the hidden records (the ones part of the policy tree)
     records = [(r.name, r.values) for r in raw_aws_records if r.is_hidden]
     assert records == [

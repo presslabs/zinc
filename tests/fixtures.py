@@ -252,9 +252,6 @@ class Moto:
         if target is None:
             return
         if (target['DNSName'], record['Type']) not in [(r['Name'], r['Type']) for r in records]:
-            from pprint import pprint
-            pprint(changes)
-            pprint(records)
             raise botocore.exceptions.ClientError(
                 error_response={
                     'Error': {
