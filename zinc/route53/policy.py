@@ -109,7 +109,6 @@ class Policy:
             if rec_id not in aws_record_ids:
                 to_create.append(self.desired_records[rec_id])
         self.zone.add_records(to_create)
-        self.zone.commit()
 
     def remove(self):
         records = list(self.aws_records.values())

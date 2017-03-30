@@ -648,7 +648,7 @@ def test_dangling_records(zone, boto_client):
     Tests a dangling record in an existing policy tree gets removed.
     """
     dangling_record = {
-        'Name': '_zn_test1.us-east-1.' + zone.root,
+        'Name': '_zn_policy1.us-east-1.' + zone.root,
         'Type': 'A',
         'ResourceRecords': [{'Value': '127.1.1.1'}],
         'SetIdentifier': 'test-identifier',
@@ -670,10 +670,11 @@ def test_dangling_records(zone, boto_client):
     )
 
     ip = create_ip_with_healthcheck()
-    policy = G(m.Policy, name='test1')
+    policy = G(m.Policy, name='policy1')
     G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
-    G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=False)
+    G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=True)
     route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    zone.commit()
 
     records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
     assert dangling_record not in records['ResourceRecordSets']
@@ -831,9 +832,9 @@ def test_r53_policy_reconcile(zone, boto_client):
     ip1 = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy_record.policy, region=regions[0], ip=ip1)
     G(m.PolicyMember, policy=policy_record.policy, region=regions[1], ip=ip1)
-    # pol_factory = route53.CachingFactory(route53.Policy)
     r53_policy = route53.Policy(zone=zone.route53_zone, policy=policy)
     r53_policy.reconcile()
+    zone.commit()
 
     raw_aws_records = [
         route53.Record.from_aws_record(r, zone=zone)
@@ -847,4 +848,45 @@ def test_r53_policy_reconcile(zone, boto_client):
         ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
         ('_zn_pol1_us-east-1', [ip1.ip]),
         ('_zn_pol1_us-east-2', [ip1.ip]),
+    ]
+
+
+@pytest.mark.django_db
+def test_r53_policy_reconcile_cname_clash(zone, boto_client):
+    """
+    Tests a single policy records clashing with a cname won't block the
+    rest of the zone reconciling.
+    """
+    policy = G(m.Policy, name='pol1')
+    G(m.PolicyRecord, zone=zone, name='www', policy=policy)
+    G(m.PolicyRecord, zone=zone, name='conflict', policy=policy)
+    route53.Record(
+        name='conflict',
+        values=['conflict.example.com'],
+        type='CNAME',
+        zone=zone.route53_zone,
+        ttl=30,
+    ).save()
+    zone.commit()
+
+    ip1 = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
+    G(m.PolicyMember, policy=policy, region=regions[1], ip=ip1)
+    zone.reconcile()
+
+    raw_aws_records = [
+        route53.Record.from_aws_record(r, zone=zone)
+        for r in strip_ns_and_soa(
+            boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id),
+            zone.root)]
+    # only look at the hidden records (the ones part of the policy tree)
+    records = [(r.name, r.values) for r in raw_aws_records]
+    assert records == [
+        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
+        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
+        ('_zn_pol1_us-east-1', [ip1.ip]),
+        ('_zn_pol1_us-east-2', [ip1.ip]),
+        ('conflict', ['conflict.example.com']),
+        ('test', ['1.1.1.1']),
+        ('www', ['ALIAS _zn_pol1.test-zinc.net.']),
     ]

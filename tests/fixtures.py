@@ -264,23 +264,21 @@ class Moto:
                 operation_name='list_resource_record_sets',
             )
 
-    def _check_already_exists(self, records, change, changes):
-        def get_key(record):
-            return (record['Name'],
-                    record['Type'],
-                    record.get('AliasTarget', {}).get('DNSName'))
+    def _check_cname_clash(self, records, change, changes):
         record = change['ResourceRecordSet']
-        existing = [get_key(r) for r in records]
-        if get_key(record) in existing:
-            # from pprint import pprint
-            # pprint(changes)
-            # pprint(records)
+        r_type = record['Type']
+        if r_type not in ('A', 'AAAA'):
+            return
+
+        existing = [(r['Name'], r['Type']) for r in records]
+        if (record['Name'], 'CNAME') in existing:
             raise botocore.exceptions.ClientError(
                 error_response={
                     'Error': {
                         'Code': 'InvalidChangeBatch',
-                        'Message': ('{} type {} already exists.'.format(
-                            record['Name'], record['Type'])),
+                        'Message': (
+                            "Can't create record {} of type {}, conflicts with a CNAME".format(
+                                record['Name'], record['Type'])),
                         'Type': 'Sender'
                     },
                 },
@@ -301,7 +299,7 @@ class Moto:
                 records.append(change['ResourceRecordSet'])
             elif change['Action'] == 'CREATE':
                 self._check_alias_target_valid(records, change, changes)
-                # self._check_already_exists(records, change, changes)
+                self._check_cname_clash(records, change, changes)
                 records.append(change['ResourceRecordSet'])
             else:
                 raise AssertionError(change['Action'])
