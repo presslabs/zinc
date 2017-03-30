@@ -19,7 +19,7 @@ def test_add_zone_record(zone):
         ttl=300,
         zone=zone.route53_zone,
     )
-    zone.add_record(record)
+    record.save()
     zone.route53_zone.commit()
 
     assert record.id in [r.id for r in zone.records]
@@ -60,14 +60,14 @@ def test_delete_zone_alias_record(zone):
         },
         zone=zone.route53_zone,
     )
-    record_saved = zone.add_record(record)
+    record.save()
     zone.commit()
-    assert record_saved.id in [r.id for r in zone.records]
+    assert record.id in [r.id for r in zone.records]
 
     zone.delete_record(record)
     zone.route53_zone.commit()
 
-    assert record_saved.id not in [r.id for r in zone.records]
+    assert record.id not in [r.id for r in zone.records]
 
 
 @pytest.mark.django_db
@@ -84,13 +84,13 @@ def test_delete_zone_alias_record_with_set_id(zone):
         region=regions[0],
         zone=zone.route53_zone,
     )
-    record_hash = zone.add_record(record)
+    record.save()
     zone.route53_zone.commit()
 
     zone.delete_record(record)
     zone.route53_zone.commit()
 
-    assert record_hash not in zone.records
+    assert record.id not in zone.records
 
 
 @pytest.mark.django_db
