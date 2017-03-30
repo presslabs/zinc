@@ -1,5 +1,6 @@
 from collections import OrderedDict
 import zinc.route53
+from zinc.utils import memoized_property
 from .record import Record, RECORD_PREFIX
 
 
@@ -17,7 +18,7 @@ class Policy:
     def id(self):
         return self.policy.id
 
-    @property
+    @memoized_property
     def aws_records(self):
         '''What we have in AWS'''
         return dict([
@@ -25,7 +26,7 @@ class Policy:
             if record.is_member_of(self)
         ])
 
-    @property
+    @memoized_property
     def desired_records(self):
         '''The records we should have (the desired state of the world)'''
         return OrderedDict([(record.id, record) for record in self._build_tree()])
@@ -104,11 +105,16 @@ class Policy:
             record.deleted = True
             to_delete.append(record)
         self.zone.add_records(to_delete)
-        to_create = []
-        for rec_id in desired_record_ids:
-            if rec_id not in aws_record_ids:
-                to_create.append(self.desired_records[rec_id])
-        self.zone.add_records(to_create)
+        to_upsert = []
+        for rec_id, desired_record in self.desired_records.items():
+            existing_record = self.aws_records.get(rec_id)
+            if existing_record is None:
+                to_upsert.append(desired_record)
+            else:
+                # if desired is a subset of existing
+                if not desired_record.to_aws().items() <= existing_record.to_aws().items():
+                    to_upsert.append(desired_record)
+        self.zone.add_records(to_upsert)
 
     def remove(self):
         records = list(self.aws_records.values())

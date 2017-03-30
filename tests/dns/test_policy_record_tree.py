@@ -890,3 +890,32 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
         ('test', ['1.1.1.1']),
         ('www', ['ALIAS _zn_pol1.test-zinc.net.']),
     ]
+
+
+@pytest.mark.django_db
+def test_r53_policy_record_tree_attribute_change(zone, boto_client):
+    """
+    Tests reconciliation updates secondary attributes for policy tree records.
+    """
+    # create a record with a different TTL and no health_check_id
+    policy = G(m.Policy, name='pol1')
+    ip1 = create_ip_with_healthcheck()
+    member = G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
+    record = route53.Record(
+        name='_zn_pol1',
+        values=['1.2.3.4'],
+        type='A',
+        zone=zone.route53_zone,
+        ttl=666,
+        set_identifier='{}-{}'.format(member.id, member.region),
+        weight=10,
+    )
+    record.save()
+    zone.commit()
+
+    policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
+    zone.reconcile()
+    policy = route53.Policy(zone=zone.route53_zone, policy=policy_record.policy)
+    record = policy.aws_records[record.id]
+    assert record.ttl == 30
+    assert record.health_check_id is not None
