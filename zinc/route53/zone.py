@@ -49,7 +49,7 @@ class Zone(object):
     def _reset_change_batch(self):
         self._change_batch = []
 
-    def commit(self):
+    def commit(self, preserve_cache=False):
         if not self._change_batch:
             return
 
@@ -57,9 +57,9 @@ class Zone(object):
             HostedZoneId=self.id,
             ChangeBatch={'Changes': self._change_batch}
         )
-        # clear cache
         self._reset_change_batch()
-        self._clear_cache()
+        if not preserve_cache:
+            self._clear_cache()
 
     def records(self):
         self._cache_aws_records()
@@ -176,11 +176,17 @@ class Zone(object):
             for policy in dirty_policies:
                 r53_policy = Policy(policy=policy, zone=self)
                 r53_policy.reconcile()
-
+                self.commit(preserve_cache=True)
             for policy_record in dirty_policy_records:
-                policy_record.r53_policy_record.reconcile()
+                try:
+                    policy_record.r53_policy_record.reconcile()
+                    self.commit(preserve_cache=True)
+                except Exception as excp:
+                    logger.exception("failed to reconcile record %r", policy_record)
+                    self._reset_change_batch()
 
             self._delete_orphaned_managed_records()
+            self.commit()
 
     def _delete_orphaned_managed_records(self):
         """Delete any managed record not belonging to one of the zone's policies"""
@@ -199,8 +205,6 @@ class Zone(object):
     def reconcile(self):
         self._reconcile_zone()
         self._reconcile_policy_records()
-        self.commit()
-        self._clear_cache()
 
     @classmethod
     def reconcile_multiple(cls, zones):
