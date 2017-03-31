@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 
 from zinc import models, route53
+from zinc.utils import memoized_property
 
 
 HASHIDS_SALT = getattr(settings, 'SECRET_KEY', '')
@@ -199,6 +200,9 @@ class BaseRecord:
     def save(self):
         self.zone.add_records([self])
 
+    def is_subset(self, other):
+        return self.to_aws().items() <= other.to_aws().items()
+
 
 class Record(BaseRecord):
     def __init__(self, type=None, **kwa):
@@ -248,14 +252,15 @@ class PolicyRecord(BaseRecord):
         # upsert or delete the top level alias
         if self.deleted:
             self.zone.add_records([self])
-            self.zone.commit()
             self.policy_record.delete()
         else:
-            self.zone.add_records([self])
+            existing_alias = self._existing_alias
+            if (existing_alias is None or not self._top_level_record.is_subset(existing_alias)):
+                self.zone.add_records([self])
             self.policy_record.dirty = False  # mark as clean
-            self.zone.commit()
             self.policy_record.save()
 
+    @memoized_property
     def _top_level_record(self):
         return Record(
             name=self.name,
@@ -268,12 +273,16 @@ class PolicyRecord(BaseRecord):
             zone=self.zone,
         )
 
+    @memoized_property
+    def _existing_alias(self):
+        return self.zone.records().get(self.id)
+
     def to_aws(self):
-        return self._top_level_record().to_aws()
+        return self._top_level_record.to_aws()
 
     @property
     def id(self):
-        return self._top_level_record().id
+        return self._top_level_record.id
 
     @property
     def values(self):
