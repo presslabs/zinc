@@ -207,6 +207,7 @@ def test_policy_record_tree_builder(zone, boto_client):
 
     route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
     policy_record.r53_policy_record.reconcile()
+    zone.commit()
 
     expected = [
         {
@@ -937,3 +938,23 @@ def test_r53_policy_record_tree_attribute_change(zone, boto_client):
     record = policy.aws_records[record.id]
     assert record.ttl == 30
     assert record.health_check_id is not None
+
+
+@pytest.mark.django_db
+def test_policy_alias_noop(zone, boto_client):
+    """
+    Tests no r53 update happens if the top level alias for a policy did not change
+    """
+    ip1 = create_ip_with_healthcheck()
+    policy1 = G(m.Policy, name='policy1')
+    # add each IP to both policies
+    G(m.PolicyMember, ip=ip1, policy=policy1, region='us-east-1', weight=10)
+    # build a tree with policy1
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy1, name='record', dirty=True)
+    zone.reconcile()
+    policy_record.dirty = True
+    policy_record.save()
+    # sanity check, ensure we have no pending changes
+    assert zone.route53_zone._change_batch == []
+    policy_record.r53_policy_record.reconcile()
+    assert zone.route53_zone._change_batch == []

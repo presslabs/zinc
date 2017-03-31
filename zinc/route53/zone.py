@@ -50,6 +50,8 @@ class Zone(object):
         self._change_batch = []
 
     def commit(self, preserve_cache=False):
+        if not preserve_cache:
+            self._clear_cache()
         if not self._change_batch:
             return
 
@@ -58,8 +60,6 @@ class Zone(object):
             ChangeBatch={'Changes': self._change_batch}
         )
         self._reset_change_batch()
-        if not preserve_cache:
-            self._clear_cache()
 
     def records(self):
         self._cache_aws_records()
@@ -181,10 +181,9 @@ class Zone(object):
                 try:
                     policy_record.r53_policy_record.reconcile()
                     self.commit(preserve_cache=True)
-                except Exception as excp:
+                except ClientError as excp:
                     logger.exception("failed to reconcile record %r", policy_record)
                     self._reset_change_batch()
-
             self._delete_orphaned_managed_records()
             self.commit()
 
