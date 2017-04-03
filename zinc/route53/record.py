@@ -198,7 +198,7 @@ class BaseRecord:
         return self.name.startswith('{}_{}'.format(RECORD_PREFIX, policy.name))
 
     def save(self):
-        self.zone.add_records([self])
+        self.zone.process_records([self])
 
     def is_subset(self, other):
         return self.to_aws().items() <= other.to_aws().items()
@@ -251,12 +251,12 @@ class PolicyRecord(BaseRecord):
     def reconcile(self):
         # upsert or delete the top level alias
         if self.deleted:
-            self.zone.add_records([self])
+            self.zone.process_records([self])
             self.policy_record.delete()
         else:
             existing_alias = self._existing_alias
             if (existing_alias is None or not self._top_level_record.is_subset(existing_alias)):
-                self.zone.add_records([self])
+                self.zone.process_records([self])
             self.policy_record.dirty = False  # mark as clean
             self.policy_record.save()
 

@@ -28,7 +28,7 @@ class Zone(object):
     def root(self):
         return self.zone_record.root
 
-    def add_records(self, records):
+    def process_records(self, records):
         for record in records:
             self._add_record_changes(record)
 
@@ -199,7 +199,7 @@ class Zone(object):
                         break
                 else:
                     record.deleted = True
-                    self.add_records([record])
+                    self.process_records([record])
 
     def reconcile(self):
         self._reconcile_zone()

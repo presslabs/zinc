@@ -104,7 +104,7 @@ class Policy:
             record = self.aws_records[obsolete_rec_id]
             record.deleted = True
             to_delete.append(record)
-        self.zone.add_records(to_delete)
+        self.zone.process_records(to_delete)
         to_upsert = []
         for rec_id, desired_record in self.desired_records.items():
             existing_record = self.aws_records.get(rec_id)
@@ -114,10 +114,10 @@ class Policy:
                 # if desired is a subset of existing
                 if not desired_record.to_aws().items() <= existing_record.to_aws().items():
                     to_upsert.append(desired_record)
-        self.zone.add_records(to_upsert)
+        self.zone.process_records(to_upsert)
 
     def remove(self):
         records = list(self.aws_records.values())
         for record in records:
             record.deleted = True
-        self.zone.add_records(records)
+        self.zone.process_records(records)

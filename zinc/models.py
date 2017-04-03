@@ -155,7 +155,7 @@ class Zone(models.Model):
         records = self.route53_zone.records()
         to_delete_record = records[record_hash]
         to_delete_record.deleted = True
-        self.route53_zone.add_records([to_delete_record])
+        self.route53_zone.process_records([to_delete_record])
 
     def delete_record(self, record):
         self.delete_record_by_hash(record.id)
@@ -199,7 +199,7 @@ class Zone(models.Model):
         return filtered_records
 
     def update_records(self, records):
-        self.route53_zone.add_records(records)
+        self.route53_zone.process_records(records)
 
     def __str__(self):
         return '{} ({})'.format(self.root, self.route53_id)
@@ -306,7 +306,7 @@ class PolicyRecord(models.Model):
             self.delete()
             return
 
-        self.zone.route53_zone.add_records([self.r53_policy_record])
+        self.zone.route53_zone.process_records([self.r53_policy_record])
 
         self.dirty = False  # mark as clean
         self.save()
