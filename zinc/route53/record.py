@@ -211,7 +211,7 @@ class BaseRecord:
             clashing = ((self.name, 'CNAME'), )
         for record in self.zone.zone_record.records:
             for other in clashing:
-                if (record.name, record.type) == other:
+                if (record.name, record.type) == other and record.id != self.id:
                     raise ValidationError(
                         {'name': "A {} record of the same name already exists.".format(other[1])})
 

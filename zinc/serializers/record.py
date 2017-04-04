@@ -96,6 +96,7 @@ class RecordSerializer(serializers.Serializer):
             raise ValidationError("Can't change a managed record.")
         for attr, value in validated_data.items():
             setattr(obj, attr, value)
+        obj.full_clean()
         obj.save()
         with interpret_client_error():
             zone.commit()

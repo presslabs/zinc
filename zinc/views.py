@@ -41,9 +41,10 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
 
     def get_object(self):
         zone = self.zone
+        record_id = self.kwargs['record_id']
 
         for record in zone.records:
-            if record.id == self.kwargs['record_id']:
+            if record.id == record_id:
                 return record
         raise NotFound(detail='Record not found.')
 

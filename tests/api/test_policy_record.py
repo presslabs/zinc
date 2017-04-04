@@ -294,6 +294,31 @@ def test_txt_create_with_A_clash(zone, api_client):
 
 
 @pytest.mark.django_db
+def test_cname_patch(zone, api_client):
+    """Tests we can patch a CNAME record"""
+    cname = route53.Record(
+        zone=zone.route53_zone,
+        type='CNAME',
+        name='cname',
+        values=['ham.example.net.'],
+        ttl=300,
+    )
+    cname.save()
+    zone.commit()
+    response = api_client.patch(
+        '/zones/{}/records/{}'.format(zone.id, cname.id),
+        data={
+            'values': 'spam.exmaple.net.'
+        })
+    assert response.status_code == 200, response.data
+    expected = [(r.name, r.type, r.values) for r in zone.route53_zone.records().values()
+                if r.name == 'cname']
+    assert sorted(expected) == [
+        ('cname', 'CNAME', ['spam.exmaple.net.']),
+    ]
+
+
+@pytest.mark.django_db
 def test_delete_then_create_policy_record(zone, api_client):
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()
