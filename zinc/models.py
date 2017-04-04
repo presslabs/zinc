@@ -204,6 +204,7 @@ class Zone(models.Model):
     def __str__(self):
         return '{} ({})'.format(self.root, self.route53_id)
 
+    @transaction.atomic
     def reconcile(self):
         self.route53_zone.reconcile()
 
