@@ -3,7 +3,7 @@ import hashlib
 
 from hashids import Hashids
 from django.conf import settings
-from django.core.exceptions import SuspiciousOperation
+from django.core.exceptions import SuspiciousOperation, ValidationError
 
 from zinc import models, route53
 
@@ -199,6 +199,29 @@ class BaseRecord:
     def save(self):
         self.zone.add_records([self])
 
+    def validate_unique(self):
+        """You're not allowed to have a CNAME clash with any other type of record"""
+        if self.type == 'CNAME':
+            clashing = tuple((self.name, r_type) for r_type in RECORD_TYPES)
+        else:
+            clashing = ((self.name, 'CNAME'), )
+        for record in self.zone.zone_record.records:
+            for other in clashing:
+                if (record.name, record.type) == other:
+                    raise ValidationError(
+                        {'name': "A {} record of the same name already exists.".format(other[1])})
+
+    def clean(self):
+        pass
+
+    def clean_fields(self):
+        pass
+
+    def full_clean(self):
+        self.clean_fields()
+        self.clean()
+        self.validate_unique()
+
 
 class Record(BaseRecord):
     def __init__(self, type=None, **kwa):
@@ -216,6 +239,7 @@ class PolicyRecord(BaseRecord):
             deleted = policy_record.deleted
 
         self.policy_record = policy_record
+        self._policy = None
         self.policy = policy
         self.zone = zone
 
@@ -230,6 +254,10 @@ class PolicyRecord(BaseRecord):
             deleted=deleted,
             dirty=dirty,
         )
+
+    def full_clean(self):
+        super().full_clean()
+        self.policy_record.full_clean()
 
     def save(self):
         if self.deleted:
@@ -288,6 +316,18 @@ class PolicyRecord(BaseRecord):
     @property
     def type(self):
         return POLICY_ROUTED
+
+    @property
+    def policy(self):
+        return self._policy
+
+    @policy.setter
+    def policy(self, value):
+        if value is None:
+            self.policy_record.policy = None
+        else:
+            self.policy_record.policy_id = value.id
+        self._policy = value
 
 
 def record_factory(zone, **validated_data):
