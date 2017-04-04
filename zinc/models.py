@@ -6,6 +6,7 @@ from logging import getLogger
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
+from django.db.models import Q
 
 from zinc import ns_check, route53, tasks
 from zinc.route53 import HealthCheck, get_local_aws_region_choices
@@ -241,6 +242,12 @@ class Zone(models.Model):
                 if not zone.ns_propagated:
                     logger.info('ns_propagated %-5s %s', zone.ns_propagated, zone.root)
                 zone.save()
+
+    @classmethod
+    def need_reconciliation(cls):
+        return cls.objects.filter(
+            Q(deleted=True) | Q(route53_id=None) | Q(policy_records__dirty=True)
+        )
 
 
 class PolicyRecord(models.Model):

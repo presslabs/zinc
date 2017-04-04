@@ -219,8 +219,8 @@ STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 BROKER_URL = os.getenv('BROKER_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
 CELERYBEAT_SCHEDULE = {
-    'reconcile_policy_records': {
-        'task': 'zinc.tasks.reconcile_policy_records',
+    'reconcile_zones': {
+        'task': 'zinc.tasks.reconcile_zones',
         'schedule': 10,
     },
     'lattice_sync': {
