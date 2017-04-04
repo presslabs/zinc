@@ -5,7 +5,7 @@ from zinc import route53
 
 
 def is_ns_or_soa(record):
-    if isinstance(record, route53.Record):
+    if isinstance(record, route53.record.BaseRecord):
         return (record.type in ('NS', 'SOA') and record.name == '@')
     else:
         return (record['type'] in ('NS', 'SOA') and record['name'] == '@')

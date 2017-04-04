@@ -8,6 +8,7 @@ from tests.utils import (strip_ns_and_soa, hash_policy_record,
                          get_test_record, create_ip_with_healthcheck)
 from zinc import models as m
 from zinc.route53 import get_local_aws_regions
+from zinc import route53
 
 
 regions = get_local_aws_regions()
@@ -65,7 +66,7 @@ def test_policy_record_create(api_client, zone):
             'values': [str(policy.id)],
         }
     )
-
+    assert response.status_code == 201, response.data
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
     assert response.data == get_policy_record(pr, dirty=True)
 
@@ -200,6 +201,7 @@ def test_policy_record_create_more_values(api_client, zone):
 
 @pytest.mark.django_db
 def test_create_policy_routed_if_cname_exists_should_fail(zone, api_client, boto_client):
+    """Tests we can't create a PR when we have a CNAME with the same name"""
     boto_client.change_resource_record_sets(
         HostedZoneId=zone.route53_zone.id,
         ChangeBatch={
@@ -239,6 +241,56 @@ def test_create_policy_routed_if_cname_exists_should_fail(zone, api_client, boto
     with pytest.raises(m.PolicyRecord.DoesNotExist):
         m.PolicyRecord.objects.get(name='www', zone=zone)
     assert response.data['name'] == ['A CNAME record of the same name already exists.']
+
+
+@pytest.mark.django_db
+def test_cname_create_with_pr_clash(zone, api_client):
+    """Tests we can't create a CNAME when we have a PR with the same name"""
+    policy = G(m.Policy)
+    region = get_local_aws_regions()[0]
+    ip = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=region, ip=ip)
+    policy_record = route53.PolicyRecord(
+        policy_record=m.PolicyRecord(policy=policy, zone=zone, name='conflict'),
+        zone=zone.route53_zone,
+    )
+    policy_record.save()
+
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': 'conflict',
+            'type': 'CNAME',
+            'values': 'conflict.example.net.'
+        })
+    assert response.data['name'] == ['A POLICY_ROUTED record of the same name already exists.']
+
+
+@pytest.mark.django_db
+def test_txt_create_with_A_clash(zone, api_client):
+    """Tests we can create a TXT when we have an A record with the same name"""
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': 'conflict',
+            'type': 'A',
+            'values': '1.2.3.4'
+        })
+    assert response.status_code == 201
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': 'conflict',
+            'type': 'TXT',
+            'values': 'the rain in spain'
+        })
+    assert response.status_code == 201
+    expected = [(r.name, r.type, r.values) for r in zone.route53_zone.records().values()
+                if r.name == 'conflict']
+    assert sorted(expected) == [
+        ('conflict', 'A', ['1.2.3.4']),
+        ('conflict', 'TXT', ['the rain in spain']),
+    ]
 
 
 @pytest.mark.django_db
