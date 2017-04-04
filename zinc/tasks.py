@@ -27,34 +27,28 @@ def aws_delete_zone(self, pk):
 
 
 @shared_task(bind=True, ignore_result=True)
-def reconcile_zones(self):
+def reconcile_zones(bind=True):
     """
-    Periodic task to delete zones that are soft deleted but still exist in the db,
-    or zones that have been created in the db but don't exist in AWS.
+    Periodic task that reconciles everything zone-related (zone deletion, policy record updates)
     """
-    route53.Zone.reconcile_multiple(models.Zone.objects.filter(deleted=True, route53_id=None))
-
-
-@shared_task(bind=True, ignore_result=True)
-def reconcile_policy_records(bind=True):
-    """Periodic task to reconcile dirty policy records"""
     redis_client = redis.from_url(settings.LOCK_SERVER_URL)
-    lock = redis_client.lock('reconcile_policy_records', timeout=60)
+    lock = redis_client.lock('reconcile_zones', timeout=60)
 
     if not lock.acquire(blocking=False):
         logger.info('Cannot aquire task lock. Probaly another task is running. Bailing out.')
         return
 
-    for zone in models.Zone.objects.filter(policy_records__dirty=True).distinct():
-        try:
-            zone.build_tree()
-            lock.extend(5)  # extend the lease each time we rebuild a tree
-        except:
-            logger.exception(
-                "apply_record failed for Zone %s.%s", zone, zone.root
-            )
-
-    lock.release()
+    try:
+        for zone in models.Zone.need_reconciliation():
+            try:
+                zone.reconcile()
+                lock.extend(5)  # extend the lease each time we rebuild a tree
+            except:
+                logger.exception(
+                    "reconcile failed for Zone %s.%s", zone, zone.root
+                )
+    finally:
+        lock.release()
 
 
 @shared_task(bind=True, ignore_result=True)
