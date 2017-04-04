@@ -20,7 +20,7 @@ class Policy:
 
     @memoized_property
     def aws_records(self):
-        '''What we have in AWS'''
+        """What we have in AWS"""
         return dict([
             (r_id, record) for (r_id, record) in self.zone.records().items()
             if record.is_member_of(self)
@@ -28,7 +28,7 @@ class Policy:
 
     @memoized_property
     def desired_records(self):
-        '''The records we should have (the desired state of the world)'''
+        """The records we should have (the desired state of the world)"""
         return OrderedDict([(record.id, record) for record in self._build_tree()])
 
     def _build_weighted_tree(self, policy_members, region_suffixed=True):

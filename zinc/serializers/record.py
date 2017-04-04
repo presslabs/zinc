@@ -85,6 +85,7 @@ class RecordSerializer(serializers.Serializer):
         zone = self.context['zone']
         obj = route53.record_factory(zone=zone, **validated_data)
         with interpret_client_error():
+            obj.full_clean()
             obj.save()
             zone.route53_zone.commit()
         return obj
@@ -106,7 +107,7 @@ class RecordSerializer(serializers.Serializer):
         return value
 
     def validate_name(self, value):
-        # record name should not start with rezerved prefix.
+        # record name should not start with reserved prefix.
         if value.startswith(RECORD_PREFIX):
             raise ValidationError(
                 ('Record {} can\'t start with {}. '
