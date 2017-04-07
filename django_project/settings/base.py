@@ -217,7 +217,7 @@ STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
 
-REDIS_URL = os.getenv('redis://localhost:6379').lstrip('/')
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379').lstrip('/')
 BROKER_URL = os.getenv('BROKER_URL', '{}/0'.format(REDIS_URL))
 CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '{}/1'.format(REDIS_URL))
 CELERYBEAT_SCHEDULE = {
