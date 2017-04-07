@@ -217,9 +217,9 @@ STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
 
-REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379').lstrip('/')
-BROKER_URL = os.getenv('BROKER_URL', '{}/0'.format(REDIS_URL))
-CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', '{}/1'.format(REDIS_URL))
+REDIS_URL = os.getenv('ZINC_REDIS_URL', 'redis://localhost:6379').lstrip('/')
+BROKER_URL = os.getenv('ZINC_BROKER_URL', '{}/0'.format(REDIS_URL))
+CELERY_RESULT_BACKEND = os.getenv('ZINC_CELERY_RESULT_BACKEND', '{}/1'.format(REDIS_URL))
 CELERYBEAT_SCHEDULE = {
     'reconcile_zones': {
         'task': 'zinc.tasks.reconcile_zones',
@@ -240,7 +240,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 # Distributed lock server
-LOCK_SERVER_URL = os.getenv('LOCK_SERVER_URL', '{}/2'.format(REDIS_URL))
+LOCK_SERVER_URL = os.getenv('ZINC_LOCK_SERVER_URL', '{}/2'.format(REDIS_URL))
 
 # HASHIDS
 HASHIDS_MIN_LENGTH = 0
