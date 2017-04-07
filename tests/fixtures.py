@@ -2,7 +2,6 @@
 import uuid
 import random
 import string
-from copy import deepcopy
 
 from django.contrib.auth import get_user_model
 import botocore.exceptions
@@ -129,36 +128,43 @@ class Moto:
         return FakePaginator(self, op_name)
 
     def create_hosted_zone(self, Name, CallerReference, HostedZoneConfig):
-        # print("create_hosted_zone", Name, CallerReference, HostedZoneConfig)
         zone_id = "{}/{}/{}".format(random_ascii(4), random_ascii(4), random_ascii(4))
-        self._zones[zone_id] = {
-            'ResourceRecordSets': [
+        self._zones[zone_id] = {}
+        self.change_resource_record_sets(
+            zone_id,
+            {'Changes': [
                 {
-                    'Name': Name,
-                    'Type': 'NS',
-                    'TTL': 1300,
-                    'ResourceRecords': [
-                        {
-                            'Value': 'test_ns1.presslabs.net',
-                        },
-                        {
-                            'Value': 'test_ns2.presslabs.net',
-                        },
-                    ]
+                    'ResourceRecordSet': {
+                        'Name': Name,
+                        'Type': 'NS',
+                        'TTL': 1300,
+                        'ResourceRecords': [
+                            {
+                                'Value': 'test_ns1.presslabs.net',
+                            },
+                            {
+                                'Value': 'test_ns2.presslabs.net',
+                            },
+                        ]
+                    },
+                    'Action': 'CREATE'
                 },
                 {
-                    'Name': Name,
-                    'Type': 'SOA',
-                    'TTL': 1300,
-                    'ResourceRecords': [
-                        {
-                            'Value': ('ns1.zincimple.com admin.zincimple.com '
-                                      '2013022001 86400 7200 604800 300'),
-                        }
-                    ]
-                },
-            ]
-        }
+                    'ResourceRecordSet': {
+                        'Name': Name,
+                        'Type': 'SOA',
+                        'TTL': 1300,
+                        'ResourceRecords': [
+                            {
+                                'Value': ('ns1.zincimple.com admin.zincimple.com '
+                                          '2013022001 86400 7200 604800 300'),
+                            }
+                        ]
+                    },
+                    'Action': 'CREATE'
+                }
+            ]}
+        )
         return {
             'HostedZone': {
                 'Id': zone_id
@@ -235,23 +241,34 @@ class Moto:
     def delete_health_check(self, HealthCheckId):
         self._health_checks.pop(HealthCheckId)
 
+    def _add_record(self, zone_id, record):
+        key = self._record_key(record)
+        self._zones[zone_id][key] = record
+
+    def _remove_record(self, zone_id, record):
+        key = self._record_key(record)
+        self._zones[zone_id].pop(key)
+
     @staticmethod
-    def _remove_record(records, record):
-        f_index = None
-        for index, _record in enumerate(records):
-            if ((_record['Name'] == record['Name']) and (_record['Type'] == record['Type'])):
-                f_index = index
-                break
-        else:
-            return
-        records.pop(f_index)
+    def _reverse_url_tokens(url):
+        return ".".join(reversed(url.split('.')))
+
+    @staticmethod
+    def _record_key(record={}, name=None, rtype=None):
+        name = record['Name'] if name is None else name
+        rtype = record['Type'] if rtype is None else rtype
+        set_id = record.get('SetIdentifier')
+        # turn a.example.com -> com.example.a
+        name = Moto._reverse_url_tokens(name)
+        return (name, rtype, set_id)
 
     def _check_alias_target_valid(self, records, change, changes):
         record = change['ResourceRecordSet']
         target = record.get('AliasTarget')
         if target is None:
             return
-        if (target['DNSName'], record['Type']) not in [(r['Name'], r['Type']) for r in records]:
+        alias_key = (Moto._reverse_url_tokens(target['DNSName']), record['Type'])
+        if not any((alias_key == record_key[:2]) for record_key in records):
             raise botocore.exceptions.ClientError(
                 error_response={
                     'Error': {
@@ -261,7 +278,7 @@ class Moto:
                         'Type': 'Sender'
                     },
                 },
-                operation_name='list_resource_record_sets',
+                operation_name='change_resource_record_sets',
             )
 
     def _check_cname_clash(self, records, change, changes):
@@ -270,8 +287,8 @@ class Moto:
         if r_type not in ('A', 'AAAA'):
             return
 
-        existing = [(r['Name'], r['Type']) for r in records]
-        if (record['Name'], 'CNAME') in existing:
+        clash_key = (self._reverse_url_tokens(record['Name']), 'CNAME')
+        if any((clash_key == record_key[:2]) for record_key in records):
             raise botocore.exceptions.ClientError(
                 error_response={
                     'Error': {
@@ -282,31 +299,57 @@ class Moto:
                         'Type': 'Sender'
                     },
                 },
-                operation_name='list_resource_record_sets',
+                operation_name='change_resource_record_sets',
+            )
+
+    def _check_record_doesnt_exist(self, records, change, changes):
+        record = change['ResourceRecordSet']
+        existing = records.keys()
+        if self._record_key(record) in existing:
+            raise botocore.exceptions.ClientError(
+                error_response={
+                    'Error': {
+                        'Code': 'InvalidChangeBatch',
+                        'Message': (
+                            "Record {} of type {} already exists".format(
+                                record['Name'], record['Type'])),
+                        'Type': 'Sender'
+                    },
+                },
+                operation_name='change_resource_record_sets',
             )
 
     def change_resource_record_sets(self, HostedZoneId, ChangeBatch):
-        zone = self._zones[HostedZoneId]
-        records = zone.setdefault('ResourceRecordSets', [])
+        records = self._zones[HostedZoneId]
 
         changes = ChangeBatch['Changes']
         for change in changes:
+            record_set = change['ResourceRecordSet']
             if change['Action'] == 'DELETE':
-                self._remove_record(records, change['ResourceRecordSet'])
+                self._remove_record(HostedZoneId, record_set)
             elif change['Action'] == 'UPSERT':
-                self._remove_record(records, change['ResourceRecordSet'])
+                if self._record_key(record_set) in records:
+                    self._remove_record(HostedZoneId, record_set)
+                self._check_cname_clash(records, change, changes)
                 self._check_alias_target_valid(records, change, changes)
-                records.append(change['ResourceRecordSet'])
+                self._add_record(HostedZoneId, record_set)
             elif change['Action'] == 'CREATE':
                 self._check_alias_target_valid(records, change, changes)
                 self._check_cname_clash(records, change, changes)
-                records.append(change['ResourceRecordSet'])
+                self._check_record_doesnt_exist(records, change, changes)
+                self._add_record(HostedZoneId, record_set)
             else:
                 raise AssertionError(change['Action'])
 
     def list_resource_record_sets(self, HostedZoneId=None):
+        """
+        Return record sets in order.
+
+        See boto3 documenation:
+        http://boto3.readthedocs.io/en/latest/reference/services/route53.html#Route53.Client.list_resource_record_sets
+        """
         try:
-            return self.response[HostedZoneId]
+            zone = self._zones[HostedZoneId]
         except KeyError:
             raise botocore.exceptions.ClientError(
                 error_response={
@@ -318,10 +361,8 @@ class Moto:
                 },
                 operation_name='list_resource_record_sets',
             )
-
-    @property
-    def response(self):
-        return deepcopy(self._zones)
+        records = [v for (k, v) in sorted(list(zone.items()))]
+        return {'ResourceRecordSets': records}
 
 
 @pytest.fixture(

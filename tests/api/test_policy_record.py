@@ -319,6 +319,35 @@ def test_cname_patch(zone, api_client):
 
 
 @pytest.mark.django_db
+def test_post_doesnt_overwite_existing(zone, api_client):
+    """
+    Tests posting a new record of the same name and type with different values fails.
+    """
+    record = route53.Record(
+        zone=zone.route53_zone,
+        type='A',
+        name='conflict',
+        values=['1.2.3.4'],
+        ttl=30,
+    )
+    record.save()
+    zone.commit()
+    response = api_client.post(
+        '/zones/{}/records'.format(zone.id),
+        data={
+            'type': 'A',
+            'name': 'conflict',
+            'values': '5.6.7.8'
+        })
+    expected = [(r.name, r.type, r.values) for r in zone.route53_zone.records().values()
+                if r.name == 'conflict']
+    assert sorted(expected) == [
+        ('conflict', 'A', ['1.2.3.4']),
+    ]
+    response.status_code == 400, response.data
+
+
+@pytest.mark.django_db
 def test_delete_then_create_policy_record(zone, api_client):
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()

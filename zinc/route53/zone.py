@@ -36,7 +36,7 @@ class Zone(object):
         if record.deleted:
             action = 'DELETE'
         else:
-            if record.id not in self.records():
+            if record.created is True:
                 action = 'CREATE'
             else:
                 action = 'UPSERT'
@@ -55,10 +55,15 @@ class Zone(object):
         if not self._change_batch:
             return
 
-        self._client.change_resource_record_sets(
-            HostedZoneId=self.id,
-            ChangeBatch={'Changes': self._change_batch}
-        )
+        try:
+            self._client.change_resource_record_sets(
+                HostedZoneId=self.id,
+                ChangeBatch={'Changes': self._change_batch}
+            )
+        except ClientError as excp:
+            if excp.response['Error']['Code'] == 'InvalidInput':
+                logging.exception("failed to process batch %r", self._change_batch)
+            raise
         self._reset_change_batch()
 
     def records(self):

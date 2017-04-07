@@ -108,3 +108,22 @@ def get_record_from_base(record, *a, **kwa):
         return record_to_response(record, *a, **kwa)
     else:
         return record_data_to_response(record, *a, **kwa)
+
+
+def meld(got, expected):
+    if got == expected:
+        return
+    import inspect
+    call_frame = inspect.getouterframes(inspect.currentframe(), 2)
+    test_name = call_frame[1][3]
+    from pprint import pformat
+    import os
+    from os import path
+    os.makedirs(test_name, exist_ok=True)
+    got_fn = path.join(test_name, 'got')
+    expected_fn = path.join(test_name, 'expected')
+    with open(got_fn, 'w') as got_f, open(expected_fn, 'w') as expected_f:
+        got_f.write(pformat(got))
+        expected_f.write(pformat(expected))
+    import subprocess
+    subprocess.run(['meld', got_fn, expected_fn])
