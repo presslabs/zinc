@@ -177,7 +177,7 @@ def test_patch_nonexistent_records(api_client, zone):
 @pytest.mark.django_db
 def test_add_record_without_values(api_client, zone):
     record = {
-        'name': 'test',
+        'name': 'test1',
         'ttl': 400,
         'type': 'A',
     }
@@ -191,7 +191,7 @@ def test_add_record_without_values(api_client, zone):
 @pytest.mark.django_db
 def test_add_record_without_ttl(api_client, zone):
     record = {
-        'name': 'test',
+        'name': 'test1',
         'type': 'A',
         'values': ['4.5.6.7']
     }

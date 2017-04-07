@@ -83,7 +83,7 @@ class RecordSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         zone = self.context['zone']
-        obj = route53.record_factory(zone=zone, **validated_data)
+        obj = route53.record_factory(zone=zone, created=True, **validated_data)
         with interpret_client_error():
             obj.full_clean()
             obj.save()

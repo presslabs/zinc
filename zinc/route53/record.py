@@ -65,12 +65,13 @@ class BaseRecord:
     ])
     _r53_to_obj = {v: k for k, v in _obj_to_r53.items()}
 
-    def __init__(self, name=None, alias_target=None, deleted=False, dirty=False,
+    def __init__(self, name=None, alias_target=None, created=False, deleted=False, dirty=False,
                  health_check_id=None, managed=False, region=None, set_identifier=None,
                  traffic_policy_instance_id=None, ttl=None, values=None, weight=None,
                  zone=None):
         self.name = name
         self.alias_target = alias_target
+        self.created = created
         assert alias_target is None or ttl is None
         self.ttl = ttl
         self._values = values
@@ -234,7 +235,8 @@ class Record(BaseRecord):
 
 
 class PolicyRecord(BaseRecord):
-    def __init__(self, zone, policy_record=None, policy=None, dirty=None, deleted=None):
+    def __init__(self, zone, policy_record=None, policy=None, dirty=None,
+                 deleted=None, created=None):
         if policy is None:
             policy = policy_record.policy
         if dirty is None:
@@ -257,6 +259,7 @@ class PolicyRecord(BaseRecord):
             },
             deleted=deleted,
             dirty=dirty,
+            created=created,
         )
 
     def full_clean(self):
@@ -339,7 +342,7 @@ class PolicyRecord(BaseRecord):
         self._policy = value
 
 
-def record_factory(zone, **validated_data):
+def record_factory(zone, created=None, **validated_data):
     record_type = validated_data.pop('type')
     if record_type == POLICY_ROUTED:
         assert len(validated_data['values']) == 1
@@ -355,7 +358,8 @@ def record_factory(zone, **validated_data):
             zone=zone.route53_zone,
             policy=policy,
             dirty=True,
+            created=created,
         )
     else:
-        obj = Record(zone=zone.route53_zone, type=record_type, **validated_data)
+        obj = Record(zone=zone.route53_zone, type=record_type, created=created, **validated_data)
     return obj

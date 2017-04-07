@@ -1,10 +1,10 @@
+from botocore.exceptions import ClientError
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.reverse import reverse
 
 from zinc.models import Zone
 from zinc.serializers import RecordSerializer
-from zinc import route53
 
 
 class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
@@ -19,7 +19,7 @@ class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
         zone = Zone.objects.create(**validated_data)
         try:
             zone.route53_zone.create()
-        except route53.ClientError as e:
+        except ClientError as e:
             raise serializers.ValidationError(detail=str(e))
         return zone
 

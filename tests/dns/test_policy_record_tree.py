@@ -900,7 +900,7 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
             zone.root)]
     # only look at the hidden records (the ones part of the policy tree)
     records = [(r.name, r.values) for r in raw_aws_records]
-    assert records == [
+    expected = [
         ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
         ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
         ('_zn_pol1_us-east-1', [ip1.ip]),
@@ -909,6 +909,7 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
         ('test', ['1.1.1.1']),
         ('www', ['ALIAS _zn_pol1.test-zinc.net.']),
     ]
+    assert records == expected
 
 
 @pytest.mark.django_db
