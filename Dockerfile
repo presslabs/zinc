@@ -1,7 +1,8 @@
 FROM python:3.5-alpine
 
 ENV PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=django_project.settings
+    DJANGO_SETTINGS_MODULE=django_project.settings \
+    ZINC_WEB_ADDRESS=0.0.0.0:8000
 
 COPY ./requirements.txt /requirements.txt
 RUN set -ex \
