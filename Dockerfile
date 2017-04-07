@@ -17,7 +17,9 @@ RUN set -ex \
         build-base \
         mariadb-dev \
     && pip install --no-cache-dir -r /requirements.txt \
-    && apk del .build-deps
+    && apk del .build-deps \
+    &&  wget -qO- https://github.com/jwilder/dockerize/releases/download/v0.4.0/dockerize-alpine-linux-amd64-v0.4.0.tar.gz | tar -zxf - -C /usr/bin \
+    && chown root:root /usr/bin/dockerize
 
 COPY . /app
 WORKDIR /app
