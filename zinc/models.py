@@ -123,6 +123,9 @@ class Zone(models.Model):
     ns_propagated = models.BooleanField(default=False)
     cached_ns_records = models.TextField(validators=[validate_json], default=None, null=True)
 
+    class Meta:
+        ordering = ['root']
+
     def __init__(self, *args, **kwargs):
         self._route53_instance = None
         super(Zone, self).__init__(*args, **kwargs)
