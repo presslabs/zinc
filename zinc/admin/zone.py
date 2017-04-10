@@ -21,6 +21,7 @@ class ZoneAdmin(SoftDeleteAdmin):
     list_display = ('root', 'aws_link', 'ns_propagated', 'is_deleted')
     fields = ('root', 'route53_id', 'caller_reference', 'ns_propagated')
     readonly_fields = ('route53_id', 'caller_reference', 'ns_propagated')
+    search_fields = ('root', 'route53_id')
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
