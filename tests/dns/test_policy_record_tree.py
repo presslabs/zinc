@@ -942,6 +942,31 @@ def test_r53_policy_record_tree_attribute_change(zone, boto_client):
 
 
 @pytest.mark.django_db
+def test_r53_policy_deleted_health_check(zone, boto_client):
+    """
+    Tests reconciliation updates deleted healthchecks
+    """
+    policy = G(m.Policy, name='pol1')
+    ip1 = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
+    policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
+    zone.reconcile()
+    policy_record.refresh_from_db()
+    policy_record.dirty = True
+    policy_record.save()
+
+    route53.HealthCheck(ip1).delete()
+    ip1.refresh_from_db()
+    ip1.reconcile_healthcheck()
+
+    zone.reconcile()
+
+    records = [rec for rec in zone.route53_zone.records().values()
+               if rec.name.startswith('_zn_pol1')]
+    assert all((r.health_check_id == ip1.healthcheck_id) for r in records)
+
+
+@pytest.mark.django_db
 def test_policy_alias_noop(zone, boto_client):
     """
     Tests no r53 update happens if the top level alias for a policy did not change
