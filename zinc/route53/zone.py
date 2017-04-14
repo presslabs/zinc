@@ -23,6 +23,12 @@ class Zone(object):
         self._change_batch = []
         self._client = get_client()
 
+    def __repr__(self):
+        return "<route53.Zone {} at 0x{:x}>".format(self, id(self))
+
+    def __str__(self):
+        return "{}:{}".format(self.id, self.root)
+
     @property
     def id(self):
         return self.db_zone.route53_id
@@ -111,10 +117,13 @@ class Zone(object):
         self._aws_records = None
         self._exists = None
 
+    def delete_from_r53(self):
+        self._delete_records()
+        self._client.delete_hosted_zone(Id=self.id)
+
     def delete(self):
         if self.exists:
-            self._delete_records()
-            self._client.delete_hosted_zone(Id=self.id)
+            self.delete_from_r53()
         self.db_zone.delete()
 
     def _delete_records(self):
