@@ -878,7 +878,7 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
     """
     policy = G(m.Policy, name='pol1')
     G(m.PolicyRecord, zone=zone, name='www', policy=policy)
-    G(m.PolicyRecord, zone=zone, name='conflict', policy=policy)
+    conflict = G(m.PolicyRecord, zone=zone, name='conflict', policy=policy, dirty=True)
     route53.Record(
         name='conflict',
         values=['conflict.example.com'],
@@ -910,6 +910,8 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
         ('www', ['ALIAS _zn_pol1.test-zinc.net.']),
     ]
     assert records == expected
+    conflict.refresh_from_db()
+    assert conflict.dirty
 
 
 @pytest.mark.django_db
