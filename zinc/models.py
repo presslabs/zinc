@@ -285,6 +285,10 @@ class PolicyRecord(models.Model):
         self.dirty = True
         self.save(update_fields=['deleted', 'dirty'])
 
+    def mark_dirty(self):
+        self.dirty = True
+        self.save(update_fields=['dirty'])
+
     def clean(self):
         zone_records = self.zone.route53_zone.records()
         for record in zone_records.values():
