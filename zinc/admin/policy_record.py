@@ -6,13 +6,20 @@ from zinc.admin.zone import aws_zone_link
 from zinc.admin.soft_delete import SoftDeleteAdmin
 
 
+def mark_dirty(modeladmin, request, queryset):
+    for policy_record in queryset:
+        policy_record.mark_dirty()
+mark_dirty.short_description = "Mark selected records dirty"  # noqa: E305
+
+
 @admin.register(PolicyRecord)
 class PolicyRecordAdmin(SoftDeleteAdmin):
     list_display = ('__str__', 'aws_link', 'synced', 'is_deleted')
     list_filter = ('zone', 'policy', 'dirty')
 
-    fields = ('name', 'zone', 'policy', 'synced',)
+    fields = ('name', 'zone', 'policy', 'synced')
     readonly_fields = ('synced', )
+    actions = (mark_dirty, )
 
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
