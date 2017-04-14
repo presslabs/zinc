@@ -68,6 +68,7 @@ SOCIAL_AUTH_ADMIN_EMAILS = [
     'radu@presslabs.com',
     'robi@presslabs.com',
     'vlad@presslabs.com',
+    'andi@presslabs.com',
 ]
 SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = ['presslabs.com']
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
