@@ -17,10 +17,13 @@ from django.conf import settings
 from django.conf.urls import include, url
 from django.contrib import admin
 
+from zinc.views import HealtchCheck
+
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^', include('zinc.urls')),
-    url('_auth/', include('social_django.urls', namespace='social')),
+    url(r'_auth/', include('social_django.urls', namespace='social')),
+    url(r'_health', HealtchCheck.as_view())
 ]
 
 try:
