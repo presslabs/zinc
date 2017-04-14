@@ -3,6 +3,7 @@ import uuid
 import logging
 
 from botocore.exceptions import ClientError
+from django.db import transaction
 
 from .record import Record
 from .policy import Policy
@@ -184,8 +185,9 @@ class Zone(object):
                 self.commit(preserve_cache=True)
             for policy_record in dirty_policy_records:
                 try:
-                    policy_record.r53_policy_record.reconcile()
-                    self.commit(preserve_cache=True)
+                    with transaction.atomic():
+                        policy_record.r53_policy_record.reconcile()
+                        self.commit(preserve_cache=True)
                 except ClientError as excp:
                     logger.exception("failed to reconcile record %r", policy_record)
                     self._reset_change_batch()
