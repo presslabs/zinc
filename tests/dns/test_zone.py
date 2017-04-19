@@ -189,3 +189,14 @@ def test_zone_need_reconciliation(zone):
     expected_dirty = [no_id_zone, soft_deleted_zone, zone]
     expected = [(z.pk, z.root) for z in expected_dirty]
     assert sorted(expected) == sorted([(z.pk, z.root) for z in models.Zone.need_reconciliation()])
+
+
+@pytest.mark.django_db
+def test_zone_get_clean_zones(zone):
+    ok_zone = G(models.Zone, name='ok', route53_id='fake/id/1', deleted=False)  # ok zone
+    G(models.Zone, name='no_id', route53_id=None, deleted=False)  # no_id_zone
+    G(models.Zone, name='', route53_id='fake/id/2', deleted=True)  # soft_deleted_zone
+    G(models.PolicyRecord, zone=zone, dirty=True)
+    expected_clean = [ok_zone]
+    expected = [(z.pk, z.root) for z in expected_clean]
+    assert sorted(expected) == sorted([(z.pk, z.root) for z in models.Zone.get_clean_zones()])
