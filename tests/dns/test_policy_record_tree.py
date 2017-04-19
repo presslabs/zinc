@@ -700,6 +700,55 @@ def test_dangling_records(zone, boto_client):
 
 
 @pytest.mark.django_db
+def test_check_policy_trees(zone, boto_client):
+    ip = create_ip_with_healthcheck()
+    policy = G(m.Policy, name='policy1')
+    member = G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
+    G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=True)
+    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    zone.commit()
+
+    dangling_record = {
+        'Name': '_zn_policy1.us-east-1.' + zone.root,
+        'Type': 'A',
+        'ResourceRecords': [{'Value': '127.1.1.1'}],
+        'SetIdentifier': 'test-identifier',
+        'Weight': 20,
+        'TTL': 30
+    }
+    boto_client.change_resource_record_sets(
+        HostedZoneId=zone.route53_id,
+        ChangeBatch={
+            'Comment': 'string',
+            'Changes': [{'Action': 'CREATE', 'ResourceRecordSet': dangling_record}]
+        }
+    )
+    zone.route53_zone._clear_cache()
+    # because check_policy_trees relies on the change_batch produced by policy_reconcile
+    # we first check that explicitly
+    ip.healthcheck_id = 'spam-id'
+    ip.save()
+    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    assert zone.route53_zone._change_batch == [
+        {'Action': 'DELETE',
+         'ResourceRecordSet': dangling_record},
+        {'Action': 'UPSERT',
+         'ResourceRecordSet': {'HealthCheckId': 'spam-id',
+                               'Name': '_zn_policy1.test-zinc.net.',
+                               'ResourceRecords': [{'Value': ip.ip}],
+                               'SetIdentifier': '{}-us-east-1'.format(member.id),
+                               'TTL': 30,
+                               'Type': 'A',
+                               'Weight': 10}}
+    ]
+    # reset the change_batch and test the check method
+    zone.route53_zone._change_batch = []
+    with patch('zinc.route53.zone.logger.error') as error:
+        zone.route53_zone.check_policy_trees()
+        assert error.called_with("Glitch in the matrix for %s %s", zone.root, policy.name)
+
+
+@pytest.mark.django_db
 def test_change_policy(zone, boto_client):
     """
     Tests that changing the policy for a policy_record doesn't leave dangling record behind
@@ -823,9 +872,9 @@ def test_r53_policy_record_aws_records(zone, boto_client):
 
 
 @pytest.mark.django_db
-def test_r53_policy_record_expected_aws_records(zone, boto_client):
+def test_r53_policy_expected_aws_records(zone, boto_client):
     """
-    Tests a PolicyRecord loads it's records correctly from AWS
+    Tests a Policy builds the expected desired_records for the alias tree.
     """
     policy = G(m.Policy, name='pol1')
     policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)

@@ -248,9 +248,19 @@ class Zone(models.Model):
                 zone.save()
 
     @classmethod
+    def _dirty_query(cls):
+        return Q(deleted=True) | Q(route53_id=None) | Q(policy_records__dirty=True)
+
+    @classmethod
     def need_reconciliation(cls):
         return cls.objects.filter(
-            Q(deleted=True) | Q(route53_id=None) | Q(policy_records__dirty=True)
+            cls._dirty_query()
+        )
+
+    @classmethod
+    def get_clean_zones(cls):
+        return cls.objects.filter(
+            ~cls._dirty_query()
         )
 
 

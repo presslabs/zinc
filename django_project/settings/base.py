@@ -234,6 +234,10 @@ CELERYBEAT_SCHEDULE = {
         'task': 'zinc.tasks.update_ns_propagated',
         'schedule': 60
     },
+    'check_clean_zones': {
+        'task': 'zinc.tasks.check_clean_zones',
+        'schedule': 60 * 15
+    },
 }
 
 CELERY_ACCEPT_CONTENT = ['json']

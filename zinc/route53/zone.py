@@ -173,6 +173,17 @@ class Zone(object):
                 self.zone_record.save()
                 self.create()
 
+    def check_policy_trees(self):
+        clean_policy_records = self.zone_record.policy_records.filter(dirty=False)
+        clean_policies = set([policy_record.policy for policy_record in clean_policy_records])
+        assert self._change_batch == []
+        for policy in clean_policies:
+            r53_policy = Policy(policy=policy, zone=self)
+            r53_policy.reconcile()
+            if self._change_batch:
+                logger.error("Glitch in the matrix for %s %s", self.root, policy.name)
+                self._change_batch = []
+
     def _reconcile_policy_records(self):
         """
         Reconcile policy records for this zone.
