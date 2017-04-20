@@ -54,7 +54,7 @@ def reconcile_zones(bind=True):
 @shared_task(bind=True, ignore_result=True)
 def check_clean_zones(bind=True):
     for zone in models.Zone.get_clean_zones():
-        zone.check_policy_trees()
+        zone.route53_zone.check_policy_trees()
 
 
 @shared_task(bind=True, ignore_result=True)
