@@ -152,13 +152,13 @@ class Zone(models.Model):
         return super(Zone, self).save(*args, **kwargs)
 
     def commit(self):
-        self.route53_zone.commit()
+        self.r53_zone.commit()
 
     def delete_record_by_hash(self, record_hash):
-        records = self.route53_zone.records()
+        records = self.r53_zone.records()
         to_delete_record = records[record_hash]
         to_delete_record.deleted = True
-        self.route53_zone.process_records([to_delete_record])
+        self.r53_zone.process_records([to_delete_record])
 
     def delete_record(self, record):
         self.delete_record_by_hash(record.id)
@@ -172,7 +172,7 @@ class Zone(models.Model):
         return records
 
     @property
-    def route53_zone(self):
+    def r53_zone(self):
         if not self._route53_instance:
             self._route53_instance = route53.Zone(self)
         return self._route53_instance
@@ -184,7 +184,7 @@ class Zone(models.Model):
 
     @property
     def records(self):
-        records = self.route53_zone.records()
+        records = self.r53_zone.records()
         filtered_records = []
         policy_records = self.get_policy_records()
 
@@ -202,14 +202,14 @@ class Zone(models.Model):
         return filtered_records
 
     def update_records(self, records):
-        self.route53_zone.process_records(records)
+        self.r53_zone.process_records(records)
 
     def __str__(self):
         return '{} ({})'.format(self.root, self.route53_id)
 
     @transaction.atomic
     def reconcile(self):
-        self.route53_zone.reconcile()
+        self.r53_zone.reconcile()
 
     @contextlib.contextmanager
     @transaction.atomic
@@ -222,7 +222,7 @@ class Zone(models.Model):
         """Delete any managed record not belonging to one of the zone's policies"""
         policies = set([pr.policy for pr in self.policy_records.select_related('policy')])
         pol_names = ['{}_{}'.format(RECORD_PREFIX, policy.name) for policy in policies]
-        for record in self.route53_zone.records().values():
+        for record in self.r53_zone.records().values():
             name = record.name
             if name.startswith(RECORD_PREFIX):
                 for pol_name in pol_names:
@@ -284,7 +284,7 @@ class PolicyRecord(models.Model):
 
     def serialize(self):
         assert self.zone is not None
-        record = route53.PolicyRecord(policy_record=self, zone=self.zone.route53_zone)
+        record = route53.PolicyRecord(policy_record=self, zone=self.zone.r53_zone)
         record.dirty = self.dirty
         record.managed = False
         record.deleted = self.deleted
@@ -300,7 +300,7 @@ class PolicyRecord(models.Model):
         self.save(update_fields=['dirty'])
 
     def clean(self):
-        zone_records = self.zone.route53_zone.records()
+        zone_records = self.zone.r53_zone.records()
         for record in zone_records.values():
             if record.name == self.name and record.type == 'CNAME':
                 raise ValidationError({'name': "A CNAME record of the same name already exists."})
@@ -311,7 +311,7 @@ class PolicyRecord(models.Model):
     def r53_policy_record(self):
         if self._r53_policy_record is None:
             self._r53_policy_record = route53.PolicyRecord(
-                policy_record=self, zone=self.zone.route53_zone)
+                policy_record=self, zone=self.zone.r53_zone)
         return self._r53_policy_record
 
     @transaction.atomic
@@ -323,7 +323,7 @@ class PolicyRecord(models.Model):
             self.delete()
             return
 
-        self.zone.route53_zone.process_records([self.r53_policy_record])
+        self.zone.r53_zone.process_records([self.r53_policy_record])
 
         self.dirty = False  # mark as clean
         self.save()

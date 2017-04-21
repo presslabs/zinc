@@ -40,7 +40,7 @@ def test_create_record(api_client, zone, boto_client):
 
     assert response.data == get_record_from_base(record, zone)
     assert aws_strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.r53_zone.id), zone.root
     ) == sorted([
         record_data_to_aws(record, zone.root),
         record_data_to_aws(get_test_record(zone), zone.root)
@@ -63,7 +63,7 @@ def test_update_record_values(api_client, zone, boto_client):
         **record_data
     }
     assert aws_strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.r53_zone.id), zone.root
     ) == sorted([
         record_data_to_aws({
             **get_test_record(zone),
@@ -89,7 +89,7 @@ def test_update_record_ttl(api_client, zone, boto_client):
         **record_data
     }
     assert aws_strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id), zone.root
+        boto_client.list_resource_record_sets(HostedZoneId=zone.r53_zone.id), zone.root
     ) == sorted([
         record_data_to_aws({
             **get_test_record(zone),
@@ -142,7 +142,7 @@ def test_record_deletion(api_client, zone, boto_client):
     assert response.status_code == 204
     assert strip_ns_and_soa(zone.records) == []
     assert aws_strip_ns_and_soa(
-        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_zone.id),
+        boto_client.list_resource_record_sets(HostedZoneId=zone.r53_zone.id),
         zone.root
     ) == []
 
@@ -154,10 +154,10 @@ def test_delete_nonexistent_records(api_client, zone):
         ttl=400,
         type='NS',
         values=['ns.test.com', 'ns2.test.com'],
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     )
     zone.update_records([record2])
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, 'asldmpoqfqee')
     )
@@ -244,9 +244,9 @@ def test_hidden_records(api_client, zone):
         ttl=300,
         type='A',
         values=['1.2.3.4'],
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     ).save()
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
     )
@@ -261,14 +261,14 @@ def test_alias_records(api_client, zone):
         name='alias',
         type='A',
         alias_target={
-            'HostedZoneId': zone.route53_zone.id,
+            'HostedZoneId': zone.r53_zone.id,
             'DNSName': 'test.%s' % zone.root,
             'EvaluateTargetHealth': False
         },
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     )
     alias_record.save()
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
     )
@@ -460,9 +460,9 @@ def test_txt_record_escape(zone, api_client):
         ttl=300,
         type='TXT',
         values=texts,
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     ).save()
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
     response = api_client.get(
         '/zones/%s' % zone.id,
     )

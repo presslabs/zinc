@@ -9,13 +9,14 @@ from .record import Record
 from .policy import Policy
 from .client import get_client
 
+
 logger = logging.getLogger(__name__)
 
 
 class Zone(object):
 
-    def __init__(self, zone_record):
-        self.zone_record = zone_record
+    def __init__(self, db_zone):
+        self.db_zone = db_zone
         self._aws_records = None
         self._exists = None
         self._change_batch = []
@@ -23,11 +24,11 @@ class Zone(object):
 
     @property
     def id(self):
-        return self.zone_record.route53_id
+        return self.db_zone.route53_id
 
     @property
     def root(self):
-        return self.zone_record.root
+        return self.db_zone.root
 
     def process_records(self, records):
         for record in records:
@@ -116,7 +117,7 @@ class Zone(object):
         if self.exists:
             self._delete_records()
             self._client.delete_hosted_zone(Id=self.id)
-        self.zone_record.delete()
+        self.db_zone.delete()
 
     def _delete_records(self):
         self._cache_aws_records()
@@ -140,26 +141,26 @@ class Zone(object):
                 })
 
     def create(self):
-        if self.zone_record.caller_reference is None:
-            self.zone_record.caller_reference = uuid.uuid4()
-            self.zone_record.save()
+        if self.db_zone.caller_reference is None:
+            self.db_zone.caller_reference = uuid.uuid4()
+            self.db_zone.save()
         zone = self._client.create_hosted_zone(
             Name=self.root,
-            CallerReference=str(self.zone_record.caller_reference),
+            CallerReference=str(self.db_zone.caller_reference),
             HostedZoneConfig={
                 'Comment': 'zinc'
             }
         )
-        self.zone_record.route53_id = zone['HostedZone']['Id']
-        self.zone_record.save()
+        self.db_zone.route53_id = zone['HostedZone']['Id']
+        self.db_zone.save()
 
     def _reconcile_zone(self):
         """
         Handles zone creation/deletion.
         """
-        if self.zone_record.deleted:
+        if self.db_zone.deleted:
             self.delete()
-        elif self.zone_record.route53_id is None:
+        elif self.db_zone.route53_id is None:
             self.create()
         elif not self.exists:
             try:
@@ -169,12 +170,12 @@ class Zone(object):
                     raise
                 # This can happen if a zone was manually deleted from AWS.
                 # Create will fail because we re-use the caller_reference
-                self.zone_record.caller_reference = None
-                self.zone_record.save()
+                self.db_zone.caller_reference = None
+                self.db_zone.save()
                 self.create()
 
     def check_policy_trees(self):
-        clean_policy_records = self.zone_record.policy_records.filter(dirty=False)
+        clean_policy_records = self.db_zone.policy_records.filter(dirty=False)
         clean_policies = set([policy_record.policy for policy_record in clean_policy_records])
         assert self._change_batch == []
         for policy in clean_policies:
@@ -188,7 +189,7 @@ class Zone(object):
         """
         Reconcile policy records for this zone.
         """
-        with self.zone_record.lock_dirty_policy_records() as dirty_policy_records:
+        with self.db_zone.lock_dirty_policy_records() as dirty_policy_records:
             dirty_policies = set([policy_record.policy for policy_record in dirty_policy_records])
             for policy in dirty_policies:
                 r53_policy = Policy(policy=policy, zone=self)
@@ -207,8 +208,8 @@ class Zone(object):
 
     def _delete_orphaned_managed_records(self):
         """Delete any managed record not belonging to one of the zone's policies"""
-        active_policy_records = self.zone_record.policy_records.select_related('policy') \
-                                                               .exclude(deleted=True)
+        active_policy_records = self.db_zone.policy_records.select_related('policy') \
+                                                           .exclude(deleted=True)
         policies = set([pr.policy for pr in active_policy_records])
         for record in self.records().values():
             if record.is_hidden:
@@ -225,9 +226,9 @@ class Zone(object):
 
     @classmethod
     def reconcile_multiple(cls, zones):
-        for zone_record in zones:
-            zone = cls(zone_record)
+        for db_zone in zones:
+            zone = cls(db_zone)
             try:
                 zone.reconcile()
             except ClientError:
-                logger.exception("Error while handling %s", zone_record.name)
+                logger.exception("Error while handling %s", db_zone.name)

@@ -87,7 +87,7 @@ class RecordSerializer(serializers.Serializer):
         with interpret_client_error():
             obj.full_clean()
             obj.save()
-            zone.route53_zone.commit()
+            zone.r53_zone.commit()
         return obj
 
     def update(self, obj, validated_data):

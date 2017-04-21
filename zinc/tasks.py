@@ -14,7 +14,7 @@ logger = get_task_logger(__name__)
 def aws_delete_zone(self, pk):
     zone = models.Zone.objects.get(pk=pk)
     assert zone.deleted
-    aws_zone = zone.route53_zone
+    aws_zone = zone.r53_zone
 
     try:
         aws_zone.delete()
@@ -54,7 +54,7 @@ def reconcile_zones(bind=True):
 @shared_task(bind=True, ignore_result=True)
 def check_clean_zones(bind=True):
     for zone in models.Zone.get_clean_zones():
-        zone.route53_zone.check_policy_trees()
+        zone.r53_zone.check_policy_trees()
 
 
 @shared_task(bind=True, ignore_result=True)

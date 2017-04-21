@@ -17,10 +17,10 @@ def test_add_zone_record(zone):
         type='CNAME',
         values=['google.com'],
         ttl=300,
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     )
     record.save()
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
 
     assert record.id in [r.id for r in zone.records]
 
@@ -33,7 +33,7 @@ def test_delete_zone_record(zone):
             record = r
 
     zone.delete_record(record)
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
 
     assert record_hash not in [r.id for r in zone.records]
 
@@ -43,7 +43,7 @@ def test_delete_zone_record_by_hash(zone):
     record_hash = hash_test_record(zone)
 
     zone.delete_record_by_hash(record_hash)
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
 
     assert record_hash not in zone.records
 
@@ -55,17 +55,17 @@ def test_delete_zone_alias_record(zone):
         type='A',
         alias_target={
             'DNSName': 'test.%s' % zone.root,
-            'HostedZoneId': zone.route53_zone.id,
+            'HostedZoneId': zone.r53_zone.id,
             'EvaluateTargetHealth': False
         },
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     )
     record.save()
     zone.commit()
     assert record.id in [r.id for r in zone.records]
 
     zone.delete_record(record)
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
 
     assert record.id not in [r.id for r in zone.records]
 
@@ -77,25 +77,25 @@ def test_delete_zone_alias_record_with_set_id(zone):
         type='A',
         alias_target={
             'DNSName': 'test.%s' % zone.root,
-            'HostedZoneId': zone.route53_zone.id,
+            'HostedZoneId': zone.r53_zone.id,
             'EvaluateTargetHealth': False
         },
         set_identifier='set_id',
         region=regions[0],
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     )
     record.save()
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
 
     zone.delete_record(record)
-    zone.route53_zone.commit()
+    zone.r53_zone.commit()
 
     assert record.id not in zone.records
 
 
 @pytest.mark.django_db
 def test_zone_delete(zone, boto_client):
-    zone_id = zone.route53_zone.id
+    zone_id = zone.r53_zone.id
     zone_name = 'test-zinc.net.'
     # make sure we have extra records in addition to the NS and SOA
     # to ensure zone.delete handles those as well
@@ -133,15 +133,15 @@ def test_zone_delete(zone, boto_client):
             ]
         }
     )
-    zone.route53_zone.delete()
+    zone.r53_zone.delete()
     with pytest.raises(botocore.exceptions.ClientError) as excp:
         boto_client.get_hosted_zone(Id=zone_id)
     assert excp.value.response['Error']['Code'] == 'NoSuchHostedZone'
 
 
 def test_zone_exists_false(boto_client):
-    zone_record = models.Zone(route53_id='Does/Not/Exist')
-    zone = route53.Zone(zone_record)
+    db_zone = models.Zone(route53_id='Does/Not/Exist')
+    zone = route53.Zone(db_zone)
     assert not zone.exists
 
 
@@ -150,8 +150,8 @@ def test_zone_reconcile_deleted_from_aws(zone, boto_client):
     original_id = zone.route53_id
     route53.Zone(zone)._delete_records()
     boto_client.delete_hosted_zone(Id=original_id)
-    zone.route53_zone._clear_cache()
-    zone.route53_zone.reconcile()
+    zone.r53_zone._clear_cache()
+    zone.r53_zone.reconcile()
     assert zone.route53_id != original_id
 
 
@@ -166,18 +166,18 @@ def test_delete_missing_zone(boto_client):
     If we have a zone marked deleted in the db, calling delete should be safe and
     remove the db record for good.
     """
-    zone_record = G(models.Zone, route53_id='Does/Not/Exist', deleted=True)
-    route53.Zone(zone_record).delete()
-    assert models.Zone.objects.filter(pk=zone_record.pk).count() == 0
+    db_zone = G(models.Zone, route53_id='Does/Not/Exist', deleted=True)
+    route53.Zone(db_zone).delete()
+    assert models.Zone.objects.filter(pk=db_zone.pk).count() == 0
 
 
 @pytest.mark.django_db
 def test_delete_zone_no_zone_id(boto_client):
     """Test zone delete works for zones that don't have a route53_id
     """
-    zone_record = G(models.Zone, route53_id=None, deleted=False)
-    zone_record.soft_delete()
-    assert not models.Zone.objects.filter(pk=zone_record.pk).exists()
+    db_zone = G(models.Zone, route53_id=None, deleted=False)
+    db_zone.soft_delete()
+    assert not models.Zone.objects.filter(pk=db_zone.pk).exists()
 
 
 @pytest.mark.django_db

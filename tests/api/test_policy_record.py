@@ -203,7 +203,7 @@ def test_policy_record_create_more_values(api_client, zone):
 def test_create_policy_routed_if_cname_exists_should_fail(zone, api_client, boto_client):
     """Tests we can't create a PR when we have a CNAME with the same name"""
     boto_client.change_resource_record_sets(
-        HostedZoneId=zone.route53_zone.id,
+        HostedZoneId=zone.r53_zone.id,
         ChangeBatch={
             'Comment': 'zinc-fixture',
             'Changes': [
@@ -252,7 +252,7 @@ def test_cname_create_with_pr_clash(zone, api_client):
     G(m.PolicyMember, policy=policy, region=region, ip=ip)
     policy_record = route53.PolicyRecord(
         policy_record=m.PolicyRecord(policy=policy, zone=zone, name='conflict'),
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     )
     policy_record.save()
 
@@ -285,7 +285,7 @@ def test_txt_create_with_A_clash(zone, api_client):
             'values': 'the rain in spain'
         })
     assert response.status_code == 201
-    expected = [(r.name, r.type, r.values) for r in zone.route53_zone.records().values()
+    expected = [(r.name, r.type, r.values) for r in zone.r53_zone.records().values()
                 if r.name == 'conflict']
     assert sorted(expected) == [
         ('conflict', 'A', ['1.2.3.4']),
@@ -297,7 +297,7 @@ def test_txt_create_with_A_clash(zone, api_client):
 def test_cname_patch(zone, api_client):
     """Tests we can patch a CNAME record"""
     cname = route53.Record(
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
         type='CNAME',
         name='cname',
         values=['ham.example.net.'],
@@ -311,7 +311,7 @@ def test_cname_patch(zone, api_client):
             'values': 'spam.exmaple.net.'
         })
     assert response.status_code == 200, response.data
-    expected = [(r.name, r.type, r.values) for r in zone.route53_zone.records().values()
+    expected = [(r.name, r.type, r.values) for r in zone.r53_zone.records().values()
                 if r.name == 'cname']
     assert sorted(expected) == [
         ('cname', 'CNAME', ['spam.exmaple.net.']),
@@ -324,7 +324,7 @@ def test_post_doesnt_overwite_existing(zone, api_client):
     Tests posting a new record of the same name and type with different values fails.
     """
     record = route53.Record(
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
         type='A',
         name='conflict',
         values=['1.2.3.4'],
@@ -339,7 +339,7 @@ def test_post_doesnt_overwite_existing(zone, api_client):
             'name': 'conflict',
             'values': '5.6.7.8'
         })
-    expected = [(r.name, r.type, r.values) for r in zone.route53_zone.records().values()
+    expected = [(r.name, r.type, r.values) for r in zone.r53_zone.records().values()
                 if r.name == 'conflict']
     assert sorted(expected) == [
         ('conflict', 'A', ['1.2.3.4']),

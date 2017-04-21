@@ -18,7 +18,7 @@ class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
     def create(self, validated_data):
         zone = Zone.objects.create(**validated_data)
         try:
-            zone.route53_zone.create()
+            zone.r53_zone.create()
         except ClientError as e:
             raise serializers.ValidationError(detail=str(e))
         return zone
