@@ -18,7 +18,7 @@ def get_resolver():
 
 
 def is_ns_propagated(zone, resolver=None, delay=0):
-    if not zone.route53_zone.exists:
+    if not zone.r53_zone.exists:
         return False
     if resolver is None:
         resolver = get_resolver()
@@ -34,7 +34,7 @@ def is_ns_propagated(zone, resolver=None, delay=0):
             return True
     # in case the nameservers don't match we update the cached_ns_records and
     # compare again
-    r53_name_servers = sorted(zone.route53_zone.ns.values)
+    r53_name_servers = sorted(zone.r53_zone.ns.values)
     zone.cached_ns_records = json.dumps(r53_name_servers)
     zone.save(update_fields=['cached_ns_records'])
     return r53_name_servers == name_servers

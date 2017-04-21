@@ -20,7 +20,7 @@ def hash_test_record(zone):
     return route53.Record(
         name='test',
         type='A',
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     ).id
 
 
@@ -29,7 +29,7 @@ def hash_policy_record(policy_record):
 
 
 def hash_record_dict(record, zone):
-    return route53.Record(zone=zone.route53_zone, **record).id
+    return route53.Record(zone=zone.r53_zone, **record).id
 
 
 def aws_sort_key(record):

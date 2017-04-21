@@ -210,7 +210,7 @@ class BaseRecord:
             clashing = tuple((self.name, r_type) for r_type in RECORD_TYPES)
         else:
             clashing = ((self.name, 'CNAME'), )
-        for record in self.zone.zone_record.records:
+        for record in self.zone.db_zone.records:
             for other in clashing:
                 if (record.name, record.type) == other and record.id != self.id:
                     raise ValidationError(
@@ -244,13 +244,13 @@ class PolicyRecord(BaseRecord):
         if deleted is None:
             deleted = policy_record.deleted
 
-        self.policy_record = policy_record
+        self.db_policy_record = policy_record
         self._policy = None
         self.policy = policy
         self.zone = zone
 
         super().__init__(
-            name=self.policy_record.name,
+            name=self.db_policy_record.name,
             zone=zone,
             alias_target={
                 'HostedZoneId': zone.id,
@@ -264,32 +264,32 @@ class PolicyRecord(BaseRecord):
 
     def full_clean(self):
         super().full_clean()
-        self.policy_record.full_clean()
+        self.db_policy_record.full_clean()
 
     def save(self):
         if self.deleted:
             # The record will be deleted
-            self.policy_record.deleted = True
-            self.policy_record.dirty = True
+            self.db_policy_record.deleted = True
+            self.db_policy_record.dirty = True
         else:
             # Update policy for this record.
-            self.policy_record.policy_id = self.policy.id
-            self.policy_record.deleted = False  # clear deleted flag
-            self.policy_record.dirty = True
-        self.policy_record.full_clean()
-        self.policy_record.save()
+            self.db_policy_record.policy_id = self.policy.id
+            self.db_policy_record.deleted = False  # clear deleted flag
+            self.db_policy_record.dirty = True
+        self.db_policy_record.full_clean()
+        self.db_policy_record.save()
 
     def reconcile(self):
         # upsert or delete the top level alias
         if self.deleted:
             self.zone.process_records([self])
-            self.policy_record.delete()
+            self.db_policy_record.delete()
         else:
             existing_alias = self._existing_alias
             if (existing_alias is None or not self._top_level_record.is_subset(existing_alias)):
                 self.zone.process_records([self])
-            self.policy_record.dirty = False  # mark as clean
-            self.policy_record.save()
+            self.db_policy_record.dirty = False  # mark as clean
+            self.db_policy_record.save()
 
     @memoized_property
     def _top_level_record(self):
@@ -336,9 +336,9 @@ class PolicyRecord(BaseRecord):
     @policy.setter
     def policy(self, value):
         if value is None:
-            self.policy_record.policy = None
+            self.db_policy_record.policy = None
         else:
-            self.policy_record.policy_id = value.id
+            self.db_policy_record.policy_id = value.id
         self._policy = value
 
 
@@ -355,11 +355,11 @@ def record_factory(zone, created=None, **validated_data):
         record_model = models.PolicyRecord.new_or_deleted(name=validated_data['name'], zone=zone)
         obj = PolicyRecord(
             policy_record=record_model,
-            zone=zone.route53_zone,
+            zone=zone.r53_zone,
             policy=policy,
             dirty=True,
             created=created,
         )
     else:
-        obj = Record(zone=zone.route53_zone, type=record_type, created=created, **validated_data)
+        obj = Record(zone=zone.r53_zone, type=record_type, created=created, **validated_data)
     return obj

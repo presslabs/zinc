@@ -42,7 +42,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                     'DNSName': '{}_{}_{}.test-zinc.net.'.format(
                         m.RECORD_PREFIX, policy.name, region),
                     'EvaluateTargetHealth': len(regions) > 1,
-                    'HostedZoneId': zone.route53_zone.id
+                    'HostedZoneId': zone.r53_zone.id
                 },
                 'Region': region,
                 'SetIdentifier': region,
@@ -87,7 +87,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                          if policy_record.name != '@' else zone.root),
                 'Type': 'A',
                 'AliasTarget': {
-                    'HostedZoneId': zone.route53_zone.id,
+                    'HostedZoneId': zone.r53_zone.id,
                     'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
                     'EvaluateTargetHealth': False
                 },
@@ -205,7 +205,7 @@ def test_policy_record_tree_builder(zone, boto_client):
     ]
     policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
 
-    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    route53.Policy(policy=policy, zone=zone.r53_zone).reconcile()
     policy_record.r53_policy_record.reconcile()
     zone.commit()
 
@@ -335,7 +335,7 @@ def test_multiple_policy_records_same_policy(zone, boto_client):
             'Name': '{}.{}'.format(policy_record2.name, zone.root),
             'Type': 'A',
             'AliasTarget': {
-                'HostedZoneId': zone.route53_zone.id,
+                'HostedZoneId': zone.r53_zone.id,
                 'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
                 'EvaluateTargetHealth': False
             },
@@ -692,7 +692,7 @@ def test_dangling_records(zone, boto_client):
     policy = G(m.Policy, name='policy1')
     G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
     G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=True)
-    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    route53.Policy(policy=policy, zone=zone.r53_zone).reconcile()
     zone.commit()
 
     records = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
@@ -705,7 +705,7 @@ def test_check_policy_trees(zone, boto_client):
     policy = G(m.Policy, name='policy1')
     member = G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
     G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=True)
-    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
+    route53.Policy(policy=policy, zone=zone.r53_zone).reconcile()
     zone.commit()
 
     dangling_record = {
@@ -723,13 +723,13 @@ def test_check_policy_trees(zone, boto_client):
             'Changes': [{'Action': 'CREATE', 'ResourceRecordSet': dangling_record}]
         }
     )
-    zone.route53_zone._clear_cache()
+    zone.r53_zone._clear_cache()
     # because check_policy_trees relies on the change_batch produced by policy_reconcile
     # we first check that explicitly
     ip.healthcheck_id = 'spam-id'
     ip.save()
-    route53.Policy(policy=policy, zone=zone.route53_zone).reconcile()
-    assert zone.route53_zone._change_batch == [
+    route53.Policy(policy=policy, zone=zone.r53_zone).reconcile()
+    assert zone.r53_zone._change_batch == [
         {'Action': 'DELETE',
          'ResourceRecordSet': dangling_record},
         {'Action': 'UPSERT',
@@ -742,9 +742,9 @@ def test_check_policy_trees(zone, boto_client):
                                'Weight': 10}}
     ]
     # reset the change_batch and test the check method
-    zone.route53_zone._change_batch = []
+    zone.r53_zone._change_batch = []
     with patch('zinc.route53.zone.logger.error') as error:
-        zone.route53_zone.check_policy_trees()
+        zone.r53_zone.check_policy_trees()
         assert error.called_with("Glitch in the matrix for %s %s", zone.root, policy.name)
 
 
@@ -847,7 +847,7 @@ def test_r53_policy_record_aws_records(zone, boto_client):
         name='_zn_pol1.us-east-1',
         values=['1.2.3.4'],
         type='A',
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
         ttl=30,
         set_identifier='foo',
         weight=10,
@@ -857,16 +857,16 @@ def test_r53_policy_record_aws_records(zone, boto_client):
         name='_zn_pol1',
         alias_target={
             'DNSName': '_zn_pol1.us-east-1.{}'.format(zone.root),
-            'HostedZoneId': zone.route53_zone.id,
+            'HostedZoneId': zone.r53_zone.id,
             'EvaluateTargetHealth': False
         },
         type='A',
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
     ).save()
     zone.commit()
     policy = G(m.Policy, name='pol1')
     policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
-    policy = route53.Policy(zone=zone.route53_zone, policy=policy_record.policy)
+    policy = route53.Policy(zone=zone.r53_zone, policy=policy_record.policy)
     assert set([r.name for r in policy.aws_records.values()]) == set([
         '_zn_pol1', '_zn_pol1.us-east-1'])
 
@@ -883,7 +883,7 @@ def test_r53_policy_expected_aws_records(zone, boto_client):
     G(m.PolicyMember, policy=policy_record.policy, region=regions[0], ip=ip1)
     G(m.PolicyMember, policy=policy_record.policy, region=regions[1], ip=ip1)
     # pol_factory = route53.CachingFactory(route53.Policy)
-    r53_policy = route53.Policy(zone=zone.route53_zone, policy=policy)
+    r53_policy = route53.Policy(zone=zone.r53_zone, policy=policy)
     assert [(r.name, r.values) for r in r53_policy.desired_records.values()] == [
         ('_zn_pol1_us-east-1', [ip1.ip]),
         ('_zn_pol1_us-east-2', [ip1.ip]),
@@ -900,7 +900,7 @@ def test_r53_policy_reconcile(zone, boto_client):
     ip1 = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy_record.policy, region=regions[0], ip=ip1)
     G(m.PolicyMember, policy=policy_record.policy, region=regions[1], ip=ip1)
-    r53_policy = route53.Policy(zone=zone.route53_zone, policy=policy)
+    r53_policy = route53.Policy(zone=zone.r53_zone, policy=policy)
     r53_policy.reconcile()
     zone.commit()
 
@@ -932,7 +932,7 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
         name='conflict',
         values=['conflict.example.com'],
         type='CNAME',
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
         ttl=30,
     ).save()
     zone.commit()
@@ -976,7 +976,7 @@ def test_r53_policy_record_tree_attribute_change(zone, boto_client):
         name='_zn_pol1',
         values=['1.2.3.4'],
         type='A',
-        zone=zone.route53_zone,
+        zone=zone.r53_zone,
         ttl=666,
         set_identifier='{}-{}'.format(member.id, member.region),
         weight=10,
@@ -986,7 +986,7 @@ def test_r53_policy_record_tree_attribute_change(zone, boto_client):
 
     policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
     zone.reconcile()
-    policy = route53.Policy(zone=zone.route53_zone, policy=policy_record.policy)
+    policy = route53.Policy(zone=zone.r53_zone, policy=policy_record.policy)
     record = policy.aws_records[record.id]
     assert record.ttl == 30
     assert record.health_check_id is not None
@@ -1012,7 +1012,7 @@ def test_r53_policy_deleted_health_check(zone, boto_client):
 
     zone.reconcile()
 
-    records = [rec for rec in zone.route53_zone.records().values()
+    records = [rec for rec in zone.r53_zone.records().values()
                if rec.name.startswith('_zn_pol1')]
     assert all((r.health_check_id == ip1.healthcheck_id) for r in records)
 
@@ -1032,6 +1032,6 @@ def test_policy_alias_noop(zone, boto_client):
     policy_record.dirty = True
     policy_record.save()
     # sanity check, ensure we have no pending changes
-    assert zone.route53_zone._change_batch == []
+    assert zone.r53_zone._change_batch == []
     policy_record.r53_policy_record.reconcile()
-    assert zone.route53_zone._change_batch == []
+    assert zone.r53_zone._change_batch == []

@@ -10,9 +10,9 @@ from .soft_delete import SoftDeleteAdmin
 logger = logging.getLogger('zinc.admin')
 
 
-def aws_zone_link(route53_zone_id):
+def aws_zone_link(r53_zone_id):
     return ('<a href="https://console.aws.amazon.com/route53/home?region=us-east-1'
-            '#resource-record-sets:{0}">AWS:{0}</a>'.format(route53_zone_id))
+            '#resource-record-sets:{0}">AWS:{0}</a>'.format(r53_zone_id))
 
 
 @admin.register(Zone)

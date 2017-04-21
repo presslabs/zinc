@@ -8,15 +8,15 @@ class Policy:
     def __init__(self, zone, policy):
         assert isinstance(zone, zinc.route53.Zone)
         self.zone = zone
-        self.policy = policy
+        self.db_policy = policy
 
     @property
     def name(self):
-        return self.policy.name
+        return self.db_policy.name
 
     @property
     def id(self):
-        return self.policy.id
+        return self.db_policy.id
 
     @memoized_property
     def aws_records(self):
@@ -78,7 +78,7 @@ class Policy:
         return records
 
     def _build_tree(self):
-        policy_members = self.policy.members.exclude(enabled=False).exclude(ip__enabled=False)
+        policy_members = self.db_policy.members.exclude(enabled=False).exclude(ip__enabled=False)
         # ensure we always build region subtrees in alphabetical order; makes tests simpler
         regions = sorted(set([pm.region for pm in policy_members]))
         if len(regions) > 1:
