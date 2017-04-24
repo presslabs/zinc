@@ -20,8 +20,20 @@ then
 fi
 
 
+exec_web(){
+    if [ "$ZINC_MIGRATE" == "yes" ] ; then
+        $DOCKERIZE su-exec zinc ./app/manage.py migrate --noinput
+    fi
+
+    if [ "$ZINC_LOAD_DEV_DATA" == "yes" ] ; then
+        $DOCKERIZE su-exec zinc ./app/manage.py seed
+    fi
+
+    exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi --bind "$ZINC_WEB_ADDRESS"
+}
+
 case "$1" in
-    "web")         exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi --bind "$ZINC_WEB_ADDRESS";;
+    "web")         exec_web;;
     "celery")      exec $DOCKERIZE su-exec zinc celery -A django_project worker --concurrency=4;;
     "celerybeat")  exec $DOCKERIZE su-exec zinc celery -A django_project beat;;
 esac
