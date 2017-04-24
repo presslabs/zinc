@@ -22,11 +22,11 @@ fi
 
 exec_web(){
     if [ "$ZINC_MIGRATE" == "yes" ] ; then
-        $DOCKERIZE su-exec zinc ./app/manage.py migrate --noinput
+        $DOCKERIZE su-exec zinc /app/manage.py migrate --noinput
     fi
 
     if [ "$ZINC_LOAD_DEV_DATA" == "yes" ] ; then
-        $DOCKERIZE su-exec zinc ./app/manage.py seed
+        $DOCKERIZE su-exec zinc /app/manage.py seed
     fi
 
     exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi --bind "$ZINC_WEB_ADDRESS"
