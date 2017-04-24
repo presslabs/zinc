@@ -13,3 +13,4 @@ requests==2.13.0
 social-auth-app-django==1.1.0
 social-auth-core==1.2.0
 zipa==0.3.0
+django-dynamic-fixture<1.10
