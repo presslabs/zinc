@@ -22,7 +22,6 @@ def lattice_factory(url, user, password):
 
     lattice.config.host = parts.netloc
     lattice.config.prefix = parts.path
-    lattice.config.append_slash = True
     lattice.config.auth = HTTPBasicAuth(user, password)
     return lattice
 

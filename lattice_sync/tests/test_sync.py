@@ -14,7 +14,7 @@ lattice = sync.lattice_factory(url='http://lattice', user='user', password='pass
 @pytest.mark.django_db
 @responses.activate
 def test_wont_delete_all_ips(boto_client):
-    for url in ['http://lattice/servers/', 'http://lattice/datacenters/']:
+    for url in ['http://lattice/servers', 'http://lattice/datacenters']:
         responses.add(responses.GET, url,
                       body='[]',
                       content_type='application/json')
@@ -151,9 +151,9 @@ def _mock_lattice_responses():
             "id": 6
         }]
 
-    responses.add(responses.GET, 'http://lattice/servers/',
+    responses.add(responses.GET, 'http://lattice/servers',
                   body=json.dumps(servers_payload),
                   content_type='application/json')
-    responses.add(responses.GET, 'http://lattice/datacenters/',
+    responses.add(responses.GET, 'http://lattice/datacenters',
                   body=json.dumps(datacenters_payload),
                   content_type='application/json')
