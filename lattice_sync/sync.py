@@ -66,12 +66,12 @@ def sync(lattice_client):
     roles = set(settings.LATTICE_ROLES)
     env = settings.LATTICE_ENV.lower()
     servers = [
-        server for server in lattice.servers()
+        server for server in lattice.servers
         if (set(server['roles']).intersection(roles) and
             server['environment'].lower() == env and
             server['state'].lower() not in ('unconfigured', 'decommissioned'))
     ]
-    locations = {d['id']: d['location'] for d in lattice.datacenters()}
+    locations = {d['id']: d['location'] for d in lattice.datacenters}
 
     lattice_ip_pks = set()
     for server in servers:
