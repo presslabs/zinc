@@ -1,31 +1,25 @@
-build:
-  zinc:
-    image: presslabs/zinc
+pipeline:
+  test:
+    image: python:3.5
     pull: true
-    auth_config:
-      username: presslabsbot
-      password: $$DOCKER_PASSWORD
-      email: ping@presslabs.com
     environment:
       - DJANGO_SETTINGS_MODULE=django_project.settings.test
-      - ZINC_AWS_KEY=$$ZINC_AWS_KEY
-      - ZINC_AWS_SECRET=$$ZINC_AWS_SECRET
     commands:
       - pip install -U -r requirements.dev.txt
       - make lint
       - make full-test
+    secrets:
+      - ZINC_AWS_KEY
+      - ZINC_AWS_SECRET
+    volumes:
+      - '/var/lib/drone/cache/pip:/root/.cache/pip'
 
-publish:
-  docker:
-    username: presslabsbot
-    password: $$DOCKER_PASSWORD
-    email: ping@presslabs.com
+  publish-docker-image:
+    image: plugins/docker
     repo: presslabs/zinc
-    tag: $${BRANCH/master/latest}
-    storage_path: /drone/docker
+    tags: ${DRONE_BRANCH/master/latest}
+    secrets:
+      - docker_username
+      - docker_password
     when:
       branch: master
-
-cache:
-  mount:
-    - /drone/docker
