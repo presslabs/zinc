@@ -4,6 +4,7 @@ import logging
 
 from botocore.exceptions import ClientError
 from django.db import transaction
+from django.conf import settings
 
 from .record import Record
 from .policy import Policy
@@ -148,7 +149,7 @@ class Zone(object):
             Name=self.root,
             CallerReference=str(self.db_zone.caller_reference),
             HostedZoneConfig={
-                'Comment': 'zinc'
+                'Comment': getattr(settings, 'ZONE_OWNERSHIP_COMMENT', 'zinc')
             }
         )
         self.db_zone.route53_id = zone['HostedZone']['Id']
