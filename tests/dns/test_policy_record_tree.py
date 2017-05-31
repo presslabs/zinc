@@ -225,6 +225,22 @@ def test_policy_record_tree_builder(zone, boto_client):
 
 
 @pytest.mark.django_db
+def test_policy_record_tree_builder_with_deleted_record(zone, boto_client):
+    policy = G(m.Policy)
+    region = regions[0]
+    region2 = regions[1]
+    ip = create_ip_with_healthcheck()
+    # policy_members:
+    [G(m.PolicyMember, policy=policy, region=region, ip=ip),
+     G(m.PolicyMember, policy=policy, region=region2, ip=ip)]
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy, deleted=True)
+
+    policy_record.r53_policy_record.reconcile()
+    assert zone.r53_zone._change_batch == []
+    assert not m.PolicyRecord.objects.filter(pk=policy_record.pk).exists()
+
+
+@pytest.mark.django_db
 def test_policy_record_tree_with_multiple_regions(zone, boto_client):
     policy = G(m.Policy)
     ip = create_ip_with_healthcheck()
@@ -417,7 +433,7 @@ def test_policy_record_deletion(zone, boto_client):
     zone.reconcile()
 
     rrsets = boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id)
-    assert strip_ns_and_soa(rrsets, zone.root) == [
+    expected = [
         {
             'Name': 'test.test-zinc.net.',
             'ResourceRecords': [{'Value': '1.1.1.1'}],
@@ -425,6 +441,7 @@ def test_policy_record_deletion(zone, boto_client):
             'Type': 'A'
         }
     ]
+    assert strip_ns_and_soa(rrsets, zone.root) == expected
 
 
 @pytest.mark.django_db
