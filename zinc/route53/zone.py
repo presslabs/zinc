@@ -191,7 +191,10 @@ class Zone(object):
         Reconcile policy records for this zone.
         """
         with self.db_zone.lock_dirty_policy_records() as dirty_policy_records:
-            dirty_policies = set([policy_record.policy for policy_record in dirty_policy_records])
+            dirty_policies = set()
+            for policy_record in dirty_policy_records:
+                if not policy_record.deleted:
+                    dirty_policies.add(policy_record.policy)
             for policy in dirty_policies:
                 r53_policy = Policy(policy=policy, zone=self)
                 r53_policy.reconcile()
