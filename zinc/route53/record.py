@@ -282,7 +282,8 @@ class PolicyRecord(BaseRecord):
     def reconcile(self):
         # upsert or delete the top level alias
         if self.deleted:
-            self.zone.process_records([self])
+            if self._top_level_record.id in self.zone.records():
+                self.zone.process_records([self])
             self.db_policy_record.delete()
         else:
             existing_alias = self._existing_alias
