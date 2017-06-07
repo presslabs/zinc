@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import collections.abc
 import contextlib
 import json
@@ -15,6 +16,11 @@ from zinc.validators import validate_domain, validate_hostname
 
 
 logger = getLogger(__name__)
+
+ROUTING_CHOICES = OrderedDict([
+    ("latency", "latency"),
+    ("weighted", "weighted"),
+])
 
 
 class IP(models.Model):
@@ -61,6 +67,8 @@ class IP(models.Model):
 class Policy(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True, null=False)
+    routing = models.CharField(
+        max_length=255, choices=ROUTING_CHOICES.items(), default=ROUTING_CHOICES['latency'])
 
     dirty_trigger_fields = set(['name'])
 
