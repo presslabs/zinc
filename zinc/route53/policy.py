@@ -18,6 +18,10 @@ class Policy:
     def id(self):
         return self.db_policy.id
 
+    @property
+    def routing(self):
+        return self.db_policy.routing
+
     @memoized_property
     def aws_records(self):
         """What we have in AWS"""
@@ -81,19 +85,23 @@ class Policy:
         policy_members = self.db_policy.members.exclude(enabled=False).exclude(ip__enabled=False)
         # ensure we always build region subtrees in alphabetical order; makes tests simpler
         regions = sorted(set([pm.region for pm in policy_members]))
-        if len(regions) > 1:
-            # Here is the case where are multiple regions
-            records = self._build_lbr_tree(policy_members, regions=regions)
-        elif len(regions) == 1:
-            # Case with a single region
-            records = self._build_weighted_tree(
-                policy_members, region_suffixed=False)
-        else:
+        if len(regions) == 0:
             raise Exception(
                 "Policy can't be applied. zone: '{}'; policy: '{}'".format(
                     self.zone, self
                 )
             )
+        if self.routing == 'latency':
+            # Here is the case where are multiple regions
+            records = self._build_lbr_tree(policy_members, regions=regions)
+        # elif len(regions) == 1:
+        elif self.routing == 'weighted':
+            # Case with a single region
+            records = self._build_weighted_tree(
+                policy_members, region_suffixed=False)
+        else:
+            raise AssertionError('invalid routing {} for policy {}'.format(
+                self.routing, self.db_policy))
         return records
 
     def reconcile(self):

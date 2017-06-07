@@ -1,6 +1,5 @@
 from django.contrib import admin
 from django.db import transaction
-from django.db.models import Count, Case, When, Value, CharField
 
 from zinc.models import Policy, PolicyMember
 
@@ -19,33 +18,17 @@ class PolicyMemberInline(admin.TabularInline):
 
 @admin.register(Policy)
 class PolicyAdmin(admin.ModelAdmin):
-    fields = ('name', 'policy_type',)
-    readonly_fields = ('policy_type',)
-    list_display = ('__str__', 'policy_type', 'regions',)
+    fields = ('name', 'routing',)
+    readonly_fields = ()
+    list_display = ('__str__', 'routing', 'regions', 'status')
+    list_filter = ('routing', 'members__region')
     inlines = (PolicyMemberInline,)
     exclude = ('members',)
 
     def get_queryset(self, request):
         qs = super(PolicyAdmin, self).get_queryset(request)
-        qs = qs.annotate(region_count=Count('members__region',
-                                            distinct=True))
-        qs = qs.annotate(
-            region_count=Count(
-                'members__region',
-                distinct=True
-            ),
-            policy_type=Case(
-                When(region_count=1, then=Value('weigthed')),
-                When(region_count__gt=1, then=Value('lbr')),
-                output_field=CharField()
-            )
-        )
         qs = qs.prefetch_related('members')
         return qs
-
-    def policy_type(self, obj):
-        return obj.policy_type
-    policy_type.admin_order_field = 'policy_type'
 
     def regions(self, obj):
         # get_queryset prefetches related policy members so iterating over
@@ -57,3 +40,26 @@ class PolicyAdmin(admin.ModelAdmin):
         rv = super().save_model(request, obj, form, change)
         obj.change_trigger(form.changed_data)
         return rv
+
+    def status(self, obj):
+        warnings = []
+        if obj.routing == 'latency':
+            members_by_region = {}
+            for member in obj.members.all():
+                members_by_region.setdefault(member.region, []).append(member)
+            if len(members_by_region) <= 1:
+                warnings.append('&#x2716; Latency routed policy should span multiple regions!')
+            for region, members in members_by_region.items():
+                if len([m for m in members if m.weight > 0]) == 0:
+                    warnings.append(
+                        '&#x2716; All members of region {} have weight zero!'.format(region))
+        elif obj.routing == 'weighted':
+            active_members = [m for m in obj.members.all() if m.weight > 0]
+            if len(active_members) == 0:
+                warnings.append('&#x2716; All members have weight zero!')
+        if warnings:
+            return '<span style="color: red">{}</red>'.format("<br>".join(warnings))
+        else:
+            return "&#x2714; ok"
+    status.allow_tags = True
+    status.short_description = 'Status'

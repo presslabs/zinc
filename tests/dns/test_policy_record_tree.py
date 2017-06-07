@@ -33,7 +33,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
     policy = policy_record.policy
     policy_members = [pm for pm in policy_members if pm.policy == policy]
     regions = set([pm.region for pm in policy_members])
-    if len(regions) > 1:
+    if policy.routing == 'latency':
         records_for_regions = [
             {
                 'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
@@ -60,7 +60,6 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
             }
             for policy_member in policy_members if policy_member.enabled]
-
     else:
         records_for_regions = []
         records_for_policy_members = [
@@ -99,7 +98,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
 @pytest.mark.django_db
 def test_policy_member_to_list_helper():
     zone = G(m.Zone, route53_id='Fake')
-    policy = G(m.Policy)
+    policy = G(m.Policy, routing='weighted')
     region = regions[0]
     policy_members = [
         G(m.PolicyMember, policy=policy, region=region),
@@ -405,7 +404,7 @@ def test_multiple_policies(zone, boto_client):
 
 @pytest.mark.django_db
 def test_policy_record_deletion(zone, boto_client):
-    policy = G(m.Policy)
+    policy = G(m.Policy, routing='weighted')
     region = regions[0]
     ip = create_ip_with_healthcheck()
     policy_members = [
@@ -508,7 +507,7 @@ def test_policy_record_with_ips_0_weight(zone, boto_client):
 
 @pytest.mark.django_db
 def test_policy_record_with_all_ips_disabled(zone, boto_client):
-    policy = G(m.Policy)
+    policy = G(m.Policy, routing='latency')
     ip1 = create_ip_with_healthcheck()
     ip1.enabled = False
     ip1.save()
@@ -651,8 +650,8 @@ def test_ip_mark_policy_records_dirty(zone):
 
 
 @pytest.mark.django_db
-def test_tree_with_one_region(zone, boto_client):
-    policy = G(m.Policy)
+def test_weighted_policy(zone, boto_client):
+    policy = G(m.Policy, routing='weighted')
     ip = G(m.IP, healthcheck_id=None)
     ip2 = G(m.IP, healthcheck_id=None)
 
@@ -719,7 +718,7 @@ def test_dangling_records(zone, boto_client):
 @pytest.mark.django_db
 def test_check_policy_trees(zone, boto_client):
     ip = create_ip_with_healthcheck()
-    policy = G(m.Policy, name='policy1')
+    policy = G(m.Policy, name='policy1', routing='weighted')
     member = G(m.PolicyMember, ip=ip, policy=policy, region='us-east-1', weight=10)
     G(m.PolicyRecord, zone=zone, policy=policy, name='record', dirty=True)
     route53.Policy(policy=policy, zone=zone.r53_zone).reconcile()
@@ -800,11 +799,11 @@ def test_untouched_policy_not_deleted(zone, boto_client):
     Tests a policy record with dirty=False doesn't end up deleted after a tree rebuild.
     """
     ip1 = create_ip_with_healthcheck()
-    policy1 = G(m.Policy, name='policy1')
+    policy1 = G(m.Policy, name='policy1', routing='weighted')
     G(m.PolicyMember, ip=ip1, policy=policy1, region='us-east-1', weight=10)
 
     ip2 = create_ip_with_healthcheck()
-    policy2 = G(m.Policy, name='policy2')
+    policy2 = G(m.Policy, name='policy2', routing='weighted')
     G(m.PolicyMember, ip=ip2, policy=policy2, region='us-east-2', weight=10)
 
     # build a tree with policy1
@@ -986,7 +985,7 @@ def test_r53_policy_record_tree_attribute_change(zone, boto_client):
     Tests reconciliation updates secondary attributes for policy tree records.
     """
     # create a record with a different TTL and no health_check_id
-    policy = G(m.Policy, name='pol1')
+    policy = G(m.Policy, name='pol1', routing='weighted')
     ip1 = create_ip_with_healthcheck()
     member = G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
     record = route53.Record(
@@ -1014,7 +1013,7 @@ def test_r53_policy_deleted_health_check(zone, boto_client):
     """
     Tests reconciliation updates deleted healthchecks
     """
-    policy = G(m.Policy, name='pol1')
+    policy = G(m.Policy, name='pol1', routing='weighted')
     ip1 = create_ip_with_healthcheck()
     G(m.PolicyMember, policy=policy, region=regions[0], ip=ip1)
     policy_record = G(m.PolicyRecord, zone=zone, name='www', policy=policy)
