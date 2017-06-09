@@ -111,6 +111,10 @@ class PolicyMember(models.Model):
         self.policy.mark_policy_records_dirty()
         return super(PolicyMember, self).save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        self.policy.mark_policy_records_dirty()
+        return super(PolicyMember, self).delete(*args, **kwargs)
+
     def __str__(self):
         return '{} {} {}'.format(self.ip, self.region, self.weight)
 
