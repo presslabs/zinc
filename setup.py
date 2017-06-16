@@ -1,11 +1,21 @@
 from setuptools import setup, find_packages
 
-install_requires = ['Django', 'celery', 'zipa', 'djangorestframework']
+install_requires = [
+    'boto3',
+    'celery',
+    'Django',
+    'djangorestframework',
+    'dnspython',
+    'hashids',
+    'redis',
+    'requests',
+    'zipa',
+]
 tests_require = ['pytest', 'pytest-runner>=2.0,<3dev', 'pytest-flake8']
 
 setup(
-    name='zinc',
-    version='0.0.1',
+    name='zinc-dns',
+    version='0.1.0',
     description="Route 53 zone manager",
     author="Presslabs",
     author_email="ping@presslabs.com",
