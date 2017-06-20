@@ -206,6 +206,9 @@ class BaseRecord:
 
     def validate_unique(self):
         """You're not allowed to have a CNAME clash with any other type of record"""
+        if self.deleted:
+            # allow deleting any conflicting record
+            return
         if self.type == 'CNAME':
             clashing = tuple((self.name, r_type) for r_type in RECORD_TYPES)
         else:
@@ -261,10 +264,6 @@ class PolicyRecord(BaseRecord):
             dirty=dirty,
             created=created,
         )
-
-    def full_clean(self):
-        super().full_clean()
-        self.db_policy_record.full_clean()
 
     def save(self):
         if self.deleted:

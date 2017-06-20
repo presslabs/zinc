@@ -313,9 +313,13 @@ class PolicyRecord(models.Model):
 
     def clean(self):
         zone_records = self.zone.r53_zone.records()
-        for record in zone_records.values():
-            if record.name == self.name and record.type == 'CNAME':
-                raise ValidationError({'name': "A CNAME record of the same name already exists."})
+        # guard against PolicyRecords/CNAME name clashes
+        if not self.deleted:
+            # don't do the check unless the PR is deleted
+            for record in zone_records.values():
+                if record.name == self.name and record.type == 'CNAME':
+                    raise ValidationError(
+                        {'name': "A CNAME record of the same name already exists."})
 
         super().clean()
 
