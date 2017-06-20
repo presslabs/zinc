@@ -244,6 +244,50 @@ def test_create_policy_routed_if_cname_exists_should_fail(zone, api_client, boto
 
 
 @pytest.mark.django_db
+def test_delete_policy_record_with_cname_clash(zone, api_client, boto_client):
+    """Tests we can delete a PR when we already have a CNAME with the same name
+
+    The API guards against even getting this conflict but if you bypass, it like
+    we did when we imported all our PolicyRecords, you still want to be able to
+    delete it.
+    """
+    boto_client.change_resource_record_sets(
+        HostedZoneId=zone.r53_zone.id,
+        ChangeBatch={
+            'Comment': 'zinc-fixture',
+            'Changes': [
+                {
+                    'Action': 'CREATE',
+                    'ResourceRecordSet': {
+                        'Name': 'www.%s' % zone.root,
+                        'Type': 'CNAME',
+                        'TTL': 300,
+                        'ResourceRecords': [
+                            {
+                                'Value': 'google.com',
+                            }
+                        ]
+                    }
+                },
+            ]
+        }
+    )
+
+    policy = G(m.Policy)
+    region = get_local_aws_regions()[0]
+    region2 = get_local_aws_regions()[1]
+    ip = create_ip_with_healthcheck()
+    G(m.PolicyMember, policy=policy, region=region, ip=ip)
+    G(m.PolicyMember, policy=policy, region=region2, ip=ip)
+    policy_record = G(m.PolicyRecord, name='www', policy=policy, zone=zone, dirty=False)
+    # reconciling the zone would now fail because of the conflicting CNAME
+    # also, the validation cares about the DB value of PolicyRecord, so it's not even required
+    response = api_client.delete(
+        '/zones/{}/records/{}'.format(zone.id, hash_policy_record(policy_record)))
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
 def test_cname_create_with_pr_clash(zone, api_client):
     """Tests we can't create a CNAME when we have a PR with the same name"""
     policy = G(m.Policy)
