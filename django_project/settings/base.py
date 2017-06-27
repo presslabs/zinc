@@ -15,6 +15,7 @@ from django.utils.log import DEFAULT_LOGGING
 
 
 def parse_list(string):
+    string = string or ""
     return list(filter(lambda x: x, map(lambda x: x.strip(),
                                         string.split(','))))
 
