@@ -1,6 +1,45 @@
 version: '2'
 services:
-  redis:
-    image: redis:3.2-alpine
+  web:
+    image: presslabs/zinc:latest
+    command: web
+    env_file: ./zinc.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - mysql
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:18000:8000"
+    volumes:
+      - "./data/:/webroot"
+  worker:
+    image: presslabs/zinc:latest
+    command: celery
+    env_file: ./zinc.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - mysql
+  beat:
+    image: presslabs/zinc:latest
+    command: celerybeat
+    env_file: ./zinc.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - mysql
+  redis:
+    image: redis:3.2
+    command: redis-server --save "" --appendonly no --maxmemory-policy allkeys-lru --maxmemory 256mb
+    restart: unless-stopped
+  mysql:
+    image: percona:5.7
+    command: "mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci"
+    environment:
+      MYSQL_DATABASE: "zinc"
+      MYSQL_USER: "zinc"
+      MYSQL_PASSWORD: "zinc_passwd"
+      MYSQL_ROOT_PASSWORD: "zinc_root_passwd"
+    restart: unless-stopped
+    volumes:
+      - "./data/mysql:/var/lib/mysql"

@@ -13,6 +13,16 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import os
 from django.utils.log import DEFAULT_LOGGING
 
+
+def parse_list(string):
+    return list(filter(lambda x: x, map(lambda x: x.strip(),
+                                        string.split(','))))
+
+def parse_bool(string):
+    string = string or ""
+    return (string.strip().lower() in ('yes', 'true', '1'))
+
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,11 +37,24 @@ WEBROOT_DIR = os.getenv('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT,
 SECRET_KEY = os.getenv('ZINC_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('ZINC_DEBUG', 'False') == 'True'
+DEBUG = parse_bool(os.getenv('ZINC_DEBUG'))
+SERVE_STATIC = parse_bool(os.getenv('ZINC_SERVE_STATIC'))
 
-ALLOWED_HOSTS = list(filter(lambda x: x, map(lambda x: x.strip(),
-                                             os.getenv('ZINC_ALLOWED_HOSTS', '').split(','))))
+ALLOWED_HOSTS = parse_list(os.getenv('ZINC_ALLOWED_HOSTS', ''))
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('ZINC_GOOGLE_OAUTH2_KEY')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('ZINC_GOOGLE_OAUTH2_SECRET')
+
+# LATTICE
+
+LATTICE_URL = os.getenv('LATTICE_URL')
+LATTICE_USER = os.getenv('LATTICE_USER')
+LATTICE_PASSWORD = os.getenv('LATTICE_PASSWORD')
+LATTICE_ROLES = list(map(lambda x: x.strip(),
+                         os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
+LATTICE_ENV = os.getenv('LATTICE_ENV', 'production')
+
 
 # Application definition
 
@@ -42,89 +65,80 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'social_django',
     'rest_framework',
     'rest_framework_swagger',
     'zinc',
-    'lattice_sync',
 ]
+if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+    INSTALLED_APPS += ['social_django']
+if LATTICE_URL:
+    INSTALLED_APPS += ['lattice_sync']
 
 AUTHENTICATION_BACKENDS = (
-    'social_core.backends.google.GoogleOAuth2',
     'django.contrib.auth.backends.ModelBackend',
 )
+if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+    AUTHENTICATION_BACKENDS = (
+        'social_core.backends.google.GoogleOAuth2',
+    ) + AUTHENTICATION_BACKENDS
+    LOGIN_URL = '/_auth/login/google-oauth2/'
 
-LOGIN_URL = '/_auth/login/google-oauth2/'
+    SOCIAL_AUTH_ADMIN_USER_SEARCH_FIELDS = ['username', 'first_name', 'email']
+    SOCIAL_AUTH_ADMIN_EMAILS = parse_list(os.getenv("ZINC_SOCIAL_AUTH_ADMIN_EMAILS"))
+    SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = parse_list(
+        os.getenv("ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS"))
+    SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
+        'profile',
+    ]
 
-SOCIAL_AUTH_ADMIN_USER_SEARCH_FIELDS = ['username', 'first_name', 'email']
-SOCIAL_AUTH_ADMIN_EMAILS = [
-    'bogdan@presslabs.com',
-    'calin@presslabs.com',
-    'flavius@presslabs.com',
-    'ionut@presslabs.com',
-    'mario@presslabs.com',
-    'mile@presslabs.com',
-    'pedro@presslabs.com',
-    'radu@presslabs.com',
-    'robi@presslabs.com',
-    'vlad@presslabs.com',
-    'andi@presslabs.com',
-]
-SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = ['presslabs.com']
-SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
-    'profile',
-]
+    SOCIAL_AUTH_PIPELINE = (
+        # Get the information we can about the user and return it in a simple
+        # format to create the user instance later. On some cases the details are
+        # already part of the auth response from the provider, but sometimes this
+        # could hit a provider API.
+        'social_core.pipeline.social_auth.social_details',
 
-SOCIAL_AUTH_PIPELINE = (
-    # Get the information we can about the user and return it in a simple
-    # format to create the user instance later. On some cases the details are
-    # already part of the auth response from the provider, but sometimes this
-    # could hit a provider API.
-    'social_core.pipeline.social_auth.social_details',
+        # Get the social uid from whichever service we're authing thru. The uid is
+        # the unique identifier of the given user in the provider.
+        'social_core.pipeline.social_auth.social_uid',
 
-    # Get the social uid from whichever service we're authing thru. The uid is
-    # the unique identifier of the given user in the provider.
-    'social_core.pipeline.social_auth.social_uid',
+        # Verifies that the current auth process is valid within the current
+        # project, this is where emails and domains whitelists are applied (if
+        # defined).
+        'social_core.pipeline.social_auth.auth_allowed',
 
-    # Verifies that the current auth process is valid within the current
-    # project, this is where emails and domains whitelists are applied (if
-    # defined).
-    'social_core.pipeline.social_auth.auth_allowed',
+        # Checks if the current social-account is already associated in the site.
+        'social_core.pipeline.social_auth.social_user',
 
-    # Checks if the current social-account is already associated in the site.
-    'social_core.pipeline.social_auth.social_user',
+        # Make up a username for this person, appends a random string at the end if
+        # there's any collision.
+        'social_core.pipeline.user.get_username',
 
-    # Make up a username for this person, appends a random string at the end if
-    # there's any collision.
-    'social_core.pipeline.user.get_username',
+        # Send a validation email to the user to verify its email address.
+        # Disabled by default.
+        # 'social_core.pipeline.mail.mail_validation',
 
-    # Send a validation email to the user to verify its email address.
-    # Disabled by default.
-    # 'social_core.pipeline.mail.mail_validation',
+        # Associates the current social details with another user account with
+        # a similar email address. Disabled by default.
+        # 'social_core.pipeline.social_auth.associate_by_email',
 
-    # Associates the current social details with another user account with
-    # a similar email address. Disabled by default.
-    # 'social_core.pipeline.social_auth.associate_by_email',
+        # Create a user account if we haven't found one yet.
+        'social_core.pipeline.user.create_user',
 
-    # Create a user account if we haven't found one yet.
-    'social_core.pipeline.user.create_user',
+        # Set superuser and is_staff
+        'django_project.social_auth_pipeline.set_user_perms',
 
-    # Set superuser and is_staff
-    'django_project.social_auth_pipeline.set_user_perms',
+        # Create the record that associates the social account with the user.
+        'social_core.pipeline.social_auth.associate_user',
 
-    # Create the record that associates the social account with the user.
-    'social_core.pipeline.social_auth.associate_user',
+        # Populate the extra_data field in the social record with the values
+        # specified by settings (and the default ones like access_token, etc).
+        'social_core.pipeline.social_auth.load_extra_data',
 
-    # Populate the extra_data field in the social record with the values
-    # specified by settings (and the default ones like access_token, etc).
-    'social_core.pipeline.social_auth.load_extra_data',
+        # Update the user record with any changed info from the auth service.
+        'social_core.pipeline.user.user_details',
+    )
 
-    # Update the user record with any changed info from the auth service.
-    'social_core.pipeline.user.user_details',
-)
-
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('ZINC_GOOGLE_OAUTH2_KEY')
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('ZINC_GOOGLE_OAUTH2_SECRET')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -134,11 +148,13 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'social_django.middleware.SocialAuthExceptionMiddleware',
 ]
+if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+    MIDDLEWARE += [
+        'social_django.middleware.SocialAuthExceptionMiddleware',
+    ]
 
 ROOT_URLCONF = 'django_project.urls'
-
 
 TEMPLATES = [
     {
@@ -226,10 +242,6 @@ CELERYBEAT_SCHEDULE = {
         'task': 'zinc.tasks.reconcile_zones',
         'schedule': 10,
     },
-    'lattice_sync': {
-        'task': 'lattice_sync.tasks.lattice_sync',
-        'schedule': 30
-    },
     'update_ns_propagated': {
         'task': 'zinc.tasks.update_ns_propagated',
         'schedule': 60
@@ -239,6 +251,14 @@ CELERYBEAT_SCHEDULE = {
         'schedule': 60 * 15
     },
 }
+
+if LATTICE_URL:
+    CELERYBEAT_SCHEDULE.update({
+        'lattice_sync': {
+            'task': 'lattice_sync.tasks.lattice_sync',
+            'schedule': 30
+        },
+    })
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -275,14 +295,8 @@ HEALTH_CHECK_CONFIG = {
     'Port': 80,
     'Type': 'HTTP',
     'ResourcePath': '/status',
-    'FullyQualifiedDomainName': 'node.presslabs.net.',
+    'FullyQualifiedDomainName': os.getenv('ZINC_HEALTH_CHECK_FQDN', 'node.presslabs.net.'),
 }
-LATTICE_URL = os.getenv('LATTICE_URL', 'https://lattice.presslabs.net/')
-LATTICE_USER = os.getenv('LATTICE_USER')
-LATTICE_PASSWORD = os.getenv('LATTICE_PASSWORD')
-LATTICE_ROLES = list(map(lambda x: x.strip(),
-                         os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
-LATTICE_ENV = os.getenv('LATTICE_ENV', 'production')
 
 ZINC_DEFAULT_TTL = os.getenv('ZINC_DEFAULT_TTL', 300)
 ZINC_NS_CHECK_RESOLVERS = os.getenv('ZINC_NS_CHECK_RESOLVERS', ['8.8.8.8'])
