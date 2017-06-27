@@ -18,7 +18,8 @@ docker-compose up
 ## Config
 
 If you run the django project with default settings, you can configure zinc by setting
-environment variables.
+environment variables. If you're using the provided docker-compose.yml you can set the
+environment in ./zinc.env
 
 The following are essential and required:
 ```
@@ -56,6 +57,29 @@ ZINC_SENTRY_DSN - Set this to enable sentry error reporting.
 ZINC_STATIC_URL - Defaults to '/static/'
 ZINC_ZONE_OWNERSHIP_COMMENT - Set this comment on records, to Defaults to 'zinc'
 ```
+
+# Development
+
+** Warning! Don't use production AWS credentials when developing or testing Zinc!  **
+
+After you've cloned the code:
+```
+pip install -r requirements.dev.txt
+python setup.py develop
+cp local_settings.py.example local_settings.py
+# open local_settings.py in your favorite editor, and set AWS credentials
+```
+
+To run the tests:
+```
+# all tests
+py.test .
+
+# to skip tests that need AWS
+py.test -k 'not with_aws' .
+```
+
+# Overview
 
 ## IPs, Policies and Policy Records
 
