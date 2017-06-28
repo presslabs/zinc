@@ -9,6 +9,54 @@ Q: Why would one use Zinc over AWS's Policy Records?
 
 A: Price. 50$ per Record adds up quickly.
 
+# Installing and Running
+
+The recomended way to get up and running is using our Docker container.
+
+docker-compose up
+
+## Config
+
+If you run the django project with default settings, you can configure zinc by setting
+environment variables.
+
+The following are essential and required:
+```
+ZINC_AWS_KEY - AWS Key
+ZINC_AWS_SECRET - AWS Secret
+ZINC_SECRET_KEY - Django secret
+```
+
+You can also set the following:
+```
+ZINC_ALLOWED_HOSTS - Django Allowed Hosts
+ZINC_BROKER_URL - Celery Broker URL, defaults to ${REDIS_URL}/0
+ZINC_CELERY_RESULT_BACKEND - Celery Result Backend, defaults to ${REDIS_URL}/1
+ZINC_DATA_DIR - PROJECT_ROOT
+ZINC_DB_ENGINE - The django db engine to use. Defaults to 'django.db.backends.sqlite3'
+ZINC_DB_HOST -
+ZINC_DB_NAME - zinc
+ZINC_DB_PASSWORD - password
+ZINC_DB_PORT -
+ZINC_DB_USER - zinc
+ZINC_DEBUG - Django debug. Defaults to False. Set to the string "True" to turn on debugging.
+ZINC_DEFAULT_TTL - 300
+ZINC_ENV_NAME - The environment for sentry reporting.
+ZINC_GOOGLE_OAUTH2_KEY - For use with social-django. If you don't set this, social-django will be disabled.
+ZINC_GOOGLE_OAUTH2_SECRET - For use with social-django.
+ZINC_SOCIAL_AUTH_ADMIN_EMAILS - List of email addresses that will be automatically granted admin access.
+ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS - see http://python-social-auth.readthedocs.io/en/latest/configuration/settings.html?highlight=whitelisted#whitelists
+ZINC_HEALTH_CHECK_FQDN - Hostname to use in Health Checks. Defaults to 'node.presslabs.net.'
+ZINC_LOCK_SERVER_URL - Used with redis-lock. Defaults to ${REDIS_URL}/2.
+ZINC_LOG_LEVEL - Defaults to INFO
+ZINC_NS_CHECK_RESOLVERS - NameServers to use when checking zone propagation. Default: ['8.8.8.8']
+ZINC_REDIS_URL - Defaults to 'redis://localhost:6379'
+ZINC_SECRET_KEY - The secret key used by the django app.
+ZINC_SENTRY_DSN - Set this to enable sentry error reporting.
+ZINC_STATIC_URL - Defaults to '/static/'
+ZINC_ZONE_OWNERSHIP_COMMENT - Set this comment on records, to Defaults to 'zinc'
+```
+
 ## IPs, Policies and Policy Records
 
 At the end of the day your domain name `example.com` needs to resolve to one or more
@@ -22,6 +70,15 @@ There is no explicit handling in zinc of multiple IPs belonging to one server.
 
 Enabling or disabling can be done from the admin or by implementing a django app (see
 lattice_sync for an example)
+
+
+### HealthChecks
+
+Zinc will create a Route53 Health Check for each IP. If Route53 deems the IP unavailable,
+it will stop routing traffic to it.
+
+Currently the Health Checks are hardcoded to expect all servers to accept requests with the
+same FQDN (defaults to node.presslabs.net, set `ZINC_HEALTH_CHECK_FQDN` to change).
 
 ### Policies
 
@@ -216,8 +273,8 @@ Args:
 | type | required | - | The record type. Must be either POLICY\_ROUTED or a valid record type. |
 | values | required | - | List of values. Should be one IP for A, MX records, a policy id for POLICY_ROUTED, one or more domain names for NS records. |
 | ttl | optional | 300 | The TTL for DNS. |
- 
- 
+
+
 #### Delete a record.
 `DELETE /zones/{zone_id}/records/{record_id}`
 

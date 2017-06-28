@@ -24,6 +24,10 @@ exec_web(){
     if [ "$ZINC_MIGRATE" == "yes" ] ; then
         $DOCKERIZE su-exec zinc /app/manage.py migrate --noinput
     fi
+    if [ "$ZINC_COLLECT_STATIC" == "yes" ] ; then
+        chown -R zinc -- $ZINC_WEBROOT_DIR
+        $DOCKERIZE su-exec zinc /app/manage.py collectstatic --noinput
+    fi
 
     if [ "$ZINC_LOAD_DEV_DATA" == "yes" ] ; then
         $DOCKERIZE su-exec zinc /app/manage.py seed
