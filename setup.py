@@ -22,7 +22,7 @@ setup(
     url="https://github.com/Presslabs/zinc",
     install_requires=install_requires,
     tests_require=tests_require,
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(include=['zinc', 'zinc.*']),
     extras_require={
         'test': tests_require
     },
