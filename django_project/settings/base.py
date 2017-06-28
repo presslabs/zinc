@@ -19,6 +19,7 @@ def parse_list(string):
     return list(filter(lambda x: x, map(lambda x: x.strip(),
                                         string.split(','))))
 
+
 def parse_bool(string):
     string = string or ""
     return (string.strip().lower() in ('yes', 'true', '1'))
