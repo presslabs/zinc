@@ -13,7 +13,10 @@ A: Price. 50$ per Record adds up quickly.
 
 The recomended way to get up and running is using our Docker container.
 
+```
+cd contrib/
 docker-compose up
+```
 
 ## Config
 
