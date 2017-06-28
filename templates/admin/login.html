@@ -4,9 +4,12 @@
 {{ block.super }}
 
 <div style="padding-left: 6.1em;">
-<form action="{% url 'social:begin' 'google-oauth2' %}">
-    <input type="hidden" name="next" value="{{ next }}" />
-    <input type="submit" value="Presslabs Single Signon" />
-</form>
+{% url 'social:begin' 'google-oauth2' as social_login_url %}
+{% if social_login_url %}
+    <form action="{% url 'social:begin' 'google-oauth2' %}">
+        <input type="hidden" name="next" value="{{ next }}" />
+        <input type="submit" value="Presslabs Single Signon" />
+    </form>
+{% endif %}
 </div>
 {% endblock %}

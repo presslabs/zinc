@@ -16,3 +16,4 @@ LICENSE
 docker-compose.yml
 Makefile
 Vagrantfile
+data/

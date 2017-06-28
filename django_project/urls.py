@@ -22,9 +22,17 @@ from zinc.views import HealtchCheck
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^', include('zinc.urls')),
-    url(r'_auth/', include('social_django.urls', namespace='social')),
     url(r'_health', HealtchCheck.as_view())
 ]
+
+if settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
+    urlpatterns.append(
+        url(r'_auth/', include('social_django.urls', namespace='social'))
+    )
+
+if settings.SERVE_STATIC:
+    from django.conf.urls.static import static
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 try:
     from rest_framework_swagger.views import get_swagger_view
