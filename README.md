@@ -9,78 +9,6 @@ Q: Why would one use Zinc over AWS's Policy Records?
 
 A: Price. 50$ per Record adds up quickly.
 
-# Installing and Running
-
-The recomended way to get up and running is using our Docker container.
-
-```
-cd contrib/
-docker-compose up
-```
-
-## Config
-
-If you run the django project with default settings, you can configure zinc by setting
-environment variables. If you're using the provided docker-compose.yml you can set the
-environment in ./zinc.env
-
-The following are essential and required:
-```
-ZINC_AWS_KEY - AWS Key
-ZINC_AWS_SECRET - AWS Secret
-ZINC_SECRET_KEY - Django secret
-```
-
-You can also set the following:
-```
-ZINC_ALLOWED_HOSTS - Django Allowed Hosts
-ZINC_BROKER_URL - Celery Broker URL, defaults to ${REDIS_URL}/0
-ZINC_CELERY_RESULT_BACKEND - Celery Result Backend, defaults to ${REDIS_URL}/1
-ZINC_DATA_DIR - PROJECT_ROOT
-ZINC_DB_ENGINE - The django db engine to use. Defaults to 'django.db.backends.sqlite3'
-ZINC_DB_HOST -
-ZINC_DB_NAME - zinc
-ZINC_DB_PASSWORD - password
-ZINC_DB_PORT -
-ZINC_DB_USER - zinc
-ZINC_DEBUG - Django debug. Defaults to False. Set to the string "True" to turn on debugging.
-ZINC_DEFAULT_TTL - 300
-ZINC_ENV_NAME - The environment for sentry reporting.
-ZINC_GOOGLE_OAUTH2_KEY - For use with social-django. If you don't set this, social-django will be disabled.
-ZINC_GOOGLE_OAUTH2_SECRET - For use with social-django.
-ZINC_SOCIAL_AUTH_ADMIN_EMAILS - List of email addresses that will be automatically granted admin access.
-ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS - see http://python-social-auth.readthedocs.io/en/latest/configuration/settings.html?highlight=whitelisted#whitelists
-ZINC_HEALTH_CHECK_FQDN - Hostname to use in Health Checks. Defaults to 'node.presslabs.net.'
-ZINC_LOCK_SERVER_URL - Used with redis-lock. Defaults to ${REDIS_URL}/2.
-ZINC_LOG_LEVEL - Defaults to INFO
-ZINC_NS_CHECK_RESOLVERS - NameServers to use when checking zone propagation. Default: ['8.8.8.8']
-ZINC_REDIS_URL - Defaults to 'redis://localhost:6379'
-ZINC_SECRET_KEY - The secret key used by the django app.
-ZINC_SENTRY_DSN - Set this to enable sentry error reporting.
-ZINC_STATIC_URL - Defaults to '/static/'
-ZINC_ZONE_OWNERSHIP_COMMENT - Set this comment on records, to Defaults to 'zinc'
-```
-
-# Development
-
-** Warning! Don't use production AWS credentials when developing or testing Zinc!  **
-
-After you've cloned the code:
-```
-pip install -r requirements.dev.txt
-python setup.py develop
-cp local_settings.py.example local_settings.py
-# open local_settings.py in your favorite editor, and set AWS credentials
-```
-
-To run the tests:
-```
-# all tests
-py.test .
-
-# to skip tests that need AWS
-py.test -k 'not with_aws' .
-```
 
 # Overview
 
@@ -96,7 +24,11 @@ Should be self explanatory. An IP can be enabled or disabled.
 There is no explicit handling in zinc of multiple IPs belonging to one server.
 
 Enabling or disabling can be done from the admin or by implementing a django app (see
-lattice_sync for an example)
+lattice_sync for an example). 
+
+**N.B.** If implementing your own app it's your responsibility to call 
+`ip.mark_policy_records_dirty` if the IP changes, so that zinc's reconcile loop will
+actually pick up the changes.
 
 
 ### HealthChecks
@@ -112,6 +44,10 @@ same FQDN (defaults to node.presslabs.net, set `ZINC_HEALTH_CHECK_FQDN` to chang
 A policy groups several IPs together. There are 2 types of policies:
  * Weighted
  * Latency
+ 
+Note that an IP can be a member of multiple Policies at the same time. A PolicyMember
+can has it's own enabled flag, so you can disable an IP for one Policy only, or you can
+disable the it for all Policies by setting the enabled flag on the IP model.
 
 #### Weighted
 
@@ -193,9 +129,11 @@ GET /policies/344b7bee-da33-4234-b645-805cc26adab0
 `POST /zones/`
 
 Args:
+
 | argument | required | default | description |
 | --- | --- | --- | --- |
 | root | required | - | The domain name of this zone. Trailing dot is optional. |
+
 Returns the newly created zone object.
 
 #### Delete a zone.
@@ -336,3 +274,77 @@ Missing attributes don't change.
 | --- | --- | --- | --- |
 | values | optional | - | List of values. Should be one IP for A, MX records, a policy id for POLICY_ROUTED, one or more domain names for NS records. |
 | ttl | optional | - | The TTL for DNS. |
+
+
+# Installing and Running
+
+The recomended way to get up and running is using our Docker container.
+
+```
+cd contrib/
+docker-compose up
+```
+
+## Config
+
+If you run the django project with default settings, you can configure zinc by setting
+environment variables. If you're using the provided docker-compose.yml you can set the
+environment in ./zinc.env
+
+The following are essential and required:
+```
+ZINC_AWS_KEY - AWS Key
+ZINC_AWS_SECRET - AWS Secret
+ZINC_SECRET_KEY - Django secret
+```
+
+You can also set the following:
+```
+ZINC_ALLOWED_HOSTS - Django Allowed Hosts
+ZINC_BROKER_URL - Celery Broker URL, defaults to ${REDIS_URL}/0
+ZINC_CELERY_RESULT_BACKEND - Celery Result Backend, defaults to ${REDIS_URL}/1
+ZINC_DATA_DIR - PROJECT_ROOT
+ZINC_DB_ENGINE - The django db engine to use. Defaults to 'django.db.backends.sqlite3'
+ZINC_DB_HOST -
+ZINC_DB_NAME - zinc
+ZINC_DB_PASSWORD - password
+ZINC_DB_PORT -
+ZINC_DB_USER - zinc
+ZINC_DEBUG - Django debug. Defaults to False. Set to the string "True" to turn on debugging.
+ZINC_DEFAULT_TTL - 300
+ZINC_ENV_NAME - The environment for sentry reporting.
+ZINC_GOOGLE_OAUTH2_KEY - For use with social-django. If you don't set this, social-django will be disabled.
+ZINC_GOOGLE_OAUTH2_SECRET - For use with social-django.
+ZINC_SOCIAL_AUTH_ADMIN_EMAILS - List of email addresses that will be automatically granted admin access.
+ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS - see http://python-social-auth.readthedocs.io/en/latest/configuration/settings.html?highlight=whitelisted#whitelists
+ZINC_HEALTH_CHECK_FQDN - Hostname to use in Health Checks. Defaults to 'node.presslabs.net.'
+ZINC_LOCK_SERVER_URL - Used with redis-lock. Defaults to ${REDIS_URL}/2.
+ZINC_LOG_LEVEL - Defaults to INFO
+ZINC_NS_CHECK_RESOLVERS - NameServers to use when checking zone propagation. Default: ['8.8.8.8']
+ZINC_REDIS_URL - Defaults to 'redis://localhost:6379'
+ZINC_SECRET_KEY - The secret key used by the django app.
+ZINC_SENTRY_DSN - Set this to enable sentry error reporting.
+ZINC_STATIC_URL - Defaults to '/static/'
+ZINC_ZONE_OWNERSHIP_COMMENT - Set this comment on records, to Defaults to 'zinc'
+```
+
+# Development
+
+**Warning! Don't use production AWS credentials when developing or testing Zinc!**
+
+After you've cloned the code:
+```
+pip install -r requirements.dev.txt
+python setup.py develop
+cp local_settings.py.example local_settings.py
+# open local_settings.py in your favorite editor, and set AWS credentials
+```
+
+To run the tests:
+```
+# all tests
+py.test .
+
+# to skip tests that need AWS
+py.test -k 'not with_aws' .
+```
