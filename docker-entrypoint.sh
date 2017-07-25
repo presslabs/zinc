@@ -2,6 +2,7 @@
 set -eo pipefail
 
 LOG_LEVEL=${ZINC_LOG_LEVEL:-INFO}
+HTTP_WORKERS=${ZINC_HTTP_WORKERS:-4}
 
 DOCKERIZE=""
 
@@ -33,7 +34,7 @@ exec_web(){
         $DOCKERIZE su-exec zinc /app/manage.py seed
     fi
 
-    exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi -w 8 --bind "$ZINC_WEB_ADDRESS"
+    exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi -w "$HTTP_WORKERS" --bind "$ZINC_WEB_ADDRESS"
 }
 
 case "$1" in
