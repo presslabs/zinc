@@ -33,7 +33,7 @@ exec_web(){
         $DOCKERIZE su-exec zinc /app/manage.py seed
     fi
 
-    exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi --bind "$ZINC_WEB_ADDRESS"
+    exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi -w 8 --bind "$ZINC_WEB_ADDRESS"
 }
 
 case "$1" in
