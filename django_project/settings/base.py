@@ -159,6 +159,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'zinc.middleware.boto_exception_middleware',
 ]
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     MIDDLEWARE += [
