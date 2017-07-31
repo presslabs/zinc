@@ -123,6 +123,7 @@ class Moto:
         self._zones = {}
         self._health_checks = {}
         self._health_checks_caller_reference = {}
+        self.exceptions = route53.client.get_client().exceptions
 
     def get_paginator(self, op_name):
         return FakePaginator(self, op_name)
@@ -177,7 +178,7 @@ class Moto:
             check = self._health_checks.get(check_id)
             if check is None or not(
                     check['HealthCheck']['HealthCheckConfig'].items() >= HealthCheckConfig.items()):
-                raise botocore.exceptions.ClientError(
+                raise self.exceptions.HealthCheckAlreadyExists(
                     error_response={
                         'Error': {
                             'Code': 'HealthCheckAlreadyExists',
@@ -204,7 +205,7 @@ class Moto:
         try:
             return self._health_checks[HealthCheckId]
         except KeyError:
-            raise botocore.exceptions.ClientError(
+            raise self.exceptions.NoSuchHealthCheck(
                 error_response={
                     'Error': {
                         'Code': 'NoSuchHealthCheck',
@@ -220,7 +221,7 @@ class Moto:
         try:
             return self._zones[Id]
         except KeyError:
-            raise botocore.exceptions.ClientError(
+            raise self.exceptions.NoSuchHostedZone(
                 error_response={
                     'Error': {
                         'Code': 'NoSuchHostedZone',
@@ -269,7 +270,7 @@ class Moto:
             return
         alias_key = (Moto._reverse_url_tokens(target['DNSName']), record['Type'])
         if not any((alias_key == record_key[:2]) for record_key in records):
-            raise botocore.exceptions.ClientError(
+            raise self.exceptions.InvalidChangeBatch(
                 error_response={
                     'Error': {
                         'Code': 'InvalidChangeBatch',
@@ -289,7 +290,7 @@ class Moto:
 
         clash_key = (self._reverse_url_tokens(record['Name']), 'CNAME')
         if any((clash_key == record_key[:2]) for record_key in records):
-            raise botocore.exceptions.ClientError(
+            raise self.exceptions.InvalidChangeBatch(
                 error_response={
                     'Error': {
                         'Code': 'InvalidChangeBatch',
@@ -306,7 +307,7 @@ class Moto:
         record = change['ResourceRecordSet']
         existing = records.keys()
         if self._record_key(record) in existing:
-            raise botocore.exceptions.ClientError(
+            raise self.exceptions.InvalidChangeBatch(
                 error_response={
                     'Error': {
                         'Code': 'InvalidChangeBatch',
@@ -351,7 +352,7 @@ class Moto:
         try:
             zone = self._zones[HostedZoneId]
         except KeyError:
-            raise botocore.exceptions.ClientError(
+            raise self.exceptions.NoSuchHostedZone(
                 error_response={
                     'Error': {
                         'Code': 'NoSuchHostedZone',

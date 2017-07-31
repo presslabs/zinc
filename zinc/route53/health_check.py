@@ -36,9 +36,8 @@ class HealthCheck:
             try:
                 health_check = self._client.get_health_check(HealthCheckId=self.ip.healthcheck_id)
                 self._aws_data = health_check.get('HealthCheck')
-            except ClientError as exception:
-                if exception.response['Error']['Code'] != 'NoSuchHealthCheck':
-                    raise  # re-raise any error, we only handle non-existant health checks
+            except self._client.exceptions.NoSuchHealthCheck:
+                pass
 
     @property
     def desired_config(self):
@@ -88,9 +87,7 @@ class HealthCheck:
         else:
             try:
                 self.create()
-            except ClientError as excp:
-                if excp.response['Error']['Code'] != 'HealthCheckAlreadyExists':
-                    raise
+            except self._client.exceptions.HealthCheckAlreadyExists:
                 self.ip.healthcheck_caller_reference = None
                 self.ip.save()
                 self.create()
