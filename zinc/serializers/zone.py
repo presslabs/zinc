@@ -1,4 +1,3 @@
-from botocore.exceptions import ClientError
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework.reverse import reverse
@@ -17,10 +16,7 @@ class ZoneListSerializer(serializers.HyperlinkedModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         zone = Zone.objects.create(**validated_data)
-        try:
-            zone.r53_zone.create()
-        except ClientError as e:
-            raise serializers.ValidationError(detail=str(e))
+        zone.r53_zone.create()
         return zone
 
     def validate_root(self, value):

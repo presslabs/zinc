@@ -63,9 +63,8 @@ class Zone(object):
                 HostedZoneId=self.id,
                 ChangeBatch={'Changes': self._change_batch}
             )
-        except ClientError as excp:
-            if excp.response['Error']['Code'] == 'InvalidInput':
-                logging.exception("failed to process batch %r", self._change_batch)
+        except self._client.exceptions.InvalidChangeBatch:
+            logger.warning("failed to process batch %r", self._change_batch)
             raise
         self._reset_change_batch()
 
@@ -102,9 +101,7 @@ class Zone(object):
         try:
             for page in paginator.paginate(HostedZoneId=self.id):
                 records.extend(page['ResourceRecordSets'])
-        except ClientError as excp:
-            if excp.response['Error']['Code'] != 'NoSuchHostedZone':
-                raise
+        except self._client.exceptions.NoSuchHostedZone:
             self._clear_cache()
         else:
             self._aws_records = records
@@ -166,9 +163,7 @@ class Zone(object):
         elif not self.exists:
             try:
                 self.create()
-            except ClientError as excp:
-                if excp.response['Error']['Code'] != 'HostedZoneAlreadyExists':
-                    raise
+            except self._client.exceptions.HostedZoneAlreadyExists:
                 # This can happen if a zone was manually deleted from AWS.
                 # Create will fail because we re-use the caller_reference
                 self.db_zone.caller_reference = None

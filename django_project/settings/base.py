@@ -159,7 +159,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'zinc.middleware.boto_exception_middleware',
 ]
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     MIDDLEWARE += [
@@ -287,6 +286,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'EXCEPTION_HANDLER': 'zinc.middleware.custom_exception_handler'
 }
 
 HEALTH_CHECK_CONFIG = {
