@@ -25,7 +25,7 @@ exec_web(){
         $DOCKERIZE su-exec zinc /app/manage.py migrate --noinput
     fi
     if [ "$ZINC_COLLECT_STATIC" == "yes" ] ; then
-        chown -R zinc -- $ZINC_WEBROOT_DIR
+        chown -R zinc -- ${ZINC_WEBROOT_DIR:-/app}
         $DOCKERIZE su-exec zinc /app/manage.py collectstatic --noinput
     fi
 
