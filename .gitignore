@@ -106,3 +106,6 @@ secrets.yml
 
 # celery stuff
 celerybeat.pid
+
+# django environ
+.env
