@@ -1,5 +1,8 @@
 FROM python:3.5-alpine
 
+ARG release=git
+ENV ZINC_RELEASE "$release"
+
 ENV PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=django_project.settings \
     ZINC_WEB_ADDRESS=0.0.0.0:8000
