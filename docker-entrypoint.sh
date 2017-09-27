@@ -34,7 +34,7 @@ exec_web(){
 
 case "$1" in
     "web")         exec_web;;
-    "celery")      exec $DOCKERIZE su-exec zinc celery -A django_project worker --concurrency=4 $@;;
+    "celery")      exec $DOCKERIZE su-exec zinc celery -A django_project worker $@;;
     "celerybeat")  exec $DOCKERIZE su-exec zinc celery -A django_project beat $@;;
 esac
 

@@ -174,8 +174,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'django_project.wsgi.application'
 
-DATA_DIR = env.str('ZINC_DATA_DIR', default=PROJECT_ROOT)
-
 DATABASES = {
     'default': env.db('ZINC_DB_URL', 'sqlite://%s' % os.path.join(DATA_DIR, 'db.sqlite3'))
 }
@@ -310,11 +308,19 @@ LOGGING['loggers']['celery'] = {
 if env.str('ZINC_SENTRY_DSN', ''):
     import raven
     INSTALLED_APPS += ['raven.contrib.django.raven_compat']
+    release = env.str('ZINC_RELEASE', 'git')
+    if release == 'git':
+        try:
+            release = raven.fetch_git_sha(os.path.dirname(os.pardir)),
+        except Exception as exc:
+            import traceback
+            traceback.print_exc(exc)
+            release = 'git+UNKNOWN'
     RAVEN_CONFIG = {
         'dsn': env.str('ZINC_SENTRY_DSN', ''),
         # If you are using git, you can also automatically configure the
         # release based on the git info.
-        'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
+        'release': release,
         'environment': env.str('ZINC_ENV_NAME', ''),
     }
 
