@@ -250,7 +250,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 # Distributed lock server
-LOCK_SERVER_URL = env.url('ZINC_LOCK_SERVER_URL', default='{}/2'.format(REDIS_URL))
+LOCK_SERVER_URL = env.str('ZINC_LOCK_SERVER_URL', default='{}/2'.format(REDIS_URL))
 
 # HASHIDS
 HASHIDS_MIN_LENGTH = 0
