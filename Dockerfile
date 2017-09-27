@@ -24,5 +24,9 @@ RUN set -ex \
 COPY . /app
 WORKDIR /app
 
+RUN set -ex \
+    && ZINC_SECRET_KEY="not-secure" su-exec zinc /app/manage.py collectstatic --noinput
+
+
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["web"]
