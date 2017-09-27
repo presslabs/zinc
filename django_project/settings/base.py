@@ -82,10 +82,9 @@ if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     LOGIN_URL = '/_auth/login/google-oauth2/'
 
     SOCIAL_AUTH_ADMIN_USER_SEARCH_FIELDS = ['username', 'first_name', 'email']
-    SOCIAL_AUTH_ADMIN_EMAILS = env.list(
-        "ZINC_SOCIAL_AUTH_ADMIN_EMAILS",
-        default=env.list("ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS", default=None)
-    )
+    SOCIAL_AUTH_ADMIN_EMAILS = env.list("ZINC_SOCIAL_AUTH_ADMIN_EMAILS", default=[])
+    SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = env.list(
+        "ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS", default=[])
     SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
         'profile',
     ]
