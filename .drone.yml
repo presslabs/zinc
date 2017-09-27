@@ -4,6 +4,7 @@ pipeline:
     pull: true
     environment:
       - DJANGO_SETTINGS_MODULE=django_project.settings.test
+      - ZINC_SECRET_KEY=not-so-secret
     commands:
       - pip install -U -r requirements.dev.txt
       - make lint

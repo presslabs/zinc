@@ -36,7 +36,7 @@ SECRET_KEY = env.str('ZINC_SECRET_KEY')
 DEBUG = env.bool('ZINC_DEBUG', True)
 SERVE_STATIC = env.bool('ZINC_SERVE_STATIC', False)
 
-ALLOWED_HOSTS = env.list('ZINC_ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0')
+ALLOWED_HOSTS = env.list('ZINC_ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0'])
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if os.getenv('POD_IP'):
@@ -50,7 +50,7 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env.str('ZINC_GOOGLE_OAUTH2_SECRET', '')
 LATTICE_URL = env.str('LATTICE_URL', '')
 LATTICE_USER = env.str('LATTICE_USER', '')
 LATTICE_PASSWORD = env.str('LATTICE_PASSWORD', '')
-LATTICE_ROLES = env.str('LATTICE_ROLES', 'edge-node')
+LATTICE_ROLES = env.list('LATTICE_ROLES', default=['edge-node'])
 LATTICE_ENV = env.str('LATTICE_ENV', 'production')
 
 
@@ -82,8 +82,10 @@ if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     LOGIN_URL = '/_auth/login/google-oauth2/'
 
     SOCIAL_AUTH_ADMIN_USER_SEARCH_FIELDS = ['username', 'first_name', 'email']
-    SOCIAL_AUTH_ADMIN_EMAILS = env.list("ZINC_SOCIAL_AUTH_ADMIN_EMAILS",
-            default=env.list("ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS", default=None))
+    SOCIAL_AUTH_ADMIN_EMAILS = env.list(
+        "ZINC_SOCIAL_AUTH_ADMIN_EMAILS",
+        default=env.list("ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS", default=None)
+    )
     SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
         'profile',
     ]
@@ -213,15 +215,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
-STATIC_URL = env.str('ZINC_STATIC_URL', default='/static/')
+STATIC_URL = env.str('ZINC_STATIC_URL', '/static/')
 STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
 
-REDIS_URL = env.url('ZINC_REDIS_URL', default='redis://localhost:6379')
-BROKER_URL = env.url('ZINC_BROKER_URL', default='{}/0'.format(REDIS_URL))
-CELERY_RESULT_BACKEND = env.url('ZINC_CELERY_RESULT_BACKEND',
-                                default='{}/1'.format(REDIS_URL))
+REDIS_URL = env.str('ZINC_REDIS_URL', 'redis://localhost:6379')
+BROKER_URL = env.str('ZINC_BROKER_URL', '{}/0'.format(REDIS_URL))
+CELERY_RESULT_BACKEND = env.str('ZINC_CELERY_RESULT_BACKEND',
+                                '{}/1'.format(REDIS_URL))
 CELERYBEAT_SCHEDULE = {
     'reconcile_zones': {
         'task': 'zinc.tasks.reconcile_zones',
@@ -284,7 +286,7 @@ HEALTH_CHECK_CONFIG = {
 }
 
 ZINC_DEFAULT_TTL = env.int('ZINC_DEFAULT_TTL', default=300)
-ZINC_NS_CHECK_RESOLVERS = env.list('ZINC_NS_CHECK_RESOLVERS', default='8.8.8.8')
+ZINC_NS_CHECK_RESOLVERS = env.list('ZINC_NS_CHECK_RESOLVERS', default=['8.8.8.8'])
 ZONE_OWNERSHIP_COMMENT = env.str('ZINC_ZONE_OWNERSHIP_COMMENT', 'zinc')
 
 AWS_KEY = env.str('ZINC_AWS_KEY', '')
@@ -313,7 +315,7 @@ if env.str('ZINC_SENTRY_DSN', ''):
         # If you are using git, you can also automatically configure the
         # release based on the git info.
         'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
-        'environment': env.str('ZINC_ENV_NAME', 'production'),
+        'environment': env.str('ZINC_ENV_NAME', ''),
     }
 
     # Sentry logging with celery is a real pain in the ass
