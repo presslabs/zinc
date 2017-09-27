@@ -12,53 +12,46 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 from django.utils.log import DEFAULT_LOGGING
+import environ
 
 
-def parse_list(string):
-    string = string or ""
-    return list(filter(lambda x: x, map(lambda x: x.strip(),
-                                        string.split(','))))
-
-
-def parse_bool(string):
-    string = string or ""
-    return (string.strip().lower() in ('yes', 'true', '1'))
+root = environ.Path(__file__) - 3  # two folder back (/a/b/ - 2 = /)
+env = environ.Env(DEBUG=(bool, False))  # set default values and casting
+environ.Env.read_env()  # reading .env file
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
-WEBROOT_DIR = os.getenv('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT,
-                                                         'webroot/'))
+PROJECT_ROOT = root()
+DATA_DIR = env.str('ZINC_DATA_DIR', default=PROJECT_ROOT)
+WEBROOT_DIR = env.str('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT, 'webroot/'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('ZINC_SECRET_KEY')
+SECRET_KEY = env.str('ZINC_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = parse_bool(os.getenv('ZINC_DEBUG'))
-SERVE_STATIC = parse_bool(os.getenv('ZINC_SERVE_STATIC'))
+DEBUG = env.bool('ZINC_DEBUG', True)
+SERVE_STATIC = env.bool('ZINC_SERVE_STATIC', False)
 
-ALLOWED_HOSTS = parse_list(os.getenv('ZINC_ALLOWED_HOSTS', ''))
+ALLOWED_HOSTS = env.list('ZINC_ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if os.getenv('POD_IP'):
     ALLOWED_HOSTS.append(os.getenv('POD_IP'))
 
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv('ZINC_GOOGLE_OAUTH2_KEY')
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv('ZINC_GOOGLE_OAUTH2_SECRET')
+SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = env.str('ZINC_GOOGLE_OAUTH2_KEY', '')
+SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env.str('ZINC_GOOGLE_OAUTH2_SECRET', '')
 
 # LATTICE
 
-LATTICE_URL = os.getenv('LATTICE_URL')
-LATTICE_USER = os.getenv('LATTICE_USER')
-LATTICE_PASSWORD = os.getenv('LATTICE_PASSWORD')
-LATTICE_ROLES = list(map(lambda x: x.strip(),
-                         os.getenv('LATTICE_ROLES', 'edge-node').split(',')))
-LATTICE_ENV = os.getenv('LATTICE_ENV', 'production')
+LATTICE_URL = env.str('LATTICE_URL', '')
+LATTICE_USER = env.str('LATTICE_USER', '')
+LATTICE_PASSWORD = env.str('LATTICE_PASSWORD', '')
+LATTICE_ROLES = env.str('LATTICE_ROLES', 'edge-node')
+LATTICE_ENV = env.str('LATTICE_ENV', 'production')
 
 
 # Application definition
@@ -89,9 +82,8 @@ if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     LOGIN_URL = '/_auth/login/google-oauth2/'
 
     SOCIAL_AUTH_ADMIN_USER_SEARCH_FIELDS = ['username', 'first_name', 'email']
-    SOCIAL_AUTH_ADMIN_EMAILS = parse_list(os.getenv("ZINC_SOCIAL_AUTH_ADMIN_EMAILS"))
-    SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS = parse_list(
-        os.getenv("ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS"))
+    SOCIAL_AUTH_ADMIN_EMAILS = env.list("ZINC_SOCIAL_AUTH_ADMIN_EMAILS",
+            default=env.list("ZINC_SOCIAL_AUTH_GOOGLE_OAUTH2_WHITELISTED_DOMAINS", default=None))
     SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = [
         'profile',
     ]
@@ -180,25 +172,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'django_project.wsgi.application'
 
-DATA_DIR = os.getenv('ZINC_DATA_DIR', PROJECT_ROOT)
+DATA_DIR = env.str('ZINC_DATA_DIR', default=PROJECT_ROOT)
 
 DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('ZINC_DB_ENGINE',
-                            'django.db.backends.sqlite3'),
-        'USER': os.getenv('ZINC_DB_USER', 'zinc'),
-        'PASSWORD': os.getenv('ZINC_DB_PASSWORD', 'password'),
-        'HOST': os.getenv('ZINC_DB_HOST', ''),
-        'PORT': os.getenv('ZINC_DB_PORT', ''),
-    }
+    'default': env.db('ZINC_DB_URL', 'sqlite://%s' % os.path.join(DATA_DIR, 'db.sqlite3'))
 }
-
-if DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
-    DATABASES['default']['NAME'] = os.getenv('ZINC_DB_NAME',
-                                             os.path.join(DATA_DIR, 'db.sqlite3'))
-else:
-    DATABASES['default']['NAME'] = os.getenv('ZINC_DB_NAME', 'zinc')
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.9/ref/settings/#auth-password-validators
@@ -235,14 +213,15 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.9/howto/static-files/
 
-STATIC_URL = os.getenv('ZINC_STATIC_URL', '/static/')
+STATIC_URL = env.str('ZINC_STATIC_URL', default='/static/')
 STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
 
-REDIS_URL = os.getenv('ZINC_REDIS_URL', 'redis://localhost:6379').lstrip('/')
-BROKER_URL = os.getenv('ZINC_BROKER_URL', '{}/0'.format(REDIS_URL))
-CELERY_RESULT_BACKEND = os.getenv('ZINC_CELERY_RESULT_BACKEND', '{}/1'.format(REDIS_URL))
+REDIS_URL = env.url('ZINC_REDIS_URL', default='redis://localhost:6379')
+BROKER_URL = env.url('ZINC_BROKER_URL', default='{}/0'.format(REDIS_URL))
+CELERY_RESULT_BACKEND = env.url('ZINC_CELERY_RESULT_BACKEND',
+                                default='{}/1'.format(REDIS_URL))
 CELERYBEAT_SCHEDULE = {
     'reconcile_zones': {
         'task': 'zinc.tasks.reconcile_zones',
@@ -271,7 +250,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 
 # Distributed lock server
-LOCK_SERVER_URL = os.getenv('ZINC_LOCK_SERVER_URL', '{}/2'.format(REDIS_URL))
+LOCK_SERVER_URL = env.url('ZINC_LOCK_SERVER_URL', default='{}/2'.format(REDIS_URL))
 
 # HASHIDS
 HASHIDS_MIN_LENGTH = 0
@@ -301,42 +280,40 @@ HEALTH_CHECK_CONFIG = {
     'Port': 80,
     'Type': 'HTTP',
     'ResourcePath': '/status',
-    'FullyQualifiedDomainName': os.getenv('ZINC_HEALTH_CHECK_FQDN', 'node.presslabs.net.'),
+    'FullyQualifiedDomainName': env.str('ZINC_HEALTH_CHECK_FQDN', 'node.presslabs.net.'),
 }
 
-ZINC_DEFAULT_TTL = os.getenv('ZINC_DEFAULT_TTL', 300)
-ZINC_NS_CHECK_RESOLVERS = os.getenv('ZINC_NS_CHECK_RESOLVERS', ['8.8.8.8'])
-if isinstance(ZINC_NS_CHECK_RESOLVERS, str):
-    ZINC_NS_CHECK_RESOLVERS = ZINC_NS_CHECK_RESOLVERS.split(',')
+ZINC_DEFAULT_TTL = env.int('ZINC_DEFAULT_TTL', default=300)
+ZINC_NS_CHECK_RESOLVERS = env.list('ZINC_NS_CHECK_RESOLVERS', default='8.8.8.8')
+ZONE_OWNERSHIP_COMMENT = env.str('ZINC_ZONE_OWNERSHIP_COMMENT', 'zinc')
 
-ZONE_OWNERSHIP_COMMENT = os.getenv('ZINC_ZONE_OWNERSHIP_COMMENT', 'zinc')
-
-AWS_KEY = os.getenv('ZINC_AWS_KEY')
-AWS_SECRET = os.getenv('ZINC_AWS_SECRET')
+AWS_KEY = env.str('ZINC_AWS_KEY', '')
+AWS_SECRET = env.str('ZINC_AWS_SECRET', '')
 
 # configure logging
+ZINC_LOG_LEVEL = env.str('ZINC_LOG_LEVEL', 'INFO')
 
 LOGGING = DEFAULT_LOGGING.copy()
-LOGGING['loggers']['django']['level'] = os.getenv('ZINC_LOG_LEVEL', 'INFO')
+LOGGING['loggers']['django']['level'] = ZINC_LOG_LEVEL
 LOGGING['loggers']['zinc'] = {
     'handlers': ['console'],
-    'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+    'level': ZINC_LOG_LEVEL
 }
 LOGGING['loggers']['celery'] = {
     'handlers': ['console'],
-    'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+    'level': ZINC_LOG_LEVEL
 }
 
 
-if os.getenv('ZINC_SENTRY_DSN', None):
+if env.str('ZINC_SENTRY_DSN', ''):
     import raven
     INSTALLED_APPS += ['raven.contrib.django.raven_compat']
     RAVEN_CONFIG = {
-        'dsn': os.getenv('ZINC_SENTRY_DSN'),
+        'dsn': env.str('ZINC_SENTRY_DSN', ''),
         # If you are using git, you can also automatically configure the
         # release based on the git info.
         'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
-        'environment': os.getenv('ZINC_ENV_NAME', None),
+        'environment': env.str('ZINC_ENV_NAME', 'production'),
     }
 
     # Sentry logging with celery is a real pain in the ass
@@ -347,10 +324,10 @@ if os.getenv('ZINC_SENTRY_DSN', None):
         'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler'
     }
     LOGGING['loggers']['celery.task'] = {
-        'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        'level': ZINC_LOG_LEVEL,
         'handlers': ['console', 'sentry']
     }
     LOGGING['loggers']['zinc'] = {
-        'level': os.getenv('ZINC_LOG_LEVEL', 'INFO'),
+        'level': ZINC_LOG_LEVEL,
         'handlers': ['console', 'sentry']
     }
