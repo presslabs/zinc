@@ -175,7 +175,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'django_project.wsgi.application'
 
 DATABASES = {
-    'default': env.db('ZINC_DB_URL', 'sqlite://%s' % os.path.join(DATA_DIR, 'db.sqlite3'))
+    'default': env.db('ZINC_DB_URL', 'sqlite:///%s' % os.path.join(DATA_DIR, 'db.sqlite3'))
 }
 
 # Password validation
