@@ -24,9 +24,9 @@ Should be self explanatory. An IP can be enabled or disabled.
 There is no explicit handling in zinc of multiple IPs belonging to one server.
 
 Enabling or disabling can be done from the admin or by implementing a django app (see
-lattice_sync for an example). 
+lattice_sync for an example).
 
-**N.B.** If implementing your own app it's your responsibility to call 
+**N.B.** If implementing your own app it's your responsibility to call
 `ip.mark_policy_records_dirty` if the IP changes, so that zinc's reconcile loop will
 actually pick up the changes.
 
@@ -44,7 +44,7 @@ same FQDN (defaults to node.presslabs.net, set `ZINC_HEALTH_CHECK_FQDN` to chang
 A policy groups several IPs together. There are 2 types of policies:
  * Weighted
  * Latency
- 
+
 Note that an IP can be a member of multiple Policies at the same time. A PolicyMember
 can has it's own enabled flag, so you can disable an IP for one Policy only, or you can
 disable the it for all Policies by setting the enabled flag on the IP model.
