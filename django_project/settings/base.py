@@ -181,7 +181,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'django_project.wsgi.application'
 
 DATABASES = {
-    'default': env.db('ZINC_DB_URL', 'sqlite:///%s' % os.path.join(DATA_DIR, 'db.sqlite3'))
+    'default': env.db('ZINC_DB_CONNECT_URL', 'sqlite:///%s' % os.path.join(DATA_DIR, 'db.sqlite3'))
 }
 
 # Password validation
@@ -224,7 +224,7 @@ STATIC_ROOT = os.path.join(WEBROOT_DIR, 'static/')
 
 # CELERY
 
-REDIS_URL = env.str('ZINC_REDIS_URL', 'redis://localhost:6379')
+REDIS_URL = env.str('ZINC_REDIS_CONNECT_URL', 'redis://localhost:6379')
 BROKER_URL = env.str('ZINC_BROKER_URL', '{}/0'.format(REDIS_URL))
 CELERY_RESULT_BACKEND = env.str('ZINC_CELERY_RESULT_BACKEND',
                                 '{}/1'.format(REDIS_URL))
