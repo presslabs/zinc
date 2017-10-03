@@ -6,7 +6,7 @@ ENV ZINC_RELEASE "$release"
 ENV PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=django_project.settings \
     ZINC_WEB_ADDRESS=0.0.0.0:8080 \
-    CELERY_APP=django_project
+    CELERY_APP=django_project.vendors.celery
 
 COPY ./requirements.txt /requirements.txt
 RUN set -ex \
