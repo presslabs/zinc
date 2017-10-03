@@ -11,8 +11,11 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
-from django.utils.log import DEFAULT_LOGGING
+
 import environ
+
+import warnings
+from django.utils.log import DEFAULT_LOGGING
 
 
 root = environ.Path(__file__) - 3  # two folder back (/a/b/ - 2 = /)
@@ -33,8 +36,8 @@ WEBROOT_DIR = env.str('ZINC_WEBROOT_DIR', os.path.join(PROJECT_ROOT, 'webroot/')
 DEFAULT_SECRET_KEY = 'p@7-h3(%-ile((1fz2ei42)o^a-!cse@kp9jnhrx6x75)#1x(r'
 SECRET_KEY = env.str('ZINC_SECRET_KEY', default=DEFAULT_SECRET_KEY)
 if SECRET_KEY == DEFAULT_SECRET_KEY:
-    print("You are using the default secret key. Please set ZINC_SECRET_KEY"
-          " in .env file")
+    warnings.warn("You are using the default secret key. Please set "
+                  "ZINC_SECRET_KEY in .env file")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('ZINC_DEBUG', True)
