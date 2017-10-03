@@ -83,7 +83,7 @@ console, or the api).
 ## API
 
 You are encouraged to install django-rest-swagger, run zinc locally and explore the API at
-http://localhost:8000/swagger
+http://localhost:8080/swagger
 
 ### Policies
 
