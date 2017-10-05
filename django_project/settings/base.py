@@ -54,11 +54,11 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = env.str('ZINC_GOOGLE_OAUTH2_SECRET', '')
 
 # LATTICE
 
-LATTICE_URL = env.str('LATTICE_URL', '')
-LATTICE_USER = env.str('LATTICE_USER', '')
-LATTICE_PASSWORD = env.str('LATTICE_PASSWORD', '')
-LATTICE_ROLES = env.list('LATTICE_ROLES', default=['edge-node'])
-LATTICE_ENV = env.str('LATTICE_ENV', 'production')
+LATTICE_URL = env.str('ZINC_LATTICE_URL', '')
+LATTICE_USER = env.str('ZINC_LATTICE_USER', '')
+LATTICE_PASSWORD = env.str('ZINC_LATTICE_PASSWORD', '')
+LATTICE_ROLES = env.list('ZINC_LATTICE_ROLES', default=['edge-node'])
+LATTICE_ENV = env.str('ZINC_LATTICE_ENV', 'production')
 
 
 # Application definition
@@ -300,6 +300,7 @@ AWS_SECRET = env.str('ZINC_AWS_SECRET', '')
 ZINC_LOG_LEVEL = env.str('ZINC_LOG_LEVEL', 'INFO')
 
 LOGGING = DEFAULT_LOGGING.copy()
+LOGGING['handlers']['console']['filters'] = []
 LOGGING['loggers']['django']['level'] = ZINC_LOG_LEVEL
 LOGGING['loggers']['zinc'] = {
     'handlers': ['console'],
