@@ -18,7 +18,7 @@ pipeline:
   publish-docker-image:
     image: plugins/docker
     repo: presslabs/zinc
-    tags: ${DRONE_BRANCH/master/latest}
+    tags: ["${DRONE_BRANCH/master/latest}", "${DRONE_COMMIT_SHA:0:7}"]
     build_args:
       - release="${DRONE_COMMIT_SHA:0:7}"
     secrets:

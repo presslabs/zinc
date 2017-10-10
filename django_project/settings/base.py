@@ -17,6 +17,11 @@ import environ
 import warnings
 from django.utils.log import DEFAULT_LOGGING
 
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
 
 root = environ.Path(__file__) - 3  # two folder back (/a/b/ - 2 = /)
 env = environ.Env(DEBUG=(bool, False))  # set default values and casting

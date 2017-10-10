@@ -33,7 +33,7 @@ exec_web(){
 }
 
 case "$1" in
-    "web")         exec_web;;
+    "web")         shift; exec_web $@;;
     "celery")      shift ; exec $DOCKERIZE su-exec zinc celery worker $@;;
     "celerybeat")  exec $DOCKERIZE su-exec zinc celery beat;;
 esac
