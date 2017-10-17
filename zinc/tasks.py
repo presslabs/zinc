@@ -70,9 +70,9 @@ def update_ns_propagated(bind=True):
     # make this lock timeout big enough to cover updating about 1000 zones
     # ns_propagated flag and small enough to update the flag in an acceptable
     # time frame. 5 minutes sound good at the moment.
-    lock = redis_lock.Lock(redis_client, 'update_ns_propagated')
+    lock = redis_lock.Lock(redis_client, 'update_ns_propagated', expire=300)
 
-    if not lock.acquire(blocking=False, timeout=300):
+    if not lock.acquire(blocking=False):
         logger.info('Cannot aquire task lock. Probaly another task is running. Bailing out.')
         return
     try:

@@ -87,7 +87,8 @@ class Policy:
         regions = sorted(set([pm.region for pm in policy_members]))
         if len(regions) == 0:
             raise Exception(
-                "Policy can't be applied. zone: '{}'; policy: '{}'".format(
+                "Policy can't be applied for zone '{}'; "
+                "There is no member in the '{}' policy.".format(
                     self.zone, self
                 )
             )
