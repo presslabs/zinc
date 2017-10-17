@@ -1,4 +1,5 @@
 import redis
+import redis_lock
 
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
@@ -32,7 +33,7 @@ def reconcile_zones(bind=True):
     Periodic task that reconciles everything zone-related (zone deletion, policy record updates)
     """
     redis_client = redis.from_url(settings.LOCK_SERVER_URL)
-    lock = redis_client.lock('reconcile_zones', timeout=60)
+    lock = redis_lock.Lock(redis_client, 'recouncile_zones', expire=60)
 
     if not lock.acquire(blocking=False):
         logger.info('Cannot aquire task lock. Probaly another task is running. Bailing out.')
@@ -69,14 +70,14 @@ def update_ns_propagated(bind=True):
     # make this lock timeout big enough to cover updating about 1000 zones
     # ns_propagated flag and small enough to update the flag in an acceptable
     # time frame. 5 minutes sound good at the moment.
+    lock = redis_lock.Lock(redis_client, 'update_ns_propagated')
 
-    lock = redis_client.lock('update_ns_propagated', timeout=300)
-    if not lock.acquire(blocking=False):
+    if not lock.acquire(blocking=False, timeout=300):
         logger.info('Cannot aquire task lock. Probaly another task is running. Bailing out.')
         return
     try:
         models.Zone.update_ns_propagated(delay=getattr(settings, 'ZINC_NS_UPDATE_DELAY', 0.3))
     except Exception:
         logger.exception("Could not update ns_propagated flag")
-
-    lock.release()
+    finally:
+        lock.release()
