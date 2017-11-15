@@ -43,7 +43,7 @@ def reconcile_zones(bind=True):
             try:
                 zone.reconcile()
                 lock.extend(5)  # extend the lease each time we rebuild a tree
-            except:
+            except Exception:
                 logger.exception(
                     "reconcile failed for Zone %s.%s", zone, zone.root
                 )
@@ -76,7 +76,7 @@ def update_ns_propagated(bind=True):
         return
     try:
         models.Zone.update_ns_propagated(delay=getattr(settings, 'ZINC_NS_UPDATE_DELAY', 0.3))
-    except:
+    except Exception:
         logger.exception("Could not update ns_propagated flag")
 
     lock.release()

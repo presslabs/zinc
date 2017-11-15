@@ -78,7 +78,7 @@ def sync(lattice_client):
         for ip in server.ips:
             try:
                 ip_pk = handle_ip(ip['ip'], server, locations)
-            except:
+            except Exception:
                 logger.exception("Error while handling ip: %s", ip['ip'])
             else:
                 if ip_pk is not None:
