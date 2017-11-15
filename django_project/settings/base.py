@@ -15,7 +15,6 @@ import os
 import environ
 
 import warnings
-from django.utils.log import DEFAULT_LOGGING
 
 try:
     import pymysql
@@ -259,6 +258,7 @@ if LATTICE_URL:
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
+CELERYD_HIJACK_ROOT_LOGGER = False
 
 # Distributed lock server
 LOCK_SERVER_URL = env.str('ZINC_LOCK_SERVER_URL', default='{}/2'.format(REDIS_URL))
@@ -302,20 +302,46 @@ AWS_KEY = env.str('ZINC_AWS_KEY', '')
 AWS_SECRET = env.str('ZINC_AWS_SECRET', '')
 
 # configure logging
-ZINC_LOG_LEVEL = env.str('ZINC_LOG_LEVEL', 'INFO')
+LOG_LEVEL = env.str('ZINC_LOG_LEVEL', 'INFO')
 
-LOGGING = DEFAULT_LOGGING.copy()
-LOGGING['handlers']['console']['filters'] = []
-LOGGING['loggers']['django']['level'] = ZINC_LOG_LEVEL
-LOGGING['loggers']['zinc'] = {
-    'handlers': ['console'],
-    'level': ZINC_LOG_LEVEL
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(asctime)s %(message)-80s logger=%(name)s level=%(levelname)s '
+                      'process=%(processName)s thread=%(threadName)s'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'level': LOG_LEVEL,
+        },
+    },
+    'loggers': {
+        'celery.task': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False
+        },
+        'zinc': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False
+        },
+    },
 }
-LOGGING['loggers']['celery'] = {
-    'handlers': ['console'],
-    'level': ZINC_LOG_LEVEL
-}
-
 
 if env.str('ZINC_SENTRY_DSN', ''):
     import raven
@@ -338,16 +364,9 @@ if env.str('ZINC_SENTRY_DSN', ''):
 
     # Sentry logging with celery is a real pain in the ass
     # https://github.com/getsentry/sentry/issues/4565
-    CELERYD_HIJACK_ROOT_LOGGER = False
     LOGGING['handlers']['sentry'] = {
         'level': 'ERROR',
         'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler'
     }
-    LOGGING['loggers']['celery.task'] = {
-        'level': ZINC_LOG_LEVEL,
-        'handlers': ['console', 'sentry']
-    }
-    LOGGING['loggers']['zinc'] = {
-        'level': ZINC_LOG_LEVEL,
-        'handlers': ['console', 'sentry']
-    }
+    for logger in LOGGING['loggers']:
+        LOGGING['loggers'][logger]['handlers'].append('sentry')
