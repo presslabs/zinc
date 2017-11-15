@@ -11,7 +11,7 @@ install_requires = [
     'requests',
     'zipa',
 ]
-tests_require = ['pytest', 'pytest-runner>=2.0,<3dev', 'pytest-flake8']
+tests_require = ['pytest', 'pytest-runner>=3.0,<4', 'pytest-flake8']
 
 setup(
     name='zinc-dns',

@@ -1,10 +1,10 @@
 -r requirements.txt
 
 mock<2.1
-pytest<3.1
+pytest>=3.2,<4
 pytest-django<3.2
 pytest-flake8
-pytest-runner>=2.0,<3dev
+pytest-runner>=3.0,<4
 pytest-xdist
 responses<0.6
 
