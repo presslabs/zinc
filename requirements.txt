@@ -1,5 +1,5 @@
 Django==1.11.7
-boto3==1.4.4
+boto3==1.5.29
 celery==4.1.0
 django-rest-swagger==2.1.2
 djangorestframework==3.6.3
