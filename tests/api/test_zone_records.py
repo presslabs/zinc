@@ -48,6 +48,36 @@ def test_create_record(api_client, zone, boto_client):
 
 
 @pytest.mark.django_db
+def test_create_record_overlength_value(api_client, zone, boto_client):
+    G(m.Zone)
+
+    record = {
+        'name': 'record2',
+        'type': 'TXT',
+        'ttl': 300,
+        'values': ['v=DKIM1; k=rsa; p=nnd98qweu2uhd89n9uh/d239ig92j9j2gijuahUWDHUadu9238ji/ada9dsua'
+                   's9djmusadad=asdau9daj9dj9whih89Hghuaoqjntn8gj89j898sdu8a8sda89dsh8a89dshasdiasi'
+                   'duasuidiasfdounii9HADiuAfu9aMdsfmu9amauysay8Dsad8a9sduy89AMmad77yad78A&HdagDmy9'
+                   'AIasdnioaifah80fjasda8s9daw89nu3nugujg90goijiuiqwnquun89f90f9032m09m9021e9j0d9j'
+                   'fa0s9ddah89sf98n97gh9gh8ah89dh890au890da8sd890asdh8asodashiodaoidja9sdua98da98d'
+                   'aossdua08fajg988gagmy9t3u89010u91uihnihuhwefuiefjiof90ua0usdadssfg2ha89h9as8as']
+    }
+
+    response = api_client.post(
+        '/zones/{}/records'.format(zone.id),
+        data=record
+    )
+
+    assert response.data == get_record_from_base(record, zone)
+    assert aws_strip_ns_and_soa(
+        boto_client.list_resource_record_sets(HostedZoneId=zone.r53_zone.id), zone.root
+    ) == sorted([
+        record_data_to_aws(record, zone.root),
+        record_data_to_aws(get_test_record(zone), zone.root)
+    ], key=aws_sort_key)
+
+
+@pytest.mark.django_db
 def test_update_record_values(api_client, zone, boto_client):
     G(m.Zone)
 

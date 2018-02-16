@@ -7,8 +7,8 @@ from botocore.exceptions import ClientError
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 
-from zinc.models import RECORD_PREFIX
 from zinc import route53
+from zinc.models import RECORD_PREFIX
 from zinc.route53.record import ZINC_RECORD_TYPES, POLICY_ROUTED, ALLOWED_RECORD_TYPES
 
 
@@ -36,7 +36,7 @@ class RecordListSerializer(serializers.ListSerializer):
 
         return super(RecordListSerializer, self).to_representation(zone.records)
 
-    def update(self, instnace, validated_data):
+    def update(self, instance, validated_data):
         raise NotImplementedError('Can not update records this way. Use records/ endpoint.')
 
 
