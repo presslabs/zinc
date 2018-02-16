@@ -1,7 +1,10 @@
+import json
+
 from django_dynamic_fixture import G
 
 from zinc import models as m
 from zinc import route53
+from zinc.utils.generators import chunks
 
 
 def is_ns_or_soa(record):
@@ -58,12 +61,26 @@ def get_test_record(zone):
     }
 
 
+def _split_overlength_value_into_chunks(value):
+    # Only TXT records might require splitting their values, so it doesn't matter if we split
+    # all record types values in tests
+
+    max_length = 255
+
+    if len(value) >= max_length:
+        value = ' '.join('{}'.format(json.dumps(element))
+                         for element in chunks(value, max_length))
+
+    return {'Value': value}
+
+
 def record_data_to_aws(record, zone_root):
     rrs = {
         'Name': '{}.{}'.format(record['name'], zone_root),
         'TTL': record['ttl'],
         'Type': record['type'],
-        'ResourceRecords': [{'Value': value} for value in record['values']],
+        'ResourceRecords': [_split_overlength_value_into_chunks(value)
+                            for value in record['values']],
     }
     if record.get('SetIdentifier', None):
         rrs['SetIdentifier'] = record['SetIdentifier']

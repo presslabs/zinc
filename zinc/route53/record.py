@@ -7,6 +7,7 @@ from django.core.exceptions import SuspiciousOperation, ValidationError
 
 from zinc import models, route53
 from zinc.utils import memoized_property
+from zinc.utils.generators import chunks
 
 
 HASHIDS_SALT = getattr(settings, 'SECRET_KEY', '')
@@ -115,6 +116,13 @@ class BaseRecord:
         return root if name == '@' else '{}.{}'.format(name, root)
 
     @classmethod
+    def unpack_txt_value(cls, value):
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+
+        return ''.join(json.loads('"%s"' % chunk) for chunk in value.split('" "'))
+
+    @classmethod
     def from_aws_record(cls, record, zone):
         # Determine if a R53 DNS record is of type ALIAS
         def is_alias_record(record):
@@ -144,7 +152,7 @@ class BaseRecord:
             }
         elif record['Type'] == 'TXT':
             # Decode json escaped strings
-            new.values = [json.loads('[%s]' % value['Value'])[0]
+            new.values = [cls.unpack_txt_value(value['Value'])
                           for value in record.get('ResourceRecords', [])]
         else:
             new.values = [value['Value'] for value in
@@ -158,6 +166,18 @@ class BaseRecord:
         return 'Z{zone}Z{type}Z{id}'.format(
             zone=zone_hash, type=get_record_type(self.type), id=record_hash)
 
+    @classmethod
+    def pack_txt_value(cls, value):
+        max_length = 255
+
+        if len(value) < max_length:
+            value = json.dumps(value)
+        else:
+            value = ' '.join('{}'.format(json.dumps(element))
+                             for element in chunks(value, max_length))
+
+        return {'Value': value}
+
     def to_aws(self):
         encoded_record = {
             'Name': self._add_root(self.name, self.zone_root),
@@ -166,7 +186,7 @@ class BaseRecord:
         if not self.is_alias:
             if self.type == 'TXT':
                 # Encode json escape.
-                encoded_record['ResourceRecords'] = [{'Value': json.dumps(value)}
+                encoded_record['ResourceRecords'] = [self.pack_txt_value(value)
                                                      for value in self.values]
             else:
                 encoded_record['ResourceRecords'] = [{'Value': value} for value in self.values]
