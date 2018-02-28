@@ -26,7 +26,6 @@ def lattice_factory(url, user, password):
     return lattice
 
 
-@transaction.atomic
 def handle_ip(ip_addr, server, locations):
     # ignore ipv6 addresses for now
     if is_ipv6(ip_addr):
@@ -44,7 +43,7 @@ def handle_ip(ip_addr, server, locations):
     ).first()
     changed = False
     if ip is None:  # new record
-        ip = models.IP(ip=ip_addr)
+        ip = models.IP(ip=ip_addr, enabled=enabled)
         ip.reconcile_healthcheck()
         changed = True
     elif ip.enabled != enabled:
@@ -74,18 +73,16 @@ def sync(lattice_client):
     locations = {d['id']: d['location'] for d in lattice.datacenters}
 
     lattice_ip_pks = set()
-    for server in servers:
-        for ip in server.ips:
-            try:
+
+    with transaction.atomic():
+        for server in servers:
+            for ip in server.ips:
                 ip_pk = handle_ip(ip['ip'], server, locations)
-            except Exception:
-                logger.exception("Error while handling ip: %s", ip['ip'])
-            else:
                 if ip_pk is not None:
                     lattice_ip_pks.add(ip_pk)
-    if not lattice_ip_pks:
-        raise AssertionError("Refusing to delete all IPs!")
-    ips_to_remove = set(
-        models.IP.objects.values_list('pk', flat=True)) - lattice_ip_pks
-    for ip in models.IP.objects.filter(pk__in=ips_to_remove):
-        ip.soft_delete()
+        if not lattice_ip_pks:
+            raise AssertionError("Refusing to delete all IPs!")
+        ips_to_remove = set(
+            models.IP.objects.values_list('pk', flat=True)) - lattice_ip_pks
+        for ip in models.IP.objects.filter(pk__in=ips_to_remove):
+            ip.soft_delete()
