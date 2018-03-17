@@ -109,3 +109,6 @@ celerybeat.pid
 
 # django environ
 .env
+
+# cache
+.mypy_cache/
