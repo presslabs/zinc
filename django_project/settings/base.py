@@ -47,7 +47,8 @@ if SECRET_KEY == DEFAULT_SECRET_KEY:
 DEBUG = env.bool('ZINC_DEBUG', True)
 SERVE_STATIC = env.bool('ZINC_SERVE_STATIC', False)
 
-ALLOWED_HOSTS = env.list('ZINC_ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0', 'zinc.lo'])
+ALLOWED_HOSTS = env.list('ZINC_ALLOWED_HOSTS',
+                         default=['localhost', '127.0.0.1', '0.0.0.0', 'zinc.lo'])
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 if os.getenv('POD_IP'):
