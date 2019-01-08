@@ -1,9 +1,11 @@
+import json
 from contextlib import contextmanager
 
+from botocore.exceptions import ClientError
 from rest_framework import fields
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
-from botocore.exceptions import ClientError
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.conf import settings
 
@@ -21,13 +23,25 @@ def interpret_client_error():
             raise ValidationError({'values': ["Value is not a valid IPv4 address."]})
         elif 'AAAARRDATAIllegalIPv6Address' in error.response['Error']['Message']:
             raise ValidationError({'values': ["Value is not a valid IPv6 address."]})
-        raise ValidationError({'non_field_error': [error.response['Error']['Message']]})
+        error = error.response['Error']['Message']
+        try:
+            error = json.loads(error)
+        except TypeError:
+            pass
+        except json.JSONDecodeError:
+            # boto returns a badly formatted error
+            if error[0] == "[" and error[1] != "\"":
+                error = error[1:-1]
+            if not isinstance(error, list):
+                error = [error]
+
+        raise ValidationError({'non_field_error': error})
     except DjangoValidationError as error:
         raise ValidationError(error.message_dict)
 
 
 class RecordListSerializer(serializers.ListSerializer):
-    # This is ued for list the records in Zone serializer
+    # This is used for list the records in Zone serializer
     # by using many=True and passing the entier zone as object
 
     def to_representation(self, zone):
