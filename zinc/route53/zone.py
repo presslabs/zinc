@@ -204,7 +204,7 @@ class Zone(object):
                     with transaction.atomic():
                         policy_record.r53_policy_record.reconcile()
                         self.commit(preserve_cache=True)
-                except ClientError as excp:
+                except ClientError:
                     logger.exception("failed to reconcile record %r", policy_record)
                     self._reset_change_batch()
             self._delete_orphaned_managed_records()
