@@ -15,7 +15,7 @@ tests_require = ['pytest', 'pytest-runner>=3.0,<4', 'pytest-flake8']
 
 setup(
     name='zinc-dns',
-    version='1.0.1',
+    version='1.1.0',
     description="Route 53 zone manager",
     author="Presslabs",
     author_email="ping@presslabs.com",
