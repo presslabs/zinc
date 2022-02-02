@@ -901,10 +901,10 @@ def test_r53_policy_expected_aws_records(zone, boto_client):
     # pol_factory = route53.CachingFactory(route53.Policy)
     r53_policy = route53.Policy(zone=zone.r53_zone, policy=policy)
     assert [(r.name, r.values) for r in r53_policy.desired_records.values()] == [
-        ('_zn_pol1_us-east-1', [ip1.ip]),
-        ('_zn_pol1_us-east-2', [ip1.ip]),
-        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
-        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
+        ('_zn_pol1_{}'.format(regions[0]), [ip1.ip]),
+        ('_zn_pol1_{}'.format(regions[1]), [ip1.ip]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_{}.test-zinc.net.'.format(regions[0])]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_{}.test-zinc.net.'.format(regions[1])]),
     ]
 
 
@@ -928,10 +928,10 @@ def test_r53_policy_reconcile(zone, boto_client):
     # only look at the hidden records (the ones part of the policy tree)
     records = [(r.name, r.values) for r in raw_aws_records if r.is_hidden]
     assert records == [
-        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
-        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
-        ('_zn_pol1_us-east-1', [ip1.ip]),
-        ('_zn_pol1_us-east-2', [ip1.ip]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_{}.test-zinc.net.'.format(regions[0])]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_{}.test-zinc.net.'.format(regions[1])]),
+        ('_zn_pol1_{}'.format(regions[0]), [ip1.ip]),
+        ('_zn_pol1_{}'.format(regions[1]), [ip1.ip]),
     ]
 
 
@@ -966,10 +966,10 @@ def test_r53_policy_reconcile_cname_clash(zone, boto_client):
     # only look at the hidden records (the ones part of the policy tree)
     records = [(r.name, r.values) for r in raw_aws_records]
     expected = [
-        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-1.test-zinc.net.']),
-        ('_zn_pol1', ['ALIAS _zn_pol1_us-east-2.test-zinc.net.']),
-        ('_zn_pol1_us-east-1', [ip1.ip]),
-        ('_zn_pol1_us-east-2', [ip1.ip]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_{}.test-zinc.net.'.format(regions[0])]),
+        ('_zn_pol1', ['ALIAS _zn_pol1_{}.test-zinc.net.'.format(regions[1])]),
+        ('_zn_pol1_{}'.format(regions[0]), [ip1.ip]),
+        ('_zn_pol1_{}'.format(regions[1]), [ip1.ip]),
         ('conflict', ['conflict.example.com']),
         ('test', ['1.1.1.1']),
         ('www', ['ALIAS _zn_pol1.test-zinc.net.']),
