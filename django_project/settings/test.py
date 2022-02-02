@@ -9,3 +9,6 @@ REST_FRAMEWORK.update({  # noqa: F405
 })
 
 LOGGING['loggers']['zinc']['level'] = 'WARN'  # noqa: F405
+
+
+ZONE_OWNERSHIP_COMMENT = 'zinc-pytest'
