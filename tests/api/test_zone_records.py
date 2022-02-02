@@ -449,9 +449,9 @@ def test_forward_boto_errors(api_client, zone):
             error_response={
                 'Error': {
                     'Code': 'InvalidChangeBatch',
-                    'Message': ("[Invalid Resource Record: FATAL problem: "
+                    'Message': ("[Invalid Resource Record: 'FATAL problem: "
                                 "ARRDATANotSingleField (Value contains spaces) "
-                                "encountered with 'trebuie sa crape']"),
+                                "encountered with 'trebuie sa crape'']"),
                     'Type': 'Sender'
                 },
             },
@@ -470,8 +470,8 @@ def test_forward_boto_errors(api_client, zone):
     assert response.status_code == 400
     assert response.data == {
         'non_field_error': [
-            ("Invalid Resource Record: FATAL problem: ARRDATANotSingleField "
-             "(Value contains spaces) encountered with 'trebuie sa crape'")
+            ("Invalid Resource Record: 'FATAL problem: ARRDATANotSingleField "
+             "(Value contains spaces) encountered with 'trebuie sa crape''")
         ]
     }
 

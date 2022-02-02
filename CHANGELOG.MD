@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unrealeased changes
-_Nothing yet_
+- Bump dependencies to `Django==1.11.29`, `djangorestframework==3.11.2`, `gevent==1.4.0`, `requests==2.20.1`.
 
 ## 1.1.0 (2019-01-07)
 - Added a command to delete stale zones.
