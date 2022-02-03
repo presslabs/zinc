@@ -2,7 +2,7 @@ Django==1.11.29
 boto3==1.5.29
 celery==4.4.7
 django-rest-swagger==2.1.2
-djangorestframework==3.6.3
+djangorestframework==3.11.2
 dnspython==1.15.0
 gevent==1.4.0
 gunicorn==19.7.1
