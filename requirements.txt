@@ -1,6 +1,6 @@
 Django==1.11.29
 boto3==1.5.29
-celery==4.4.7
+celery==5.2.2
 django-rest-swagger==2.1.2
 djangorestframework==3.6.3
 dnspython==1.15.0
