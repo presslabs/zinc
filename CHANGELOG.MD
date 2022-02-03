@@ -1,7 +1,9 @@
 # Changelog
 
 ## Unrealeased changes
-- Bump dependencies to `Django==1.11.29`, `djangorestframework==3.11.2`, `gevent==1.4.0`, `requests==2.20.1`.
+- Bump dependencies to `Django==1.11.29`, `djangorestframework==3.11.2`, `gevent==1.4.0`,
+  `requests==2.20.1`, `celery==4.4.7`, `gevent==1.4.0`, `python-redis-lock==3.7.0`.
+- Update AWS regions list
 
 ## 1.1.0 (2019-01-07)
 - Added a command to delete stale zones.
