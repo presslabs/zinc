@@ -39,7 +39,7 @@ def _has_ip_of_type_in_region(policy_members, region, protocol='IPv4'):
     return has_ip_of_type
 
 
-def policy_members_to_list(policy_members, policy_record, just_pr=False, no_health=False):
+def policy_members_to_list(policy_members, policy_record, just_pr=False, no_health=False, ttl=30):
     """
     Tries to reproduce what should be in AWS after a policy is applied.
     """
@@ -82,7 +82,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                     m.RECORD_PREFIX, policy.name, policy_member.region),
                 'Type': 'AAAA' if ':' in policy_member.ip.ip else 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
-                'TTL': 30,
+                'TTL': ttl,
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
@@ -95,7 +95,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
                 'Type': 'AAAA' if ':' in policy_member.ip.ip else 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
-                'TTL': 30,
+                'TTL': ttl,
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
                 'Weight': policy_member.weight,
                 'HealthCheckId': str(policy_member.ip.healthcheck_id),
@@ -1097,7 +1097,7 @@ def test_policy_alias_noop(zone, boto_client):
 
 @pytest.mark.django_db
 def test_policy_record_tree_builder_ipv6(zone, boto_client):
-    policy = G(m.Policy)
+    policy = G(m.Policy, ttl=60)
     ip = create_ip_with_healthcheck()
     ipv6 = create_ip_with_healthcheck(ip='2022:cafe::1')
     ipv6_2 = create_ip_with_healthcheck(ip='2022:cafe::2')
@@ -1123,7 +1123,7 @@ def test_policy_record_tree_builder_ipv6(zone, boto_client):
             'TTL': 300,
             'Type': 'A',
         }
-    ] + policy_members_to_list(policy_members, policy_record)
+    ] + policy_members_to_list(policy_members, policy_record, ttl=60)
     expected = sorted(expected, key=sort_key)
     result = strip_ns_and_soa(
         boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root

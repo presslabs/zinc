@@ -70,6 +70,8 @@ class Policy(models.Model):
     routing = models.CharField(
         max_length=255, choices=ROUTING_CHOICES.items(), default=ROUTING_CHOICES['latency'])
 
+    ttl = models.PositiveIntegerField(default=30)
+
     dirty_trigger_fields = set(['name'])
 
     class Meta:
