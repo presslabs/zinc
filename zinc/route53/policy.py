@@ -1,4 +1,6 @@
+import copy
 from collections import OrderedDict
+
 import zinc.route53
 from zinc.utils import memoized_property
 from .record import Record, RECORD_PREFIX
@@ -39,12 +41,16 @@ class Policy:
         # Build simple tree
         records = []
         for policy_member in policy_members:
+            record_type = 'A'
+            if ':' in policy_member.ip.ip:
+                record_type = 'AAAA'
+
             health_check_kwa = {}
             if policy_member.ip.healthcheck_id:
                 health_check_kwa['health_check_id'] = str(policy_member.ip.healthcheck_id)
             record = Record(
                 ttl=30,
-                type='A',
+                type=record_type,
                 values=[policy_member.ip.ip],
                 set_identifier='{}-{}'.format(str(policy_member.id), policy_member.region),
                 weight=policy_member.weight,
@@ -78,7 +84,15 @@ class Policy:
                 set_identifier=region,
                 zone=self.zone,
             )
-            records.append(record)
+            if self._has_ipv4_records_in_region(policy_members, region):
+                records.append(record)
+
+            # create a similar AAAA record if there exists IPv6 ips in this region.
+            if self._has_ipv6_records_in_region(policy_members, region):
+                record = copy.copy(record)
+                record.type = 'AAAA'
+                records.append(record)
+
         return records
 
     def _build_tree(self):
@@ -130,3 +144,25 @@ class Policy:
         for record in records:
             record.deleted = True
         self.zone.process_records(records)
+
+    def _has_ipv6_records_in_region(self, policy_members, region):
+        has_ipv6 = False
+        for pm in policy_members:
+            if region and pm.region != region:
+                continue
+
+            if ':' in pm.ip.ip:
+                has_ipv6 = True
+
+        return has_ipv6
+
+    def _has_ipv4_records_in_region(self, policy_members, region):
+        has_ipv4 = False
+        for pm in policy_members:
+            if region and pm.region != region:
+                continue
+
+            if '.' in pm.ip.ip:
+                has_ipv4 = True
+
+        return has_ipv4

@@ -26,7 +26,7 @@ ROUTING_CHOICES = OrderedDict([
 class IP(models.Model):
     ip = models.GenericIPAddressField(
         primary_key=True,
-        protocol='IPv4',
+        protocol='both',
         verbose_name='IP Address'
     )
     hostname = models.CharField(max_length=64, validators=[validate_hostname])
@@ -277,15 +277,20 @@ class Zone(models.Model):
 
 
 class PolicyRecord(models.Model):
+    RECORD_TYPES = [
+        ('A', 'A'),
+        ('AAAA', 'AAAA')
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
+    record_type = models.CharField(max_length=10, choices=RECORD_TYPES, default='A')
     policy = models.ForeignKey(Policy, related_name='records')
     dirty = models.BooleanField(default=True, editable=False)
     zone = models.ForeignKey(Zone, related_name='policy_records')
     deleted = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('name', 'zone')
+        unique_together = ('name', 'record_type', 'zone')
 
     def __init__(self, *a, **kwa):
         super().__init__(*a, **kwa)

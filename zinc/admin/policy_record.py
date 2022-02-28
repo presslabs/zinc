@@ -17,7 +17,7 @@ class PolicyRecordAdmin(SoftDeleteAdmin):
     list_display = ('__str__', 'policy', 'aws_link', 'synced', 'is_deleted')
     list_filter = ('zone', 'policy', 'dirty')
 
-    fields = ('name', 'zone', 'policy', 'synced')
+    fields = ('name', 'zone', 'policy', 'record_type', 'synced')
     readonly_fields = ('synced', )
     actions = (mark_dirty, )
 

@@ -87,8 +87,10 @@ def record_data_to_aws(record, zone_root):
     return rrs
 
 
-def create_ip_with_healthcheck():
-    ip = G(m.IP, healthcheck_id=None, healthcheck_caller_reference=None)
+def create_ip_with_healthcheck(**kwargs):
+    kwargs['healthcheck_id'] = None
+    kwargs['healthcheck_caller_reference'] = None
+    ip = G(m.IP, **kwargs)
     ip.reconcile_healthcheck()
     ip.refresh_from_db()
     return ip

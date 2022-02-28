@@ -20,10 +20,11 @@ hashids = Hashids(salt=HASHIDS_SALT,
 RECORD_PREFIX = '_zn'
 
 POLICY_ROUTED = 'POLICY_ROUTED'
+POLICY_ROUTED_IPv6 = 'POLICY_ROUTED_IPv6'
 
 RECORD_TYPES = [
     'A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SOA',
-    'SPF', 'SRV', 'NS', POLICY_ROUTED
+    'SPF', 'SRV', 'NS', POLICY_ROUTED, POLICY_ROUTED_IPv6,
 ]
 
 ALLOWED_RECORD_TYPES = set(RECORD_TYPES)
@@ -271,6 +272,7 @@ class PolicyRecord(BaseRecord):
         self._policy = None
         self.policy = policy
         self.zone = zone
+        self.record_type = self.db_policy_record.record_type
 
         super().__init__(
             name=self.db_policy_record.name,
@@ -315,7 +317,7 @@ class PolicyRecord(BaseRecord):
     def _top_level_record(self):
         return Record(
             name=self.name,
-            type='A',
+            type=self.record_type,
             alias_target={
                 'HostedZoneId': self.zone.id,
                 'DNSName': '{}_{}.{}'.format(RECORD_PREFIX, self.policy.name, self.zone.root),
@@ -347,6 +349,9 @@ class PolicyRecord(BaseRecord):
 
     @property
     def type(self):
+        if self.record_type == 'AAAA':
+            return POLICY_ROUTED_IPv6
+
         return POLICY_ROUTED
 
     @property

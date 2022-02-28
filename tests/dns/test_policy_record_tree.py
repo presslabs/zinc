@@ -25,6 +25,20 @@ def strip_ns_and_soa(records, zone_root):
     ], key=sort_key)
 
 
+def _has_ip_of_type_in_region(policy_members, region, protocol='IPv4'):
+    sep = '.' if protocol == 'IPv4' else ':'
+
+    has_ip_of_type = False
+    for pm in policy_members:
+        if region and pm.region != region:
+            continue
+
+        if sep in pm.ip.ip:
+            has_ip_of_type = True
+
+    return has_ip_of_type
+
+
 def policy_members_to_list(policy_members, policy_record, just_pr=False, no_health=False):
     """
     Tries to reproduce what should be in AWS after a policy is applied.
@@ -47,12 +61,26 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 'Region': region,
                 'SetIdentifier': region,
             }
-            for region in regions]
+            for region in regions if _has_ip_of_type_in_region(policy_members, region, 'IPv4')]
+        records_for_regions += [
+            {
+                'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
+                'Type': 'AAAA',
+                'AliasTarget': {
+                    'DNSName': '{}_{}_{}.test-zinc.net.'.format(
+                        m.RECORD_PREFIX, policy.name, region),
+                    'EvaluateTargetHealth': len(regions) > 1,
+                    'HostedZoneId': zone.r53_zone.id
+                },
+                'Region': region,
+                'SetIdentifier': region,
+            }
+            for region in regions if _has_ip_of_type_in_region(policy_members, region, 'IPv6')]
         records_for_policy_members = [
             {
                 'Name': '{}_{}_{}.test-zinc.net.'.format(
                     m.RECORD_PREFIX, policy.name, policy_member.region),
-                'Type': 'A',
+                'Type': 'AAAA' if ':' in policy_member.ip.ip else 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
                 'TTL': 30,
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
@@ -65,7 +93,7 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
         records_for_policy_members = [
             {
                 'Name': '{}_{}.test-zinc.net.'.format(m.RECORD_PREFIX, policy.name),
-                'Type': 'A',
+                'Type': 'AAAA' if ':' in policy_member.ip.ip else 'A',
                 'ResourceRecords': [{'Value': policy_member.ip.ip}],
                 'TTL': 30,
                 'SetIdentifier': '{}-{}'.format(str(policy_member.id), policy_member.region),
@@ -92,6 +120,20 @@ def policy_members_to_list(policy_members, policy_record, just_pr=False, no_heal
                 },
             }
         ]
+        if _has_ip_of_type_in_region(policy_members, None, protocol='IPv6'):
+            the_policy_record += [
+                {
+                    'Name': ('{}.{}'.format(policy_record.name, zone.root)
+                             if policy_record.name != '@' else zone.root),
+                    'Type': 'AAAA',
+                    'AliasTarget': {
+                        'HostedZoneId': zone.r53_zone.id,
+                        'DNSName': '{}_{}.{}'.format(m.RECORD_PREFIX, policy.name, zone.root),
+                        'EvaluateTargetHealth': False
+                    },
+                }
+            ]
+
     return records_for_regions + records_for_policy_members + the_policy_record
 
 
@@ -1051,3 +1093,39 @@ def test_policy_alias_noop(zone, boto_client):
     assert zone.r53_zone._change_batch == []
     policy_record.r53_policy_record.reconcile()
     assert zone.r53_zone._change_batch == []
+
+
+@pytest.mark.django_db
+def test_policy_record_tree_builder_ipv6(zone, boto_client):
+    policy = G(m.Policy)
+    ip = create_ip_with_healthcheck()
+    ipv6 = create_ip_with_healthcheck(ip='2022:cafe::1')
+    ipv6_2 = create_ip_with_healthcheck(ip='2022:cafe::2')
+    policy_members = [
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ipv6),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ipv6_2),
+        G(m.PolicyMember, policy=policy, region=regions[0], ip=ip),
+        G(m.PolicyMember, policy=policy, region=regions[1], ip=ipv6),
+    ]
+    policy_record = G(m.PolicyRecord, zone=zone, policy=policy)
+    policy_record_ipv6 = G(m.PolicyRecord, zone=zone, policy=policy,
+                           name=policy_record.name, record_type='AAAA')
+
+    route53.Policy(policy=policy, zone=zone.r53_zone).reconcile()
+    policy_record.r53_policy_record.reconcile()
+    policy_record_ipv6.r53_policy_record.reconcile()
+    zone.commit()
+
+    expected = [
+        {
+            'Name': 'test.test-zinc.net.',
+            'ResourceRecords': [{'Value': '1.1.1.1'}],
+            'TTL': 300,
+            'Type': 'A',
+        }
+    ] + policy_members_to_list(policy_members, policy_record)
+    expected = sorted(expected, key=sort_key)
+    result = strip_ns_and_soa(
+        boto_client.list_resource_record_sets(HostedZoneId=zone.route53_id), zone.root
+    )
+    assert result == expected
