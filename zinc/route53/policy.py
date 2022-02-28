@@ -49,7 +49,7 @@ class Policy:
             if policy_member.ip.healthcheck_id:
                 health_check_kwa['health_check_id'] = str(policy_member.ip.healthcheck_id)
             record = Record(
-                ttl=30,
+                ttl=self.db_policy.ttl,
                 type=record_type,
                 values=[policy_member.ip.ip],
                 set_identifier='{}-{}'.format(str(policy_member.id), policy_member.region),

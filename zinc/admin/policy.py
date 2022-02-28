@@ -18,7 +18,7 @@ class PolicyMemberInline(admin.TabularInline):
 
 @admin.register(Policy)
 class PolicyAdmin(admin.ModelAdmin):
-    fields = ('name', 'routing',)
+    fields = ('name', 'routing', 'ttl')
     readonly_fields = ()
     list_display = ('__str__', 'routing', 'regions', 'status')
     list_filter = ('routing', 'members__region')
