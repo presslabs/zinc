@@ -12,6 +12,13 @@ def mark_dirty(modeladmin, request, queryset):
 mark_dirty.short_description = "Mark selected records dirty"  # noqa: E305
 
 
+def mark_clean(modeladmin, request, queryset):
+    for policy_record in queryset:
+        policy_record.dirty = False
+        policy_record.save()
+mark_clean.short_description = "Mark selected records as clean"  # noqa: E305
+
+
 @admin.register(PolicyRecord)
 class PolicyRecordAdmin(SoftDeleteAdmin):
     list_display = ('__str__', 'record_type', 'policy', 'aws_link', 'synced', 'is_deleted')
@@ -19,7 +26,7 @@ class PolicyRecordAdmin(SoftDeleteAdmin):
 
     fields = ('name', 'zone', 'policy', 'record_type', 'synced')
     readonly_fields = ('synced', )
-    actions = (mark_dirty, )
+    actions = (mark_dirty, mark_clean, )
 
     def get_readonly_fields(self, request, obj=None):
         if obj:  # editing an existing object
