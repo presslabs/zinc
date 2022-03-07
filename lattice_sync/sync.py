@@ -3,6 +3,8 @@ from logging import getLogger
 
 from django.conf import settings
 from django.db import transaction
+from django.utils.ipv6 import clean_ipv6_address
+from django.core.exceptions import ValidationError
 from requests.auth import HTTPBasicAuth
 from zipa import lattice  # pylint: disable=no-name-in-module
 
@@ -60,24 +62,37 @@ def sync(lattice_client):
     roles = set(settings.LATTICE_ROLES)
     env = settings.LATTICE_ENV.lower()
     servers = [
-        server for server in lattice.servers
+        server for server in lattice_client.servers
         if (set(server['roles']).intersection(roles) and
             server['environment'].lower() == env and
             server['state'].lower() not in ('unconfigured', 'decommissioned'))
     ]
-    locations = {d['id']: d['location'] for d in lattice.datacenters}
+    locations = {d['id']: d['location'] for d in lattice_client.datacenters}
 
     lattice_ip_pks = set()
 
     with transaction.atomic():
         for server in servers:
             for ip in server.ips:
-                ip_pk = handle_ip(ip['ip'], server, locations)
+                # normalize IP in order to prevent having different values because in db
+                # the IP is cleaned already
+                ip_value = ip['ip']
+                if ':' in ip_value:
+                    try:
+                        ip_value = clean_ipv6_address(ip_value)
+                    except ValidationError:
+                        logger.error("Bad IPv6 address %s", ip_value)
+                        continue
+
+                ip_pk = handle_ip(ip_value, server, locations)
                 if ip_pk is not None:
                     lattice_ip_pks.add(ip_pk)
+
         if not lattice_ip_pks:
             raise AssertionError("Refusing to delete all IPs!")
+
         ips_to_remove = set(
             models.IP.objects.values_list('pk', flat=True)) - lattice_ip_pks
+
         for ip in models.IP.objects.filter(pk__in=ips_to_remove):
             ip.soft_delete()
