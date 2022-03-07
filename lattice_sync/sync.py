@@ -7,7 +7,6 @@ from requests.auth import HTTPBasicAuth
 from zipa import lattice  # pylint: disable=no-name-in-module
 
 from zinc import models
-from zinc.utils.validation import is_ipv6
 
 
 logger = getLogger('zinc.' + __name__)
@@ -27,10 +26,6 @@ def lattice_factory(url, user, password):
 
 
 def handle_ip(ip_addr, server, locations):
-    # ignore ipv6 addresses for now
-    if is_ipv6(ip_addr):
-        return
-
     enabled = server['state'] == 'configured'
     datacenter_id = int(
         server['datacenter_url'].split('?')[0].split('/')[-1])
