@@ -12,7 +12,7 @@ from django.db.models import Q
 from zinc import ns_check, route53, tasks
 from zinc.route53 import HealthCheck, get_local_aws_region_choices
 from zinc.route53.record import RECORD_PREFIX
-from zinc.validators import validate_domain, validate_hostname
+from zinc.validators import validate_domain, validate_hostname, validate_policy_name
 
 
 logger = getLogger(__name__)
@@ -66,7 +66,8 @@ class IP(models.Model):
 
 class Policy(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True, null=False)
+    name = models.CharField(max_length=255, validators=[validate_policy_name],
+                            unique=True, null=False)
     routing = models.CharField(
         max_length=255, choices=ROUTING_CHOICES.items(), default=ROUTING_CHOICES['latency'])
 

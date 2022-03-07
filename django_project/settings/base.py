@@ -240,7 +240,7 @@ CELERYBEAT_SCHEDULE = {
     },
     'update_ns_propagated': {
         'task': 'zinc.tasks.update_ns_propagated',
-        'schedule': 60
+        'schedule': 60 * 10,
     },
     'check_clean_zones': {
         'task': 'zinc.tasks.check_clean_zones',

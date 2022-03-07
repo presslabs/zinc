@@ -14,7 +14,7 @@ mark_dirty.short_description = "Mark selected records dirty"  # noqa: E305
 
 @admin.register(PolicyRecord)
 class PolicyRecordAdmin(SoftDeleteAdmin):
-    list_display = ('__str__', 'policy', 'aws_link', 'synced', 'is_deleted')
+    list_display = ('__str__', 'record_type', 'policy', 'aws_link', 'synced', 'is_deleted')
     list_filter = ('zone', 'policy', 'dirty')
 
     fields = ('name', 'zone', 'policy', 'record_type', 'synced')
