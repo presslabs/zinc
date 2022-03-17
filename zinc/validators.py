@@ -18,7 +18,7 @@ validate_domain = RegexValidator(
 
 # AWS will convert to lowercase the record name and record comparison will fail
 validate_policy_name = RegexValidator(
-    regex=r'[a-z0-9-]+',
+    regex=r'^[a-z0-9-]+$',
     message='Policy name should contain only lowercase letters, numbers and hyphens',
-    code='invalid_policy_name'
+    code='invalid_policy_name',
 )
