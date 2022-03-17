@@ -73,7 +73,7 @@ class Policy(models.Model):
 
     ttl = models.PositiveIntegerField(default=30)
 
-    dirty_trigger_fields = set(['name'])
+    dirty_trigger_fields = set(['name', 'ttl'])
 
     class Meta:
         verbose_name_plural = 'policies'
@@ -94,6 +94,18 @@ class Policy(models.Model):
     @transaction.atomic
     def mark_policy_records_dirty(self):
         self.records.update(dirty=True)
+
+    def clean(self):
+        # validate name to start with unique characters in order to prevent the tree builder
+        # marching and removing from other policies with similar name.
+        for policy in Policy.objects.all():
+            min_len = min(len(policy.name), len(self.name))
+            if self.name[:min_len] == policy.name[:min_len]:
+                raise ValidationError({
+                    'name': 'The name "{}" has first {} chars equal with policy "{}"'.format(
+                        self.name, min_len, policy.name
+                    )
+                })
 
 
 class PolicyMember(models.Model):
