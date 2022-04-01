@@ -11,10 +11,9 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
-
 import environ
-
 import warnings
+from datetime import timedelta
 
 try:
     import pymysql
@@ -236,15 +235,15 @@ CELERY_RESULT_BACKEND = env.str('ZINC_CELERY_RESULT_BACKEND',
 CELERYBEAT_SCHEDULE = {
     'reconcile_zones': {
         'task': 'zinc.tasks.reconcile_zones',
-        'schedule': 10,
+        'schedule': timedelta(seconds=10),
     },
     'update_ns_propagated': {
         'task': 'zinc.tasks.update_ns_propagated',
-        'schedule': 60 * 10,
+        'schedule': timedelta(minutes=10),
     },
     'check_clean_zones': {
         'task': 'zinc.tasks.check_clean_zones',
-        'schedule': 60 * 15
+        'schedule': timedelta(minutes=15),
     },
 }
 
