@@ -28,15 +28,14 @@ def strip_ns_and_soa(records, zone_root):
 def _has_ip_of_type_in_region(policy_members, region, protocol='IPv4'):
     sep = '.' if protocol == 'IPv4' else ':'
 
-    has_ip_of_type = False
     for pm in policy_members:
         if region and pm.region != region:
             continue
 
         if sep in pm.ip.ip:
-            has_ip_of_type = True
+            return True
 
-    return has_ip_of_type
+    return False
 
 
 def policy_members_to_list(policy_members, policy_record, just_pr=False, no_health=False, ttl=30):
