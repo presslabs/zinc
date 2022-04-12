@@ -11,7 +11,7 @@ from django.conf import settings
 
 from zinc import route53
 from zinc.models import RECORD_PREFIX
-from zinc.route53.record import ZINC_RECORD_TYPES, POLICY_ROUTED, ALLOWED_RECORD_TYPES
+from zinc.route53.record import ZINC_RECORD_TYPES, ALLOWED_RECORD_TYPES, ZINC_CUSTOM_RECORD_TYPES
 
 
 @contextmanager
@@ -144,7 +144,7 @@ class RecordSerializer(serializers.Serializer):
         else:
             # POST method
             # for POLICY_ROUTED the values should contain just one value
-            if data['type'] in ['CNAME', POLICY_ROUTED]:
+            if data['type'] in ['CNAME'] + ZINC_CUSTOM_RECORD_TYPES:
                 if not len(data['values']) == 1:
                     errors.update({
                         'values': ('Only one value can be '

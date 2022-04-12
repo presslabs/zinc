@@ -20,7 +20,7 @@ def get_policy_record(policy_record, dirty=False, managed=False):
         'name': policy_record.name,
         'fqdn': ('{}.{}'.format(policy_record.name, policy_record.zone.root)
                  if policy_record.name != '@' else policy_record.zone.root),
-        'type': 'POLICY_ROUTED',
+        'type': 'POLICY_ROUTED_IPv6' if policy_record.record_type == 'AAAA' else 'POLICY_ROUTED',
         'values': [str(policy_record.policy.id)],
         'ttl': None,
         'dirty': dirty,
@@ -67,7 +67,25 @@ def test_policy_record_create(api_client, zone):
         }
     )
     assert response.status_code == 201, response.data
-    pr = m.PolicyRecord.objects.get(name='@', zone=zone)
+    pr = m.PolicyRecord.objects.get(name='@', record_type='A', zone=zone)
+    assert response.data == get_policy_record(pr, dirty=True)
+
+
+@pytest.mark.django_db
+def test_policy_record_create_ipv6(api_client, zone):
+    policy = G(m.Policy)
+    G(m.PolicyMember, policy=policy, region=regions[0])
+
+    response = api_client.post(
+        '/zones/%s/records' % zone.id,
+        data={
+            'name': '@',
+            'type': 'POLICY_ROUTED_IPv6',
+            'values': [str(policy.id)],
+        }
+    )
+    assert response.status_code == 201, response.data
+    pr = m.PolicyRecord.objects.get(name='@', record_type='AAAA', zone=zone)
     assert response.data == get_policy_record(pr, dirty=True)
 
 

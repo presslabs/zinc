@@ -365,15 +365,15 @@ class PolicyRecord(models.Model):
         self.save()
 
     @classmethod
-    def new_or_deleted(cls, name, zone):
+    def new_or_deleted(cls, name, record_type, zone):
         # if the record hasn't been reconciled yet (still exists in the DB), we want to reuse it
         # to avoid violating the unique together constraint on name and zone
         # TODO: if we add deleted to that constraint and make it null-able, we can keep the DB
         # sane and simplify the system. Reusing the record like this opens up the possibility
         # of running into concurrency issues.
         try:
-            model = cls.objects.get(deleted=True, name=name, zone=zone)
+            model = cls.objects.get(deleted=True, name=name, record_type=record_type, zone=zone)
             model.deleted = False
             return model
         except cls.DoesNotExist:
-            return cls(name=name, zone=zone)
+            return cls(name=name, record_type=record_type, zone=zone)
