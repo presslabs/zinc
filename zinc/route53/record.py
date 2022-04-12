@@ -32,8 +32,9 @@ ALLOWED_RECORD_TYPES.remove('SOA')
 
 ZINC_RECORD_TYPES = [(rtype, rtype) for rtype in RECORD_TYPES]
 
-ZINC_RECORD_TYPES_MAP = {i + 1: RECORD_TYPES[i] for i in range(0, len(RECORD_TYPES))}
+ZINC_RECORD_TYPES_MAP = {i + 2: RECORD_TYPES[i] for i in range(0, len(RECORD_TYPES))}
 ZINC_RECORD_TYPES_MAP[0] = POLICY_ROUTED
+ZINC_RECORD_TYPES_MAP[1] = POLICY_ROUTED_IPv6
 
 ZINC_RECORD_TYPES_MAP_REV = {rtype: i for i, rtype in ZINC_RECORD_TYPES_MAP.items()}
 
@@ -369,7 +370,7 @@ class PolicyRecord(BaseRecord):
 
 def record_factory(zone, created=None, **validated_data):
     record_type = validated_data.pop('type')
-    if record_type == POLICY_ROUTED:
+    if record_type in (POLICY_ROUTED, POLICY_ROUTED_IPv6):
         assert len(validated_data['values']) == 1
         policy_id = validated_data['values'][0]
         try:
