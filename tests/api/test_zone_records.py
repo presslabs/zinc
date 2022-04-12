@@ -146,7 +146,7 @@ def test_update_record_type(api_client, zone):
 
 @pytest.mark.django_db
 def test_hash_test_record(zone):
-    assert hash_test_record(zone)[-16:] == 'Z1ZOrpXqQazJdzbN'
+    assert hash_test_record(zone)[-16:] == 'Z0ZOrpXqQazJdzbN'
 
 
 @pytest.mark.django_db

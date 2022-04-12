@@ -22,19 +22,26 @@ RECORD_PREFIX = '_zn'
 POLICY_ROUTED = 'POLICY_ROUTED'
 POLICY_ROUTED_IPv6 = 'POLICY_ROUTED_IPv6'
 
+POLICY_ROUTED_TO_DNS = {
+    POLICY_ROUTED: 'A',
+    POLICY_ROUTED_IPv6: 'AAAA',
+}
+
+ZINC_CUSTOM_RECORD_TYPES = [
+    POLICY_ROUTED, POLICY_ROUTED_IPv6
+]
+
 RECORD_TYPES = [
     'A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SOA',
-    'SPF', 'SRV', 'NS', POLICY_ROUTED, POLICY_ROUTED_IPv6,
-]
+    'SPF', 'SRV', 'NS'
+] + ZINC_CUSTOM_RECORD_TYPES
 
 ALLOWED_RECORD_TYPES = set(RECORD_TYPES)
 ALLOWED_RECORD_TYPES.remove('SOA')
 
 ZINC_RECORD_TYPES = [(rtype, rtype) for rtype in RECORD_TYPES]
 
-ZINC_RECORD_TYPES_MAP = {i + 1: RECORD_TYPES[i] for i in range(0, len(RECORD_TYPES))}
-ZINC_RECORD_TYPES_MAP[0] = POLICY_ROUTED
-
+ZINC_RECORD_TYPES_MAP = {i: RECORD_TYPES[i] for i in range(0, len(RECORD_TYPES))}
 ZINC_RECORD_TYPES_MAP_REV = {rtype: i for i, rtype in ZINC_RECORD_TYPES_MAP.items()}
 
 
@@ -369,7 +376,7 @@ class PolicyRecord(BaseRecord):
 
 def record_factory(zone, created=None, **validated_data):
     record_type = validated_data.pop('type')
-    if record_type == POLICY_ROUTED:
+    if record_type in ZINC_CUSTOM_RECORD_TYPES:
         assert len(validated_data['values']) == 1
         policy_id = validated_data['values'][0]
         try:
@@ -377,7 +384,10 @@ def record_factory(zone, created=None, **validated_data):
         except models.Policy.DoesNotExist:
             raise SuspiciousOperation("Policy {}  does not exists.".format(
                 policy_id))
-        record_model = models.PolicyRecord.new_or_deleted(name=validated_data['name'], zone=zone)
+        rtype = POLICY_ROUTED_TO_DNS[record_type]
+        record_model = models.PolicyRecord.new_or_deleted(
+            name=validated_data['name'], record_type=rtype, zone=zone
+        )
         obj = PolicyRecord(
             policy_record=record_model,
             zone=zone.r53_zone,
