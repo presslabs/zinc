@@ -98,7 +98,7 @@ class Policy(models.Model):
     def clean(self):
         # validate name to start with unique characters in order to prevent the tree builder
         # marching and removing from other policies with similar name.
-        for policy in Policy.objects.all():
+        for policy in Policy.objects.exclude(id=self.id):
             min_len = min(len(policy.name), len(self.name))
             if self.name[:min_len] == policy.name[:min_len]:
                 raise ValidationError({
