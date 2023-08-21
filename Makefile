@@ -1,11 +1,11 @@
 .DEFAULT_GOAL := build
 
 test:
-	py.test -v -n auto --capture=no --no-migrations -k 'not with_aws' --flake8
+	py.test -v -n auto --capture=no --no-migrations -k 'not with_aws' --ruff
 full-test:
 	py.test -v         --capture=no --color=yes
 lint:
-	py.test -v -n auto --capture=no --color=yes --flake8 -m 'flake8'
+	py.test -v -n auto --capture=no --color=yes --ruff -m 'ruff'
 run:
 	@echo "#################################################################"
 	@echo "#                                                               #"
