@@ -1,4 +1,4 @@
-from django.conf.urls import url
+from django.urls import path
 from rest_framework import routers
 
 from zinc import views
@@ -9,8 +9,8 @@ router.register('policies', views.PolicyViewset, 'policy')
 router.register('zones', views.ZoneViewset, 'zone')
 
 urlpatterns = router.urls + [
-    url(r'^zones/(?P<zone_id>[0-9]+)/records/(?P<record_id>\w+)$',
+    path('zones/<int:zone_id>/records/<str:record_id>',
         views.RecordDetail.as_view(), name='record-detail'),
-    url(r'^zones/(?P<zone_id>[0-9]+)/records$',
+    path('zones/<int:zone_id>/records',
         views.RecordCreate.as_view(), name='record-create'),
 ]

@@ -6,7 +6,7 @@ import string
 from django.contrib.auth import get_user_model
 import botocore.exceptions
 import pytest
-from mock import patch
+from unittest.mock import patch
 from rest_framework.test import APIClient
 from django_dynamic_fixture import G
 

@@ -57,7 +57,7 @@ class RecordDetail(RetrieveUpdateDestroyAPIView):
 
     def get_serializer_context(self):
         zone = self.zone
-        context = super(RecordDetail, self).get_serializer_context()
+        context = super().get_serializer_context()
         context['zone'] = zone
         return context
 
