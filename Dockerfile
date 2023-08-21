@@ -1,4 +1,4 @@
-FROM python:3.5-alpine
+FROM python:3.11-alpine
 
 ARG release=git
 ENV ZINC_RELEASE "$release"
