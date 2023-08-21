@@ -9,7 +9,7 @@ platform:
 steps:
 - name: test
   pull: always
-  image: python:3.5
+  image: python:3.11
   commands:
   - pip install -U -r requirements.dev.txt
   - make lint
@@ -38,6 +38,6 @@ steps:
 
 ---
 kind: signature
-hmac: c2ed22603cc391065b72613db36006619bbaf4e6f8676c4cc8a06651d92e34c5
+hmac: 151963db3d5e1083b6031e207942b9377404e280f088752af9daabf9599b1b07
 
 ...
