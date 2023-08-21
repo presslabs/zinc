@@ -299,9 +299,9 @@ class PolicyRecord(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     record_type = models.CharField(max_length=10, choices=RECORD_TYPES, default='A')
-    policy = models.ForeignKey(Policy, related_name='records')
+    policy = models.ForeignKey(Policy, related_name='records', on_delete=models.CASCADE)
     dirty = models.BooleanField(default=True, editable=False)
-    zone = models.ForeignKey(Zone, related_name='policy_records')
+    zone = models.ForeignKey(Zone, related_name='policy_records', on_delete=models.CASCADE)
     deleted = models.BooleanField(default=False)
 
     class Meta:

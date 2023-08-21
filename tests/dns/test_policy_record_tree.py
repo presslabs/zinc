@@ -1,7 +1,7 @@
 # pylint: disable=no-member,protected-access,redefined-outer-name
 import pytest
 from django_dynamic_fixture import G
-from mock import patch
+from unittest.mock import patch
 
 from tests.fixtures import boto_client, zone  # noqa: F401
 from tests.utils import create_ip_with_healthcheck

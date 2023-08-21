@@ -66,7 +66,7 @@ def test_policy_record_create(api_client, zone):
             'values': [str(policy.id)],
         }
     )
-    assert response.status_code == 201, response.data
+    assert response.status_code == 201
     pr = m.PolicyRecord.objects.get(name='@', record_type='A', zone=zone)
     assert response.data == get_policy_record(pr, dirty=True)
 
@@ -84,7 +84,7 @@ def test_policy_record_create_ipv6(api_client, zone):
             'values': [str(policy.id)],
         }
     )
-    assert response.status_code == 201, response.data
+    assert response.status_code == 201
     pr = m.PolicyRecord.objects.get(name='@', record_type='AAAA', zone=zone)
     assert response.data == get_policy_record(pr, dirty=True)
 
@@ -120,9 +120,9 @@ def test_policy_record_delete(api_client, zone):
     response = api_client.delete(
         '/zones/%s/records/%s' % (zone.id, get_policy_record(policy_record)['id'])
     )
+    assert response.status_code == 204
 
     pr = m.PolicyRecord.objects.get(name='@', zone=zone)
-    assert response.status_code == 204, response.data
     assert str(pr.policy.id) == str(policy.id)
     assert pr.dirty is True
     assert pr.deleted is True
@@ -372,7 +372,7 @@ def test_cname_patch(zone, api_client):
         data={
             'values': 'spam.exmaple.net.'
         })
-    assert response.status_code == 200, response.data
+    assert response.status_code == 200
     expected = [(r.name, r.type, r.values) for r in zone.r53_zone.records().values()
                 if r.name == 'cname']
     assert sorted(expected) == [

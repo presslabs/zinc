@@ -75,7 +75,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'rest_framework_swagger',
+    # TODO(amecea): fix swagger app
+    #'rest_framework_swagger',
     'zinc',
 ]
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
@@ -343,6 +344,10 @@ LOGGING = {
         },
     },
 }
+
+# https://docs.djangoproject.com/en/3.2/releases/3.2/#customizing-type-of-auto-created-primary-keys
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
 
 if env.str('ZINC_SENTRY_DSN', ''):
     import raven

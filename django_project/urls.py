@@ -14,20 +14,20 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf import settings
-from django.conf.urls import include, url
+from django.urls import include, path
 from django.contrib import admin
 
 from zinc.views import HealtchCheck
 
 urlpatterns = [
-    url(r'^admin/', admin.site.urls),
-    url(r'^', include('zinc.urls')),
-    url(r'_health', HealtchCheck.as_view())
+    path('admin/', admin.site.urls),
+    path('', include('zinc.urls')),
+    path('_health', HealtchCheck.as_view())
 ]
 
 if settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     urlpatterns.append(
-        url(r'_auth/', include('social_django.urls', namespace='social'))
+        path('_auth/', include('social_django.urls', namespace='social', app_name='social_django'))
     )
 
 if settings.SERVE_STATIC:
@@ -40,7 +40,7 @@ except ImportError:
     pass
 else:
     schema_view = get_swagger_view(title='API')
-    urlpatterns.append(url(r'^swagger/$', schema_view))
+    urlpatterns.append(path('^swagger/$', schema_view))
 
 if settings.DEBUG:
     try:
@@ -48,4 +48,4 @@ if settings.DEBUG:
     except ImportError:
         pass
     else:
-        urlpatterns.insert(0, url(r'^__debug__/', include(debug_toolbar.urls)))
+        urlpatterns.insert(0, path(r'^__debug__/', include(debug_toolbar.urls)))
