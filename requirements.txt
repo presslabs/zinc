@@ -1,7 +1,7 @@
 Django==4.2.4
 boto3==1.28.30
 celery==5.3.1
-django4-rest-swagger==1.1.0
+drf-yasg>=1.21,<2
 djangorestframework==3.14.0
 dnspython==2.4.2
 gevent==23.7.0

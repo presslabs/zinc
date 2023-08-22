@@ -34,13 +34,24 @@ if settings.SERVE_STATIC:
     from django.conf.urls.static import static
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-try:
-    from rest_framework_swagger.views import get_swagger_view
-except ImportError:
-    pass
-else:
-    schema_view = get_swagger_view(title='API')
-    urlpatterns.append(path('^swagger/$', schema_view))
+
+if settings.SWAGGER_ENABLED:
+    from rest_framework import permissions
+    from drf_yasg.views import get_schema_view
+    from drf_yasg import openapi
+    schema_view = get_schema_view(
+        openapi.Info(
+            title="API",
+            default_version='v1',
+            description="Zinc API.",
+        ),
+        public=True,
+        permission_classes=(permissions.IsAuthenticated,),
+    )
+
+    urlpatterns.append(
+        path('swagger/', schema_view.with_ui('swagger', cache_timeout=0),  name='schema-swagger-ui')
+    )
 
 if settings.DEBUG:
     try:

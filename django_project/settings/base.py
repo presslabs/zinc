@@ -75,10 +75,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    # TODO(amecea): fix swagger app
-    #'rest_framework_swagger',
+    'drf_yasg',
     'zinc',
 ]
+
 if SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     INSTALLED_APPS += ['social_django']
 if LATTICE_URL:
@@ -376,3 +376,6 @@ if env.str('ZINC_SENTRY_DSN', ''):
     }
     for logger in LOGGING['loggers']:
         LOGGING['loggers'][logger]['handlers'].append('sentry')
+
+
+SWAGGER_ENABLED = env.bool('ZINC_SWAGGER_ENABLED', DEBUG)
