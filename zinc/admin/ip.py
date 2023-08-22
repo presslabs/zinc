@@ -2,6 +2,7 @@ import logging
 
 from django.contrib import admin
 from django.db import transaction
+from django.utils.html import format_html
 
 from zinc.models import IP
 
@@ -29,8 +30,7 @@ class IPAdmin(SoftDeleteAdmin):
 
     def healthcheck(self, obj):
         if obj.healthcheck_id:
-            return ('<a href="https://console.aws.amazon.com/route53/healthchecks/home'
-                    '#/details/{0}">AWS:{0}</a>'.format(obj.healthcheck_id))
+            return format_html('<a href="https://console.aws.amazon.com/route53/healthchecks/home'
+                               '#/details/{0}">AWS:{0}</a>', obj.healthcheck_id)
         else:
             return ""
-    healthcheck.allow_tags = True
