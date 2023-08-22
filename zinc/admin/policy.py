@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db import transaction
+from django.utils.html import mark_safe, format_html
 
 from zinc.models import Policy, PolicyMember
 
@@ -58,8 +59,7 @@ class PolicyAdmin(admin.ModelAdmin):
             if len(active_members) == 0:
                 warnings.append('&#x2716; All members have weight zero!')
         if warnings:
-            return '<span style="color: red">{}</red>'.format("<br>".join(warnings))
+            return format_html('<span style="color: red">{}</red>', mark_safe("<br>".join(warnings)))
         else:
-            return "&#x2714; ok"
-    status.allow_tags = True
+            return mark_safe("&#x2714; ok")
     status.short_description = 'Status'

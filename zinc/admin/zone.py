@@ -2,6 +2,7 @@ import logging
 
 from botocore.exceptions import ClientError
 from django.contrib import admin
+from django.utils.html import mark_safe
 
 from zinc.models import Zone
 
@@ -36,7 +37,6 @@ class ZoneAdmin(SoftDeleteAdmin):
             logger.exception("Error while calling reconcile for hosted zone")
 
     def aws_link(self, obj):
-        return aws_zone_link(obj.route53_id) if obj.route53_id else ""
-    aws_link.allow_tags = True
+        return mark_safe(aws_zone_link(obj.route53_id)) if obj.route53_id else ""
     aws_link.short_description = 'Zone'
     aws_link.admin_order_field = 'zone'

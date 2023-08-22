@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db import transaction
+from django.utils.html import mark_safe
 
 from zinc.models import PolicyRecord
 from zinc.admin.zone import aws_zone_link
@@ -40,8 +41,7 @@ class PolicyRecordAdmin(SoftDeleteAdmin):
     synced.admin_order_field = 'dirty'
 
     def aws_link(self, obj):
-        return aws_zone_link(obj.zone.route53_id) if obj.zone.route53_id else ""
-    aws_link.allow_tags = True
+        return mark_safe(aws_zone_link(obj.zone.route53_id)) if obj.zone.route53_id else ""
     aws_link.short_description = 'Zone'
     aws_link.admin_order_field = 'zone'
 
