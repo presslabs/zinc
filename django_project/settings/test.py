@@ -12,3 +12,5 @@ LOGGING['loggers']['zinc']['level'] = 'WARN'  # noqa: F405
 
 
 ZONE_OWNERSHIP_COMMENT = 'zinc-pytest'
+
+SWAGGER_ENABLED = True
