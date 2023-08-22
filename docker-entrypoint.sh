@@ -1,41 +1,22 @@
-#!/bin/sh
+#!/bin/bash
 set -eo pipefail
-
-LOG_LEVEL=${ZINC_LOG_LEVEL:-INFO}
-
-DOCKERIZE=""
-
-prefix="dockerize"
-
-if [[ "$1" == $prefix ]];
-then
-    DOCKERIZE="dockerize"
-    shift
-    while [[ "$1" != '--' ]] ;
-    do
-        DOCKERIZE="$DOCKERIZE $1"
-        shift
-    done
-    shift
-fi
-
 
 exec_web(){
     if [ "$ZINC_MIGRATE" == "yes" ] ; then
-        $DOCKERIZE su-exec zinc /app/manage.py migrate --noinput
+        /app/manage.py migrate --noinput
     fi
 
     if [ "$ZINC_LOAD_DEV_DATA" == "yes" ] ; then
-        $DOCKERIZE su-exec zinc /app/manage.py seed
+        /app/manage.py seed
     fi
 
-    exec $DOCKERIZE su-exec zinc gunicorn django_project.wsgi --bind "$ZINC_WEB_ADDRESS" -k gevent $@
+    exec gunicorn django_project.wsgi --bind "$ZINC_WEB_ADDRESS" -k gevent $@
 }
 
 case "$1" in
-    "web")         shift; exec_web $@;;
-    "celery")      shift ; exec $DOCKERIZE su-exec zinc celery worker $@;;
-    "celerybeat")  exec $DOCKERIZE su-exec zinc celery beat;;
+    "web")         shift 1; exec_web $@;;
+    "celery")      shift 1; exec celery worker $@;;
+    "celerybeat")  shift 1; exec celery beat $@;;
 esac
 
 exec "$@"
