@@ -27,7 +27,7 @@ urlpatterns = [
 
 if settings.SOCIAL_AUTH_GOOGLE_OAUTH2_KEY:
     urlpatterns.append(
-        path('_auth/', include('social_django.urls', namespace='social', app_name='social_django'))
+        path('_auth/', include('social_django.urls', namespace='social'))
     )
 
 if settings.SERVE_STATIC:
