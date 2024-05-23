@@ -31,6 +31,7 @@ def get_local_aws_region_choices():
         ('eu-west-1', 'Europe (Ireland)'),
         ('eu-west-2', 'Europe (London)'),
         ('eu-west-3', 'Europe (Paris)'),
+        ('il-central-1', 'Israel (Tel Aviv)'),
         ('me-south-1', 'Middle East (Bahrain)'),
         ('sa-east-1', 'South America (São Paulo)'),
         ('us-east-1', 'US East (N. Virginia)'),
